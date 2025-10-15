@@ -1,6 +1,6 @@
-[submodule "src/nova/framework"]
-	path = src/nova/framework
-	url = https://github.com/NovaPHPOrg/nova-framework
 [submodule "src/app/static/framework"]
-	path = src/app/static/framework
-	url = https://git.ankio.icu/nova-ui/framework
+    path = src/app/static/framework
+    url = https://git.ankio.icu/nova-ui/framework
+[submodule "src/nova/framework"]
+    path = src/nova/framework
+    url = https://github.com/NovaPHPOrg/nova-framework
