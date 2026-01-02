@@ -1,17 +1,6 @@
 <title id="title">书籍列表 - {$title}</title>
 <style id="style">
-    /* 书籍卡片交互 */
-    .book-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-        overflow: hidden;
-    }
-    
-    .book-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important;
-    }
-    
+
     /* 书籍封面 */
     .book-cover {
         width: 100%;

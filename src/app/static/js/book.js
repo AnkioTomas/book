@@ -234,7 +234,7 @@ window.pageOnLoad = function (loading) {
 
             return `
                 <div class="col-xs12 col-sm6 col-md4 col-lg3">
-                    <mdui-card class="book-card shadow" data-book-id="${book.id}">
+                    <mdui-card class="book-card h-full w-100" style="max-width: 12rem;" data-book-id="${book.id}">
                         <div class="book-cover">${coverHtml}</div>
                         <div class="p-3">
                             <div class="title-medium text-ellipsis mb-1" title="${book.bookName}">${book.bookName}</div>
