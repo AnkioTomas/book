@@ -26,39 +26,19 @@ use const ROOT_PATH;
 
 class Application extends App
 {
-    public function routeStatic(): void
-    {
-        EventManager::addListener("response.static.after", function ($event, $file) {
-            $name = str_replace(ROOT_PATH . '/app', '', $file);
-            if (!str_ends_with($name, ".js")) {
-                return;
-            }
-            echo <<<EOF
-;if(!window.novaFiles){window.novaFiles = {};}
-window.novaFiles['$name'] = true;
-EOF;
-
-            if(str_ends_with($name, "bootloader.js")) {
-                $version = config("version");
-                $debug = config("debug") ? "true":"false";
-                echo <<<EOF
-window.debug = $debug;
-window.version = '$version';
-EOF;
-            }
-        });
-        EventManager::addListener("route.before", function ($event, &$uri) {
-            if (str_starts_with($uri, "/static/")) {
-                $file = substr($uri, 8);
-                $file = str_replace("..", "", $file);
-                throw new AppExitException(Response::asStatic(ROOT_PATH.'/app/static/'.$file), "Send static file");
-            }
-        });
-    }
-
     public function onFrameworkStart(): void
     {
-        $this->routeStatic();
+        // Route::getInstance()->get()
+        Route::getInstance()
+            ->get("/dashboard",route('index','main','dashboard'))
+            ->get("/admin/webdav",route('index','main','webdav'))
+
+            ->getOrPost('/admin/api/webdav',route('index','webdav','config'))
+
+         ->get("/settings/account", route('index', 'main', 'account'))//√
+        ->get("/settings/sso", route('index', 'main', 'sso'));
 
     }
+
+    public const SYSTEM_NAME = "Ankio的书库";
 }

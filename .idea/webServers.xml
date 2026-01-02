@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="717b6538-3138-4810-bdfd-c68e7f95f06f" name="sftp">
+        <fileTransfer rootFolder="/opt/1panel/www/sites/book.ankio.icu/index" accessType="SFTP" host="192.168.100.200" port="22" sshConfigId="038b136b-658e-4b82-80cf-5358c545bffc" sshConfig="ankio@192.168.100.200:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

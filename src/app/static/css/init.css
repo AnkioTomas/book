@@ -1,0 +1,157 @@
+/*
+ * Copyright (c) 2025. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+ * Morbi non lorem porttitor neque feugiat blandit. Ut vitae ipsum eget quam lacinia accumsan.
+ * Etiam sed turpis ac ipsum condimentum fringilla. Maecenas magna.
+ * Proin dapibus sapien vel ante. Aliquam erat volutpat. Pellentesque sagittis ligula eget metus.
+ * Vestibulum commodo. Ut rhoncus gravida arcu.
+ */
+ .translate-wrapper {
+    display: inline; /* Ensure it behaves like a normal text node */
+    margin: 0; /* Remove any default margin */
+    padding: 0; /* Remove any default padding */
+    border: none; /* Ensure no border is applied */
+    background: none; /* Ensure no background is applied */
+    color: inherit; /* Inherit text color from parent */
+    font: inherit; /* Inherit font properties from parent */
+    line-height: inherit; /* Inherit line-height from parent */
+}
+mdui-top-app-bar,.layout-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--gap);
+}
+
+mdui-top-app-bar:host([scrolling]) {
+    background-color: rgb(var(--mdui-color-surface-container));
+    box-shadow: var(--mdui-elevation-level2);
+}
+
+
+@media screen and (max-width: 600px) {
+    .layout-header-right {
+        gap: calc(var(--gap) / 2);
+    }
+}
+.layout-header-user-info{
+    display: flex;
+    align-items: center;
+    padding: 0.3rem 0.5rem;
+    height: 3.1rem;
+    box-sizing: border-box;
+    margin-right: 1.5rem;
+
+}
+.layout-header-user-info::part(button){
+    padding: 0;
+
+}
+
+
+.layout-header-user-info span{
+    margin-left: 0.4rem;
+    display: flex;
+    align-items: center;
+    color: rgba(var(--mdui-color-on-background));
+}
+.layout-header-user-info mdui-menu-item{
+    cursor: pointer;
+}
+.layout-main{
+    height: calc(var(--vh));
+}
+
+.no-overflow{
+    overflow: hidden;
+}
+
+.navigation-drawer::part(panel),*{
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--mdui-color-on-background) / 0.5) rgba(var(--mdui-color-background) / 0.5);
+}
+
+
+.navigation-drawer mdui-list {
+    padding: var(--nova-padding);
+}
+
+.layout-main{
+    overflow-y: auto;
+    padding: var(--nova-padding);
+    overflow-x: hidden;
+}
+#container {
+    padding: calc(var(--nova-padding) * 2);
+}
+
+@media screen and (max-width: 600px) {
+    #container {
+        padding: calc( var(--nova-padding) / 2); /* 直接使用变量，无需calc */
+    }
+}
+
+@media screen and (max-width: 840px) {
+    #container {
+        padding: var(--nova-padding);
+    }
+}
+
+:root{
+    --nova-padding: 1rem;
+    --nova-border-radius: var(--mdui-shape-corner-extra-large);
+    --gap: 0.5rem;
+}
+
+/* 顺时针旋转90度 */
+.rotate-cw {
+    animation: rotate-cw 0.5s forwards;
+}
+/* 逆时针旋转90度 */
+.rotate-ccw {
+    animation: rotate-ccw 0.5s forwards;
+}
+
+@keyframes rotate-cw {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(90deg);
+    }
+}
+
+@keyframes rotate-ccw {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(-90deg);
+    }
+}
+.mdui-theme-dark mdui-card[variant="elevated"]{
+    background: rgba(var(--mdui-color-surface-container));
+}
+@media (prefers-color-scheme: dark) {
+    .mdui-theme-auto  mdui-card[variant="elevated"]{
+        background: rgba(var(--mdui-color-surface-container));
+    }
+}
+
+
+mdui-badge {
+    height: var(--mdui-typescale-body-medium-line-height);
+    font-size: var(--mdui-typescale-body-medium-size);
+    padding: 0.5rem;
+    line-height: var(--mdui-typescale-body-medium-line-height);
+    letter-spacing: var(--mdui-typescale-body-medium-tracking);
+    font-weight: var(--mdui-typescale-body-medium-weight)
+}
+
+.right{
+    position: fixed;
+    right: 2rem;
+    bottom: 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1000;
+}

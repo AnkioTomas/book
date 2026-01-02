@@ -4,3 +4,45 @@
 [submodule "src/nova/framework"]
     path = src/nova/framework
     url = https://github.com/NovaPHPOrg/nova-framework
+[submodule "src/nova/plugin/login"]
+    path = src/nova/plugin/login
+    url = https://github.com/NovaPHPOrg/nova-login
+[submodule "src/nova/plugin/tpl"]
+    path = src/nova/plugin/tpl
+    url = https://github.com/NovaPHPOrg/nova-tpl
+[submodule "src/nova/plugin/captcha"]
+    path = src/nova/plugin/captcha
+    url = https://github.com/NovaPHPOrg/nova-captcha
+[submodule "src/nova/plugin/cookie"]
+    path = src/nova/plugin/cookie
+    url = https://github.com/NovaPHPOrg/nova-cookie-session
+[submodule "src/nova/plugin/avatar"]
+    path = src/nova/plugin/avatar
+    url = https://github.com/NovaPHPOrg/nova-avatar
+[submodule "src/nova/plugin/http"]
+    path = src/nova/plugin/http
+    url = https://github.com/NovaPHPOrg/nova-http
+[submodule "src/nova/plugin/device"]
+    path = src/nova/plugin/device
+    url = https://github.com/NovaPHPOrg/nova-device
+[submodule "src/nova/plugin/ip"]
+    path = src/nova/plugin/ip
+    url = https://github.com/NovaPHPOrg/nova-ip
+[submodule "src/nova/plugin/orm"]
+    path = src/nova/plugin/orm
+    url = https://github.com/NovaPHPOrg/nova-orm
+[submodule "src/app/static/components/captcha"]
+    path = src/app/static/components/captcha
+    url = https://git.ankio.icu/nova-ui/nova-captcha
+[submodule "src/app/static/components/language"]
+    path = src/app/static/components/language
+    url = https://git.ankio.icu/nova-ui/nova-language
+[submodule "src/app/static/components/theme"]
+    path = src/app/static/components/theme
+    url = https://git.ankio.icu/nova-ui/nova-theme
+[submodule "src/app/static/components/pjax"]
+    path = src/app/static/components/pjax
+    url = https://git.ankio.icu/nova-ui/nova-pjax
+[submodule "src/nova/plugin/webdav"]
+    path = src/nova/plugin/webdav
+    url = https://github.com/NovaPHPOrg/nova-webdav
