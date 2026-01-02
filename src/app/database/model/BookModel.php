@@ -27,6 +27,10 @@ class BookModel extends Model
     public array $groupBooks = [];    // 分组书籍JSON: []
     public string $groupName = "";     // 分组名称
 
+    public string $series  = "";
+
+    public int $seriesNum = 0;
+
     // 时间戳
     public int $addTime = 0;          // 添加时间戳(毫秒)
 
@@ -55,6 +59,21 @@ class BookModel extends Model
         return [
             [
                 'bookName', 'author'
+            ]
+        ];
+    }
+
+    public function getSchemaVersion(): int
+    {
+        return 2;
+    }
+
+    public function getUpgradeSql(): array
+    {
+        return [
+            "1_2" => [
+                "ALTER TABLE `book` ADD COLUMN `series` VARCHAR(50) NOT NULL DEFAULT ''",
+                "ALTER TABLE `book` ADD COLUMN `seriesNum` INT NOT NULL DEFAULT 0",
             ]
         ];
     }
