@@ -2,9 +2,126 @@
 
 namespace app\database\dao;
 
+use app\database\model\BookModel;
 use nova\plugin\orm\object\Dao;
+use nova\plugin\orm\object\Field;
+use function nova\framework\dump;
 
 class BookDao extends Dao
 {
+    /**
+     * 分页查询书籍列表，支持搜索和筛选
+     * @param int $page 页码
+     * @param int $limit 每页数量
+     * @param string $search 搜索关键词（书名、作者）
+     * @param string $filterType 筛选类型: groupName/category/favorite
+     * @param string $filterValue 筛选值
+     * @return array ['total' => int, 'list' => BookModel[]]
+     */
+    public function getList(int $page = 1, int $limit = 20, string $search = '', string $filterType = '', string $filterValue = ''): array
+    {
+        // 构建where条件
+        $where = [];
+        
+        // 搜索：书名或作者（使用LIKE）
+        if (!empty($search)) {
+            $where[] = "(bookName LIKE '%:search%' OR author LIKE '%:search%')";
+            $where[':search'] = $search;
+        }
+        
+        // 筛选
+        if (!empty($filterType) && !empty($filterValue)) {
+            switch ($filterType) {
+                case 'groupName':
+                    $where['groupName'] = $filterValue;
+                    break;
+                case 'category':
+                    $where[] = "category LIKE '%:filterValue%'";
+                    $where[':filterValue'] = $filterValue;
+                    break;
+                case 'favorite':
+                    $where['favorite'] = $filterValue;
+                    break;
+            }
+        }
+        
+        // 使用Dao的getAll方法进行分页查询
+        $result = $this->getAll([], $where, $page, $limit, true, 'addTime');
+        
+        return [
+            'total' => $result['total'],
+            'list' => $result['data']
+        ];
+    }
+    
+    /**
+     * 根据ID获取书籍
+     */
+    public function getById(int $id): ?BookModel
+    {
+        return $this->find(null, ['id' => $id]);
+    }
 
+
+    
+    /**
+     * 删除书籍
+     */
+    public function deleteById(int $id): bool
+    {
+        $this->delete()->where(['id' => $id])->commit();
+        return true;
+    }
+    
+    /**
+     * 获取所有系列名称（去重）
+     */
+    public function getGroupNames(): array
+    {
+        $result = $this->select('groupName')
+                       ->where(['groupName <> ""'])
+                       ->groupBy('groupName')
+                       ->commit(object: false);
+        
+        // GROUP BY已经保证唯一性，直接提取列值
+        return array_column($result, 'groupName');
+    }
+    
+    /**
+     * 获取所有分类（去重）
+     */
+    public function getCategories(): array
+    {
+        $result = $this->select(new Field('category'))
+                       ->where(['category != ""'])
+                       ->commit(object: false);
+        
+        // category可能包含多个分类，需要拆分
+        // 使用关联数组去重，O(1)复杂度
+        $categories = [];
+        foreach ($result as $row) {
+            $parts = preg_split('/[\n\s]+/', trim($row['category']));
+            foreach ($parts as $part) {
+                $clean = trim($part);
+                if ($clean !== '') {
+                    $categories[$clean] = true;
+                }
+            }
+        }
+        return array_keys($categories);
+    }
+    
+    /**
+     * 获取所有收藏夹标签（去重）
+     */
+    public function getFavorites(): array
+    {
+        $result = $this->select('favorite')
+                       ->where(['favorite <> ""'])
+                       ->groupBy('favorite')
+                       ->commit(object: false);
+        
+        // GROUP BY已经保证唯一性，直接提取列值
+        return array_column($result, 'favorite');
+    }
 }

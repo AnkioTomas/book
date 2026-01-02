@@ -31,12 +31,25 @@ class Application extends App
         // Route::getInstance()->get()
         Route::getInstance()
             ->get("/dashboard",route('index','main','dashboard'))
+
+            ->get("/admin/book",route('index','main','book'))
             ->get("/admin/webdav",route('index','main','webdav'))
 
+            ->getOrPost('/admin/api/book/list',route('index','book','list'))
+            ->getOrPost('/admin/api/book/filters',route('index','book','filters'))
+            //filters
             ->getOrPost('/admin/api/webdav',route('index','webdav','config'))
 
          ->get("/settings/account", route('index', 'main', 'account'))//√
-        ->get("/settings/sso", route('index', 'main', 'sso'));
+        ->get("/settings/sso", route('index', 'main', 'sso'))
+
+
+
+            ->post("/admin/api/upload", route("index", "upload", "upload")) // 文件上传
+            ->post("/admin/api/publish", route("index", "upload", "publish")) // 文件上传
+
+
+        ;
 
     }
 

@@ -34,51 +34,27 @@ class Main extends BaseController
             $menuInfo = [
                 [
                     "title" => "仪表盘",
-                    "url" => "/dashboard",
+                    "url" => "/admin/dashboard",
                     "icon" => "dashboard",
                     "pjax" => true
                 ],
                 [
-                    "title" => "站点管理",
-                    "url" => "/site",
+                    "title" => "书架管理",
+                    "url" => "/admin/book",
                     "icon" => "public",
                     "pjax" => true
                 ],
                 [
-                    "title" => "通知设置",
+                    "title" => "定期采集",
                     "icon" => "notifications",
                     "sub" => [
                         [
-                            "title" => "通知渠道",
-                            "url" => "/notify",
+                            "title" => "青年文摘采集",
+                            "url" => "/admin/qing",
                             "icon" => "notifications",
                             "pjax" => true
                         ],
-                        [
-                            "title" => "邮件配置",
-                            "url" => "/notify/email",
-                            "icon" => "email",
-                            "pjax" => true
-                        ],
-                        [
-                            "title" => "企业微信配置",
-                            "url" => "/notify/wechat",
-                            "icon" => "chat",
-                            "pjax" => true
-                        ],
-                        [
-                            "title" => "Webhook配置",
-                            "url" => "/notify/webhook",
-                            "icon" => "webhook",
-                            "pjax" => true
-                        ]
                     ]
-                ],
-                [
-                    "title" => "用户管理",
-                    "url" => "/users",
-                    "icon" => "group",
-                    "pjax" => true
                 ],
                 [
                     "title" => "系统设置",
@@ -93,6 +69,12 @@ class Main extends BaseController
                         [
                             "title" => "统一认证登录",
                             "url" => "/settings/sso",
+                            "icon" => "vpn_key",
+                            "pjax" => true
+                        ],
+                        [
+                            "title" => "WebDav配置",
+                            "url" => "/admin/webdav",
                             "icon" => "vpn_key",
                             "pjax" => true
                         ],
@@ -127,6 +109,11 @@ class Main extends BaseController
     }
 
     public function webdav():Response
+    {
+        return $this->viewResponse->asTpl();
+    }
+
+    public function book():Response
     {
         return $this->viewResponse->asTpl();
     }

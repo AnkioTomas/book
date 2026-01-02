@@ -7,6 +7,7 @@ use nova\framework\core\Context;
 use nova\framework\json\Json;
 use nova\plugin\webdav\SimpleWebDAVClient;
 use function nova\framework\config;
+use function nova\framework\dump;
 
 class BookManager
 {
@@ -15,7 +16,7 @@ class BookManager
     private string $username = "";
     private string $password = "";
 
-    private string $deviceId = "";
+    public string $deviceId = "";
 
     private string $path = "/Apps/Books";
 
@@ -53,6 +54,11 @@ class BookManager
             return $items;
         }
         return [];
+    }
+
+    public function upload(string $file,string $filename):bool
+    {
+        return $this->client->upload($file,$this->path.DS.$filename);
     }
 
 }
