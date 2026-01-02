@@ -66,12 +66,6 @@ window.pageOnLoad = function (loading) {
          * 绑定事件（使用 jQuery）
          */
         bindEvents() {
-            // 搜索（输入时实时搜索）
-            this.$searchInput.on('input', (e) => {
-                this.searchKeyword = $(e.target).val().trim();
-                this.currentPage = 1;
-                this.loadBooks();
-            });
 
             // 筛选类型变化
             this.$filterType.on('change', (e) => {
