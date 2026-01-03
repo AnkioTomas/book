@@ -197,26 +197,22 @@ window.pageOnLoad = function (loading) {
                 }
             });
 
-            // 添加书籍（分片上传）
+            // 添加书籍（支持多文件上传）
             $('#btnAdd').on('click', () => {
-                $.file.upload({
-                    accept: '.epub,.mobi,.azw,.azw3,.pdf,.txt',
-                    uploadEndpoint: '/admin/api/upload',
-                    uploadData: {},
-                    chunked: true,                        // 启用分片
-                    chunkSize: 1024 * 1024 * 2,          // 2MB 分片
-                    maxDirectSize: 10 * 1024 * 1024,     // 超过 10MB 强制分片
-                    onSuccess: (res) => {
-                        $.request.postForm("/admin/api/publish", {
-                            name: res.data,
-                            series: $("mdui-select[name=series]").val()
-                        }, (res) => {
-                            $.toaster.success(res.msg);
-                            that.dataTable.reload($.form.val("#searchForm"), true);
-                        });
-                    },
-                    onError: (msg) => $.toaster.error(msg || '上传失败')
-                });
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;  // 启用多文件选择
+                input.accept = '.epub,.mobi,.azw,.azw3,.pdf,.txt';
+                
+                input.onchange = (e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+                    
+                    // 使用统一的上传逻辑（和拖拽一样）
+                    Array.from(files).forEach(file => that.uploadFile(file));
+                };
+                
+                input.click();
             });
 
             // 同步 WebDAV
@@ -448,9 +444,10 @@ window.pageOnLoad = function (loading) {
         }
 
         /**
-         * 上传单个文件（自动分片）
+         * 上传单个文件（自动分片，支持多文件）
          */
         uploadFile(file) {
+            const that = this;
             const config = {
                 uploadEndpoint: '/admin/api/upload',
                 uploadData: {},
@@ -463,10 +460,10 @@ window.pageOnLoad = function (loading) {
                         series: $("mdui-select[name=series]").val()
                     }, (response) => {
                         $.toaster.success(response.msg);
-                        this.dataTable.reload($.form.val("#searchForm"), true);
+                        that.dataTable.reload($.form.val("#searchForm"), true);
                     });
                 },
-                onError: (msg) => $.toaster.error(msg || '上传失败')
+                onError: (msg) => $.toaster.error(`${file.name}: ${msg || '上传失败'}`)
             };
 
             // 根据文件大小自动选择上传方式
