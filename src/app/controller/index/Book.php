@@ -3,9 +3,7 @@
 namespace app\controller\index;
 
 use app\database\dao\BookDao;
-use app\database\model\BookModel;
 use nova\framework\http\Response;
-use nova\framework\json\Json;
 
 class Book extends BaseController
 {
@@ -22,7 +20,7 @@ class Book extends BaseController
     public function list(): Response
     {
         $page = intval($this->request->get('page', 1));
-        $limit = intval($this->request->get('limit', 20));
+        $limit = intval($this->request->get('pageSize', 20));
         $search = trim($this->request->get('search', ''));
         $filterType = trim($this->request->get('filterType', ''));
         $filterValue = trim($this->request->get('filterValue', ''));
@@ -32,12 +30,8 @@ class Book extends BaseController
         return Response::asJson([
             'code' => 200,
             'msg' => 'success',
-            'data' => [
-                'total' => $result['total'],
-                'page' => $page,
-                'limit' => $limit,
-                'list' => $result['list']
-            ]
+            'data' => $result['list'],
+            'count' => $result['total']
         ]);
     }
     

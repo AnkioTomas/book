@@ -1,23 +1,25 @@
 <title id="title">书籍列表 - {$title}</title>
 <style id="style">
-    /* 书籍封面 */
-    .book-cover {
-        width: 100%;
-        height: 240px;
+    /* 书籍封面缩略图 */
+    .book-cover-thumb {
+        width: 40px;
+        height: 56px;
+        object-fit: cover;
+        border-radius: 4px;
+        display: block;
+    }
+    
+    .book-cover-placeholder {
+        width: 40px;
+        height: 56px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 48px;
+        font-size: 18px;
         font-weight: bold;
-        overflow: hidden;
-    }
-    
-    .book-cover img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+        border-radius: 4px;
     }
     
     /* 自动完成下拉列表 */
@@ -28,6 +30,52 @@
     
     mdui-dropdown mdui-list-item {
         cursor: pointer;
+    }
+    
+    /* 拖拽上传覆盖层 */
+    .drag-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(var(--mdui-color-primary), 0.1);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        pointer-events: none;
+    }
+    
+    .drag-overlay.active {
+        display: flex;
+    }
+    
+    .drag-overlay-content {
+        background: rgba(var(--mdui-color-surface-container-highest));
+        border: 3px dashed rgba(var(--mdui-color-primary));
+        border-radius: 16px;
+        padding: 3rem;
+        text-align: center;
+        box-shadow: var(--mdui-elevation-level3);
+    }
+    
+    /* DataTable 样式优化 */
+    .book-title {
+        font-weight: 500;
+        color: rgba(var(--mdui-color-on-surface));
+    }
+    
+    .book-description {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        overflow: hidden;
+        word-break: break-word;
+        white-space: normal;
+        line-height: 1.5;
+        max-width: 300px;
+        max-height: 4.5em;
+        color: rgba(var(--mdui-color-on-surface-variant));
+        font-size: .875rem;
     }
 </style>
 
@@ -42,17 +90,6 @@
             <mdui-button id="btnAdd" icon="add" variant="filled">导入</mdui-button>
             <mdui-button id="btnSync" icon="sync" variant="filled">同步</mdui-button>
         </div>
-    </div>
-    
-    <!-- 搜索栏 -->
-    <div class="mb-3">
-        <mdui-text-field
-            id="searchInput"
-            label="搜索书名或作者"
-            icon="search"
-            clearable
-            style="width: 100%; max-width: 500px;"
-        ></mdui-text-field>
     </div>
     
     <!-- 快速筛选 -->
@@ -93,13 +130,8 @@
         <div id="activeFilters" class="d-flex gap-2 mt-3 flex-wrap"></div>
     </div>
     
-    <!-- 书籍列表 -->
-    <div id="bookList" class="row col-space16 d-flex"></div>
-    
-    <!-- 分页 -->
-    <div class="mt-5">
-        <mdui-page-btn id="pagination"></mdui-page-btn>
-    </div>
+    <!-- 书籍列表表格 -->
+    <div id="bookTable"></div>
 
     <!-- 编辑对话框 -->
     <mdui-dialog-form id="bookEditDialog" label="编辑书籍" saveName="保存" >
@@ -219,5 +251,13 @@
     </mdui-dialog>
 </div>
 
+<!-- 拖拽上传覆盖层 -->
+<div id="dragOverlay" class="drag-overlay">
+    <div class="drag-overlay-content">
+        <mdui-icon name="upload" style="font-size: 64px; color: rgba(var(--mdui-color-primary));"></mdui-icon>
+        <div class="headline-medium mt-3">拖放文件到此处上传</div>
+        <div class="body-medium text-on-surface-variant mt-2">支持格式: EPUB, MOBI, AZW, AZW3, PDF, TXT</div>
+    </div>
+</div>
 
 <script id="script" src="/static/js/book.js"></script>

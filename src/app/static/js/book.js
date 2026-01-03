@@ -5,7 +5,7 @@
 
 window.pageLoadFiles = [
     'Toaster',
-    'Pagination',
+    'DataTable',
     "FileUploader",
     "DialogForm",
     'Layer'
@@ -18,15 +18,11 @@ window.pageOnLoad = function (loading) {
      */
     class BookPage {
         constructor() {
-            // 分页状态
-            this.currentPage = 1;
-            this.pageSize = 20;
-            this.totalCount = 0;
-
-            // 搜索和筛选
-            this.searchKeyword = '';
-            this.filterType = '';
-            this.filterValue = '';
+            // 搜索和筛选参数
+            this.searchParams = {
+                filterType: '',
+                filterValue: ''
+            };
 
             // 筛选选项缓存
             this.filterOptions = {
@@ -35,7 +31,8 @@ window.pageOnLoad = function (loading) {
                 favorites: []
             };
 
-            this.books = [];
+            // DataTable 实例
+            this.dataTable = null;
         }
 
         /**
@@ -43,18 +40,13 @@ window.pageOnLoad = function (loading) {
          */
         init() {
             this.bindElements();
-            this.bindEvents();
             this.loadFilters();
-            this.loadBooks();
         }
 
         /**
-         * 绑定DOM元素（使用 jQuery）
+         * 绑定DOM元素
          */
         bindElements() {
-            this.$bookList = $('#bookList');
-            this.$pagination = $('#pagination');
-            this.$searchInput = $('#searchInput');
             this.$filterSeries = $('#filterSeries');
             this.$filterCategory = $('#filterCategory');
             this.$filterFavorite = $('#filterFavorite');
@@ -63,86 +55,223 @@ window.pageOnLoad = function (loading) {
             this.$btnAdd = $('#btnAdd');
             this.$btnSync = $('#btnSync');
             this.editDialog = document.getElementById('bookEditDialog');
+            this.$dragOverlay = $('#dragOverlay');
         }
 
         /**
-         * 绑定事件（使用 jQuery）
+         * 初始化 DataTable
          */
-        bindEvents() {
-            // 搜索（实时搜索，带防抖）
-            let searchTimer = null;
-            this.$searchInput.on('input', (e) => {
-                clearTimeout(searchTimer);
-                searchTimer = setTimeout(() => {
-                    this.searchKeyword = $(e.target).val().trim();
-                    this.currentPage = 1;
-                    this.loadBooks();
-                }, 300); // 300ms 防抖
+        initDataTable() {
+            this.dataTable = new DataTable("#bookTable");
+            this.dataTable.load({
+                uri: "/admin/api/book/list",
+                columns: [
+                    {
+                        field: "coverUrl",
+                        name: "封面",
+                        align: "center",
+                        width: 80,
+                        formatter: (value, row, index) => {
+                            if (value) {
+                                return `<img src="/proxy/${encodeURIComponent(value)}" alt="${row.bookName}" class="book-cover-thumb">`;
+                            }
+                            return `<div class="book-cover-placeholder">${row.bookName.charAt(0)}</div>`;
+                        }
+                    },
+                    {
+                        field: "bookName",
+                        name: "书名",
+                        align: "left",
+                        width: 180,
+                        formatter: (value, row, index) => {
+                            return `<span class="book-title">${value}</span>`;
+                        }
+                    },
+                    {
+                        field: "author",
+                        name: "作者",
+                        align: "left",
+                        width: 150,
+                        formatter: (value, row, index) => {
+                            return value || '未知作者';
+                        }
+                    },
+                    {
+                        field: "description",
+                        name: "简介",
+                        align: "left",
+                        width: "auto",
+                        formatter: (value, row, index) => {
+                            if (!value) return '-';
+                            return `<span class="book-description" title="${value}">${value}</span>`;
+                        }
+                    },
+                    {
+                        field: "rate",
+                        name: "评分",
+                        align: "center",
+                        width: 120,
+                        formatter: (value, row, index) => {
+                            const rating = parseInt(value) || 0;
+                            return rating > 0 ? '⭐'.repeat(rating) : '-';
+                        }
+                    },
+                    {
+                        field: "series",
+                        name: "系列",
+                        align: "left",
+                        width: 150,
+                        formatter: (value, row, index) => {
+                            return value || '-';
+                        }
+                    },
+                    {
+                        field: "category",
+                        name: "分类",
+                        align: "center",
+                        width: 120,
+                        formatter: (value, row, index) => {
+                            return value || '-';
+                        }
+                    },
+                    {
+                        field: "favorite",
+                        name: "收藏",
+                        align: "center",
+                        fixed: "right",
+                        width: 120,
+                        formatter: (value, row, index) => {
+                            return value || '-';
+                        }
+                    },
+
+                    {
+                        field: "_op",
+                        name: "操作",
+                        align: "center",
+                        fixed: "right",
+                        width: 120,
+                        formatter: (value, row, index) => {
+                            return `
+                                <mdui-button-icon class="btn-edit" icon="edit" data-id="${row.id}" data-index="${index}" title="编辑"></mdui-button-icon>
+                                <mdui-button-icon class="btn-delete" icon="delete" data-id="${row.id}" data-index="${index}"  title="删除"></mdui-button-icon>
+                            `;
+                        }
+                    }
+                ],
+                mobile: true,
+                lineHeight: "auto",
+                height: "auto",
+                events: {
+                    onRowClick: (row, rowIndex) => {
+                        // 可选：点击行编辑
+                    },
+                    onCellClick: (row, rowIndex, colIndex, colName) => {
+                        // 单元格点击事件
+                    },
+                    onPaged: (page, pageSize) => {
+                        // 分页切换事件
+                    }
+                },
+                empty_msg: "暂无书籍数据",
+                page: true,
+                selectable: false
             });
 
-            // 系列筛选（即时生效，清除其他筛选）
+            let that = this;
+            // 绑定表格内的操作按钮事件
+            $('#bookTable').on('click', '.btn-edit', function (e) {
+
+                const index = $(this).data('index');
+
+                let book = that.dataTable.getRow(index);
+                that.editDialog.open();
+                that.editDialog.setValue(book);
+                // 延迟初始化自动完成（确保对话框已完全打开）
+                setTimeout(() => {
+                    that.initAutocomplete();
+                }, 100);
+            }).on('click', '.btn-delete', function (e) {
+                const bookId = $(this).data('id');
+                $.layer.confirm({
+                    msg: '确定要删除这本书籍吗？',
+                    yes: () => {
+                        $.request.postForm('/admin/api/book/delete', {id: bookId}, (res) => {
+                            if (res.code === 200) {
+                                $.toaster.success(res.msg || '删除成功');
+                                that.reloadTable();
+                            } else {
+                                $.toaster.error(res.msg || '删除失败');
+                            }
+                        });
+                    },
+                    no: () => {},
+                    title: '删除'
+                });
+            });
+        }
+
+        /**
+         * 绑定事件
+         */
+        bindEvents() {
+            // 系列筛选
             this.$filterSeries.on('change', (e) => {
                 const val = $(e.target).val();
                 if (val) {
-                    this.filterType = 'groupName';
-                    this.filterValue = val;
+                    this.searchParams.filterType = 'groupName';
+                    this.searchParams.filterValue = val;
                     this.$filterCategory.val('');
                     this.$filterFavorite.val('');
                 } else {
-                    this.filterType = '';
-                    this.filterValue = '';
+                    this.searchParams.filterType = '';
+                    this.searchParams.filterValue = '';
                 }
-                this.currentPage = 1;
                 this.updateActiveFilters();
-                this.loadBooks();
+                this.reloadTable();
             });
 
-            // 分类筛选（即时生效，清除其他筛选）
+            // 分类筛选
             this.$filterCategory.on('change', (e) => {
                 const val = $(e.target).val();
                 if (val) {
-                    this.filterType = 'category';
-                    this.filterValue = val;
+                    this.searchParams.filterType = 'category';
+                    this.searchParams.filterValue = val;
                     this.$filterSeries.val('');
                     this.$filterFavorite.val('');
                 } else {
-                    this.filterType = '';
-                    this.filterValue = '';
+                    this.searchParams.filterType = '';
+                    this.searchParams.filterValue = '';
                 }
-                this.currentPage = 1;
                 this.updateActiveFilters();
-                this.loadBooks();
+                this.reloadTable();
             });
 
-            // 收藏夹筛选（即时生效，清除其他筛选）
+            // 收藏夹筛选
             this.$filterFavorite.on('change', (e) => {
                 const val = $(e.target).val();
                 if (val) {
-                    this.filterType = 'favorite';
-                    this.filterValue = val;
+                    this.searchParams.filterType = 'favorite';
+                    this.searchParams.filterValue = val;
                     this.$filterSeries.val('');
                     this.$filterCategory.val('');
                 } else {
-                    this.filterType = '';
-                    this.filterValue = '';
+                    this.searchParams.filterType = '';
+                    this.searchParams.filterValue = '';
                 }
-                this.currentPage = 1;
                 this.updateActiveFilters();
-                this.loadBooks();
+                this.reloadTable();
             });
 
             // 重置所有筛选
             this.$btnResetFilters.on('click', () => {
-                this.searchKeyword = '';
-                this.filterType = '';
-                this.filterValue = '';
-                this.$searchInput.val('');
+                this.searchParams.filterType = '';
+                this.searchParams.filterValue = '';
                 this.$filterSeries.val('');
                 this.$filterCategory.val('');
                 this.$filterFavorite.val('');
-                this.currentPage = 1;
                 this.updateActiveFilters();
-                this.loadBooks();
+                this.reloadTable();
             });
 
             // 添加书籍（文件上传）
@@ -154,7 +283,7 @@ window.pageOnLoad = function (loading) {
                         $.toaster.success('上传成功');
                         $.request.postForm("/admin/api/publish", {name: res.data}, (res) => {
                             $.toaster.success(res.msg);
-                            this.loadBooks();
+                            this.reloadTable();
                         });
                     },
                     onError: (msg) => {
@@ -162,37 +291,22 @@ window.pageOnLoad = function (loading) {
                     }
                 });
             });
-            let that = this;
-
-            // 编辑书籍（事件委托）
-            this.$bookList.on('click', '.btn-edit', function (e) {
-                e.stopPropagation();
-                const index = parseInt($(this).data('index'));
-                const book = that.books[index];
-                that.editBook(book);
-            });
-
-
-            // 删除书籍（事件委托）
-            this.$bookList.on('click', '.btn-delete', function (e) {
-                e.stopPropagation();
-                const bookId = parseInt($(this).data('book-id'));
-                that.deleteBook(bookId);
-            });
-
-
 
             // 同步 WebDAV
             this.$btnSync.on('click', () => {
                 this.syncWebDAV();
             });
 
+            // 拖拽上传
+            this.initDragUpload();
+
             // 设置提交回调
             this.editDialog.submit('/admin/api/book/update', (formData, response) => {
-                this.loadBooks();
+                this.reloadTable();
             });
 
-            $(this.editDialog).on("click", "#douban", function () {
+            // 豆瓣搜索
+            $(this.editDialog).on("click", "#douban", () => {
                 let bookName = $("#bookName").val().trim();
                 
                 if (!bookName) {
@@ -200,22 +314,28 @@ window.pageOnLoad = function (loading) {
                     return;
                 }
                 
-                $(that.editDialog).showLoading();
+                $(this.editDialog).showLoading();
                 $.request.postForm("/admin/api/douban", {
                     q: bookName
-                }, function (data) {
-                    $(that.editDialog).closeLoading();
+                }, (data) => {
+                    $(this.editDialog).closeLoading();
                     
                     if (data.code !== 200) {
                         $.toaster.error(data.msg);
                     } else {
-                        that.showBookSelector(data.data);
+                        this.showBookSelector(data.data);
                     }
                 });
             });
-
-            // 初始化分页组件
-            this.initPagination();
+        }
+        
+        /**
+         * 重新加载表格
+         */
+        reloadTable() {
+            if (this.dataTable) {
+                this.dataTable.reload(this.searchParams, true);
+            }
         }
         
         /**
@@ -314,25 +434,6 @@ window.pageOnLoad = function (loading) {
 
 
         /**
-         * 初始化分页组件
-         */
-        initPagination() {
-            this.$pagination[0].init({
-                pageIndex: this.currentPage,
-                pageSize: this.pageSize,
-                total: this.totalCount,
-                layout: 'first, prev, pager, next, last',
-                showCount: true,
-                showLimits: true,
-                onPageChange: (index, pageSize) => {
-                    this.currentPage = index;
-                    this.pageSize = pageSize;
-                    this.loadBooks();
-                }
-            });
-        }
-
-        /**
          * 加载筛选选项
          */
         loadFilters() {
@@ -340,6 +441,9 @@ window.pageOnLoad = function (loading) {
                 if (res.code === 200) {
                     this.filterOptions = res.data;
                     this.populateFilterDropdowns();
+                    // 筛选选项加载完成后初始化表格和事件
+                    this.initDataTable();
+                    this.bindEvents();
                 }
             });
         }
@@ -376,27 +480,18 @@ window.pageOnLoad = function (loading) {
         updateActiveFilters() {
             const filters = [];
 
-            // 搜索关键词（始终显示）
-            if (this.searchKeyword) {
-                filters.push({
-                    label: `搜索: ${this.searchKeyword}`,
-                    type: 'search',
-                    icon: 'search'
-                });
-            }
-
-            // 当前激活的筛选（只会有一个）
-            if (this.filterType && this.filterValue) {
+            // 当前激活的筛选
+            if (this.searchParams.filterType && this.searchParams.filterValue) {
                 let label = '';
-                switch (this.filterType) {
-                    case 'series':
-                        label = `系列: ${this.filterValue}`;
+                switch (this.searchParams.filterType) {
+                    case 'groupName':
+                        label = `系列: ${this.searchParams.filterValue}`;
                         break;
                     case 'category':
-                        label = `分类: ${this.filterValue}`;
+                        label = `分类: ${this.searchParams.filterValue}`;
                         break;
                     case 'favorite':
-                        label = `收藏: ${this.filterValue}`;
+                        label = `收藏: ${this.searchParams.filterValue}`;
                         break;
                 }
                 if (label) {
@@ -431,110 +526,15 @@ window.pageOnLoad = function (loading) {
          * 移除指定筛选条件
          */
         removeFilter(type) {
-            if (type === 'search') {
-                this.searchKeyword = '';
-                this.$searchInput.val('');
-            } else if (type === 'filter') {
-                // 清除所有筛选下拉框
-                this.filterType = '';
-                this.filterValue = '';
+            if (type === 'filter') {
+                this.searchParams.filterType = '';
+                this.searchParams.filterValue = '';
                 this.$filterSeries.val('');
                 this.$filterCategory.val('');
                 this.$filterFavorite.val('');
             }
-
-            this.currentPage = 1;
             this.updateActiveFilters();
-            this.loadBooks();
-        }
-
-        /**
-         * 加载书籍列表
-         */
-        loadBooks() {
-            const params = {
-                page: this.currentPage,
-                limit: this.pageSize,
-                search: this.searchKeyword,
-                filterType: this.filterType,
-                filterValue: this.filterValue
-            };
-
-            $.request.get('/admin/api/book/list', params, (res) => {
-                if (res.code === 200) {
-                    this.totalCount = res.data.total;
-                    this.books = res.data.list;
-                    this.renderBooks();
-                    this.updatePagination();
-                } else {
-                    $.toaster.error(res.msg || '加载失败');
-                }
-            });
-        }
-
-        /**
-         * 渲染书籍列表
-         */
-        renderBooks() {
-            if (this.books.length === 0) {
-                this.$bookList.html(`
-                    <div class="col-xs12 text-center py-5 text-on-surface-variant">
-                        <mdui-icon name="collections_bookmark" style="font-size: 64px; opacity: 0.3;"></mdui-icon>
-                        <p class="mt-3 body-large">暂无书籍</p>
-                    </div>
-                `);
-                return;
-            }
-
-            this.$bookList.html(this.books.map((book, index) => this.renderBookCard(book, index)).join(''));
-        }
-
-        /**
-         * 渲染单个书籍卡片
-         */
-        renderBookCard(book, index) {
-            const coverHtml = book.coverUrl
-                ? `<img src="/proxy/${encodeURIComponent(book.coverUrl)}" alt="${book.bookName}">`
-                : `<span>${book.bookName.charAt(0)}</span>`;
-
-            const description = book.description || '暂无简介';
-
-            return `
-                <div style="max-width: 12rem;" >
-                    <mdui-card class="book-card h-full w-100" style="max-width: 12rem;" data-book-id="${book.id}">
-                        <div class="book-cover cursor-pointer">${coverHtml}</div>
-                        <div class="p-3">
-                            <div class="title-medium text-ellipsis mb-1" title="${book.bookName}">${book.bookName}</div>
-                            <div class="body-small text-on-surface-variant mb-2">${book.author || '未知作者'}</div>
-                            <div class="body-small text-on-surface-variant line-clamp-3">${description}</div>
-                        </div>
-                        <div class="d-flex justify-end gap-1 px-3 pb-3">
-                            <mdui-button-icon class="btn-edit" icon="edit" data-book-id="${book.id}" data-index="${index}" title="编辑"></mdui-button-icon>
-                            <mdui-button-icon class="btn-delete" icon="delete" data-book-id="${book.id}" data-index="${index}"  title="删除"></mdui-button-icon>
-                        </div>
-                    </mdui-card>
-                </div>
-            `;
-        }
-
-
-        /**
-         * 更新分页信息
-         */
-        updatePagination() {
-            this.$pagination[0].init({
-                pageIndex: this.currentPage,
-                pageSize: this.pageSize,
-                total: this.totalCount,
-                layout: 'first, prev, pager, next, last',
-                showCount: true,
-                showLimits: true,
-                onPageChange: (index, pageSize) => {
-                    this.currentPage = index;
-                    this.pageSize = pageSize;
-                    this.loadBooks();
-                }
-            });
+            this.reloadTable();
         }
 
         /**
@@ -546,7 +546,7 @@ window.pageOnLoad = function (loading) {
             $.request.post('/admin/api/sync', {}, (res) => {
                 if (res.code === 200) {
                     $.toaster.success(res.msg || '同步成功');
-                    this.loadBooks();
+                    this.reloadTable();
                 } else {
                     $.toaster.error(res.msg || '同步失败');
                 }
@@ -554,17 +554,87 @@ window.pageOnLoad = function (loading) {
         }
 
         /**
-         * 编辑书籍
+         * 初始化拖拽上传
          */
-        editBook(book) {
+        initDragUpload() {
+            let dragCounter = 0;
+            const allowedExtensions = ['.epub', '.mobi', '.azw', '.azw3', '.pdf', '.txt'];
 
-            // 打开对话框
-            this.editDialog.open();
-            this.editDialog.setValue(book);
-            // 延迟初始化自动完成（确保对话框已完全打开）
-            setTimeout(() => {
-                this.initAutocomplete();
-            }, 100);
+            // 阻止默认拖拽行为 - dragover
+            $(document).on('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            // 拖拽进入
+            $(document).on('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter++;
+                if (dragCounter === 1) {
+                    this.$dragOverlay.addClass('active');
+                }
+            });
+
+            // 拖拽离开
+            $(document).on('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    this.$dragOverlay.removeClass('active');
+                }
+            });
+
+            // 放下文件
+            $(document).on('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                dragCounter = 0;
+                this.$dragOverlay.removeClass('active');
+
+                // 获取原生事件对象
+                const evt = e.originalEvent || e;
+                const files = evt.dataTransfer?.files;
+                
+                if (!files || files.length === 0) return;
+
+                // 过滤允许的文件类型
+                const validFiles = Array.from(files).filter(file => {
+                    const ext = '.' + file.name.split('.').pop().toLowerCase();
+                    return allowedExtensions.includes(ext);
+                });
+
+                if (validFiles.length === 0) {
+                    $.toaster.error('不支持的文件格式，仅支持: ' + allowedExtensions.join(', '));
+                    return;
+                }
+
+                // 上传所有有效文件
+                validFiles.forEach(file => this.uploadFile(file));
+            });
+        }
+
+        /**
+         * 上传单个文件
+         * @param {File} file - 文件对象
+         */
+        uploadFile(file) {
+            $.file._uploadDirect(file, {
+                uploadEndpoint: '/admin/api/upload',
+                uploadData: {},
+                onSuccess: (res) => {
+                    $.toaster.success('上传成功');
+                    $.request.postForm("/admin/api/publish", {name: res.data}, (response) => {
+                        $.toaster.success(response.msg);
+                        this.reloadTable();
+                    });
+                },
+                onError: (msg) => {
+                    $.toaster.error(msg || '上传失败');
+                }
+            });
         }
 
         /**
@@ -661,73 +731,26 @@ window.pageOnLoad = function (loading) {
         }
 
         /**
-         * 下载书籍
-         */
-        downloadBook(bookId, downloadUrl) {
-            if (!downloadUrl) {
-                $.toaster.warning('该书籍暂无下载地址');
-                return;
-            }
-
-            // 创建隐藏的 a 标签进行下载
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = '';
-            link.target = '_blank';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            $.toaster.success('开始下载...');
-        }
-
-        /**
-         * 打开阅读器
-         */
-        openReader(bookId) {
-            // 在新窗口打开阅读器
-            window.open(`/admin/reader?id=${bookId}`, '_blank');
-        }
-
-        /**
-         * 删除书籍
-         */
-        deleteBook(bookId) {
-            let that = this;
-            $.layer.confirm({
-                msg: '确定要删除这本书籍吗？',
-                yes: function() {
-                    $.request.postForm('/admin/api/book/delete', {id: bookId}, (res) => {
-                        if (res.code === 200) {
-                            $.toaster.success(res.msg || '删除成功');
-                            that.loadBooks();
-                        } else {
-                            $.toaster.error(res.msg || '删除失败');
-                        }
-                    });
-                },
-                no: function() {
-                    // 取消回调
-                },
-                title: '删除',
-            })
-
-        }
-
-        /**
          * 销毁
          */
         destroy() {
+            // 销毁 DataTable
+            if (this.dataTable) {
+                this.dataTable.destroy();
+            }
+            
             // 解绑事件
-            this.$searchInput.off();
             this.$filterSeries.off();
             this.$filterCategory.off();
             this.$filterFavorite.off();
             this.$btnResetFilters.off();
             this.$btnAdd.off();
             this.$btnSync.off();
-            this.$bookList.off();
             this.$activeFilters.off();
+            $(this.editDialog).off();
+            
+            // 清理拖拽事件
+            $(document).off('dragover drop dragenter dragleave');
         }
     }
 
