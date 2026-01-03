@@ -18,17 +18,18 @@ class Book extends BaseController
     
     /**
      * 获取书籍列表（支持分页、搜索、筛选）
-     * GET /book/list?page=1&limit=20&search=xxx&filterType=category&filterValue=xxx
+     * GET /book/list?page=1&pageSize=20&search=xxx&series=xxx&category=xxx&favorite=xxx
      */
     public function list(): Response
     {
         $page = intval($this->request->get('page', 1));
         $limit = intval($this->request->get('pageSize', 20));
         $search = trim($this->request->get('search', ''));
-        $filterType = trim($this->request->get('filterType', ''));
-        $filterValue = trim($this->request->get('filterValue', ''));
+        $series = trim($this->request->get('series', ''));
+        $category = trim($this->request->get('category', ''));
+        $favorite = trim($this->request->get('favorite', ''));
         
-        $result = BookDao::getInstance()->getList($page, $limit, $search, $filterType, $filterValue);
+        $result = BookDao::getInstance()->getList($page, $limit, $search, $series, $category, $favorite);
         
         return Response::asJson([
             'code' => 200,
@@ -39,7 +40,7 @@ class Book extends BaseController
     }
     
     /**
-     * 获取筛选选项（系列、分类、收藏夹）
+     * 获取筛选选项
      * GET /book/filters
      */
     public function filters(): Response
@@ -48,7 +49,7 @@ class Book extends BaseController
             'code' => 200,
             'msg' => 'success',
             'data' => [
-                'seriesNames' => BookDao::getInstance()->getSeriesNames(),
+                'groupNames' => BookDao::getInstance()->getSeriesNames(),
                 'categories' => BookDao::getInstance()->getCategories(),
                 'favorites' => BookDao::getInstance()->getFavorites()
             ]

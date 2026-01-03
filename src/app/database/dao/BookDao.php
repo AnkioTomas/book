@@ -14,38 +14,37 @@ class BookDao extends Dao
      * @param int $page 页码
      * @param int $limit 每页数量
      * @param string $search 搜索关键词（书名、作者）
-     * @param string $filterType 筛选类型: groupName/category/favorite
-     * @param string $filterValue 筛选值
+     * @param string $series 系列筛选
+     * @param string $category 分类筛选
+     * @param string $favorite 收藏筛选
      * @return array ['total' => int, 'list' => BookModel[]]
      */
-    public function getList(int $page = 1, int $limit = 20, string $search = '', string $filterType = '', string $filterValue = ''): array
+    public function getList(int $page = 1, int $limit = 20, string $search = '', string $series = '', string $category = '', string $favorite = ''): array
     {
-        // 构建where条件
         $where = [];
         
-        // 搜索：书名或作者（使用LIKE）
+        // 搜索：书名或作者
         if (!empty($search)) {
             $where[] = "(bookName LIKE '%:search%' OR author LIKE '%:search%')";
             $where[':search'] = $search;
         }
         
-        // 筛选
-        if (!empty($filterType) && !empty($filterValue)) {
-            switch ($filterType) {
-                case 'series':
-                    $where['seriesName'] = $filterValue;
-                    break;
-                case 'category':
-                    $where[] = "category LIKE '%:filterValue%'";
-                    $where[':filterValue'] = $filterValue;
-                    break;
-                case 'favorite':
-                    $where['favorite'] = $filterValue;
-                    break;
-            }
+        // 筛选：系列
+        if (!empty($series)) {
+            $where['series'] = $series;
         }
         
-        // 使用Dao的getAll方法进行分页查询
+        // 筛选：分类（模糊匹配）
+        if (!empty($category)) {
+            $where[] = "category LIKE '%:category%'";
+            $where[':category'] = $category;
+        }
+        
+        // 筛选：收藏
+        if (!empty($favorite)) {
+            $where['favorite'] = $favorite;
+        }
+        
         $result = $this->getAll([], $where, $page, $limit, true, 'addTime');
         
         return [

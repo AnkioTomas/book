@@ -439,7 +439,7 @@ class Douban extends BaseController
     }
     public function webdav(string $filename):Response
     {
-        $filename = urldecode($filename);
+        $filename = rawurldecode($filename);
        $book = BookDao::getInstance()->getByFileName($filename);
        if (empty($book)){
            return Response::asText('404 not found');

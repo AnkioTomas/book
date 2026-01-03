@@ -92,43 +92,50 @@
         </div>
     </div>
     
-    <!-- 快速筛选 -->
-    <div class="mb-4">
-        <div class="d-flex items-center gap-2 mb-2">
-            <mdui-icon name="filter_alt" class="text-on-surface-variant"></mdui-icon>
-            <span class="body-medium text-on-surface-variant">快速筛选</span>
-            <mdui-button-icon id="btnResetFilters" icon="refresh" title="清除所有筛选"></mdui-button-icon>
-        </div>
-        
-        <div class="d-flex gap-3 flex-wrap">
+    <!-- 搜索筛选表单 -->
+    <form id="searchForm" class="mb-4">
+        <div class="row col-space12">
+            <!-- 搜索 -->
+            <div class="col-xs12 col-sm6 col-md3">
+                <mdui-text-field
+                    name="search"
+                    label="搜索书名或作者"
+                    icon="search"
+                    clearable
+                ></mdui-text-field>
+            </div>
+            
             <!-- 系列筛选 -->
-            <div class="d-flex flex-col gap-1" style="min-width: 180px;">
-                <mdui-select id="filterSeries" clearable label="系列">
-                    <mdui-menu-item value="">全部系列</mdui-menu-item>
+            <div class="col-xs6 col-sm3 col-md2">
+                <mdui-select name="series" clearable label="系列">
+                    <mdui-menu-item value="">全部</mdui-menu-item>
                     <!-- 动态填充 -->
                 </mdui-select>
             </div>
             
             <!-- 分类筛选 -->
-            <div class="d-flex flex-col gap-1" style="min-width: 180px;">
-                <mdui-select id="filterCategory" clearable label="分类">
-                    <mdui-menu-item value="">全部分类</mdui-menu-item>
+            <div class="col-xs6 col-sm3 col-md2">
+                <mdui-select name="category" clearable label="分类">
+                    <mdui-menu-item value="">全部</mdui-menu-item>
                     <!-- 动态填充 -->
                 </mdui-select>
             </div>
             
-            <!-- 收藏夹筛选 -->
-            <div class="d-flex flex-col gap-1" style="min-width: 180px;">
-                <mdui-select id="filterFavorite" clearable label="收藏">
-                    <mdui-menu-item value="">全部收藏</mdui-menu-item>
+            <!-- 收藏筛选 -->
+            <div class="col-xs6 col-sm4 col-md2">
+                <mdui-select name="favorite" clearable label="收藏">
+                    <mdui-menu-item value="">全部</mdui-menu-item>
                     <!-- 动态填充 -->
                 </mdui-select>
             </div>
+            
+            <!-- 按钮 -->
+            <div class="col-xs6 col-sm4 col-md3 d-flex gap-2">
+                <mdui-button type="submit" icon="search" variant="filled" class="flex-1">搜索</mdui-button>
+                <mdui-button type="reset" icon="refresh" variant="outlined" class="flex-1">重置</mdui-button>
+            </div>
         </div>
-        
-        <!-- 当前筛选条件显示 -->
-        <div id="activeFilters" class="d-flex gap-2 mt-3 flex-wrap"></div>
-    </div>
+    </form>
     
     <!-- 书籍列表表格 -->
     <div id="bookTable"></div>
