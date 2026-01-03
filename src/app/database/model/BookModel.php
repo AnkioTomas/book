@@ -78,4 +78,42 @@ class BookModel extends Model
         ];
     }
 
+    /**
+     * 从 category 中提取系列信息到 series 和 seriesNum
+     * category 格式: <系列名>\n#编号#\n实际分类内容
+     */
+    public function splitCategory2Series(): void
+    {
+        // 先清空 series 和 seriesNum，避免脏数据
+        $this->series = '';
+        $this->seriesNum = 0;
+        
+        // 匹配格式: <系列名>\n#编号#
+        if (preg_match('/^<(.+?)>\s*\n\s*#(.+?)#\s*\n/s', $this->category, $matches)) {
+            $this->series = trim($matches[1]);
+            $this->seriesNum = (int)(float)trim($matches[2]); // 25.0 -> 25
+        }
+        
+        // 无论是否匹配成功，都清理 category 中的系列前缀
+        $this->category = preg_replace('/^<.+?>\s*\n\s*#.+?#\s*\n/s', '', $this->category);
+        $this->category = trim($this->category);
+    }
+
+    /**
+     * 将 series 和 seriesNum 合并回 category 开头
+     * 生成格式: <系列名>\n#编号#\n原分类内容
+     */
+    public function pushSeries2Category(): void
+    {
+        // 先清理 category 中已存在的系列信息，避免重复
+        $this->category = preg_replace('/^<.+?>\s*\n\s*#.+?#\s*\n/s', '', $this->category);
+        $this->category = trim($this->category);
+        
+        // 只有 series 不为空时才添加到 category
+        if (!empty($this->series)) {
+            $seriesLine = "<{$this->series}>\n#{$this->seriesNum}#\n";
+            $this->category = $seriesLine . $this->category;
+        }
+    }
+
 }

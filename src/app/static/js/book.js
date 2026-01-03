@@ -543,7 +543,7 @@ window.pageOnLoad = function (loading) {
         syncWebDAV() {
             $.toaster.info('正在同步 WebDAV...');
 
-            $.request.post('/admin/api/sync', {}, (res) => {
+            $.request.postForm('/admin/api/sync', {}, (res) => {
                 if (res.code === 200) {
                     $.toaster.success(res.msg || '同步成功');
                     this.reloadTable();

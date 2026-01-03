@@ -3,7 +3,10 @@
 namespace app\controller\index;
 
 use app\database\dao\BookDao;
+use app\database\model\BookModel;
+use app\utils\BookManager;
 use nova\framework\http\Response;
+use function nova\framework\dump;
 
 class Book extends BaseController
 {
@@ -98,11 +101,16 @@ class Book extends BaseController
         if ($id <= 0) {
             return Response::asJson(['code' => 400, 'msg' => '参数错误']);
         }
-        
+
+        $book = BookDao::getInstance()->getById($id);
+
         if (BookDao::getInstance()->deleteById($id)) {
             return Response::asJson(['code' => 200, 'msg' => '删除成功']);
         }
+
+
         
+
         return Response::asJson(['code' => 500, 'msg' => '删除失败']);
     }
     
@@ -112,8 +120,29 @@ class Book extends BaseController
      */
     public function sync(): Response
     {
-        // TODO: 实现WebDAV同步逻辑
-        return Response::asJson(['code' => 200, 'msg' => '同步功能暂未实现']);
+        $list = BookManager::instance()->list();
+        /**
+         * @var $book BookModel
+         */
+        foreach ($list as $book) {
+            if ($book->id > 0){
+                $dbBook = BookDao::getInstance()->getById($book->id);
+                if (!$dbBook) continue;
+            }else{
+                $book->splitCategory2Series();
+                $book->id = BookDao::getInstance()->insertModel($book);
+            }
+        }
+
+        $books = BookDao::getInstance()->select()->commit();
+
+
+        foreach ($books as &$book) {
+           $book->pushSeries2Category();
+        }
+
+
+        return Response::asJson(['code' => 200, 'msg' => '同步完成','data'=>$books]);
     }
 
 }

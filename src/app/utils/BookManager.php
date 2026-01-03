@@ -4,6 +4,7 @@ namespace app\utils;
 
 use app\database\model\BookModel;
 use nova\framework\core\Context;
+use nova\framework\core\File;
 use nova\framework\json\Json;
 use nova\plugin\webdav\SimpleWebDAVClient;
 use function nova\framework\config;
@@ -44,9 +45,10 @@ class BookManager
     public function list():array
     {
         $path = $this->moon."/books.sync";
+        File::mkDir($this->runtime);
         $runtime = $this->runtime . "books.sync";
         if ($this->client->download($path,$runtime)){
-            $json = Json::decode(zlib_decode($runtime),true);
+            $json = Json::decode(zlib_decode(file_get_contents($runtime)),true);
             $items = [];
             foreach ($json as $book){
                 $items[] = new BookModel($book);
@@ -54,6 +56,16 @@ class BookManager
             return $items;
         }
         return [];
+    }
+
+    public function push(array $books):bool
+    {
+        $path = $this->moon."/books.sync";
+        File::mkDir($this->runtime);
+        $runtime = $this->runtime . "books.sync";
+        $data = zlib_encode(Json::encode($books),6);
+        File::write($runtime, $data);
+        return $this->client->upload($runtime,$path);
     }
 
     public function upload(string $file,string $filename):bool
