@@ -57,9 +57,7 @@ class BookModel extends Model
     public function getUnique(): array
     {
         return [
-            [
-                'bookName', 'author'
-            ]
+           'filename'
         ];
     }
 
@@ -74,7 +72,7 @@ class BookModel extends Model
             "1_2" => [
                 "ALTER TABLE `book` ADD COLUMN `series` VARCHAR(50) NOT NULL DEFAULT ''",
                 "ALTER TABLE `book` ADD COLUMN `seriesNum` INT NOT NULL DEFAULT 0",
-            ]
+            ],
         ];
     }
 
@@ -103,7 +101,7 @@ class BookModel extends Model
      * 将 series 和 seriesNum 合并回 category 开头
      * 生成格式: <系列名>\n#编号#\n原分类内容
      */
-    public function pushSeries2Category(): void
+    public function pushSeries2Category(): self
     {
         // 先清理 category 中已存在的系列信息，避免重复
         $this->category = preg_replace('/^<.+?>\s*\n\s*#.+?#\s*\n/s', '', $this->category);
@@ -114,6 +112,7 @@ class BookModel extends Model
             $seriesLine = "<{$this->series}>\n#{$this->seriesNum}#\n";
             $this->category = $seriesLine . $this->category;
         }
+        return $this;
     }
 
 }

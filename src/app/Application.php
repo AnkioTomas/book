@@ -39,6 +39,7 @@ class Application extends App
             ->post("/admin/api/upload", route("index", "upload", "upload")) // 文件上传
             ->post("/admin/api/publish", route("index", "upload", "publish")) // 文件上传
             ->post("/admin/api/douban", route("index", "douban", "search"))
+            ->get("/webdav/{filename}",route('index', 'douban', 'webdav'))
             ->get("/proxy/{uri}",route('index', 'douban', 'proxy'))
 
         ;

@@ -124,4 +124,9 @@ class BookDao extends Dao
         // GROUP BY已经保证唯一性，直接提取列值
         return array_column($result, 'favorite');
     }
+
+    public function getByFileName(string $filename): ?BookModel
+    {
+        return $this->find(null, ['filename' => $filename]);
+    }
 }

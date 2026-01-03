@@ -72,10 +72,7 @@ window.pageOnLoad = function (loading) {
                         align: "center",
                         width: 80,
                         formatter: (value, row, index) => {
-                            if (value) {
-                                return `<img src="/proxy/${encodeURIComponent(value)}" alt="${row.bookName}" class="book-cover-thumb">`;
-                            }
-                            return `<div class="book-cover-placeholder">${row.bookName.charAt(0)}</div>`;
+                            return `<img src="/webdav/${encodeURIComponent(row.filename)}" alt="${row.bookName}" class="book-cover-thumb">`;
                         }
                     },
                     {

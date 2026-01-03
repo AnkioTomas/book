@@ -103,13 +103,14 @@ class Book extends BaseController
         }
 
         $book = BookDao::getInstance()->getById($id);
-
+        BookManager::instance()->deleteBook($book->filename);
+        BookManager::instance()->deleteCover($book->filename);
         if (BookDao::getInstance()->deleteById($id)) {
             return Response::asJson(['code' => 200, 'msg' => '删除成功']);
         }
 
 
-        
+
 
         return Response::asJson(['code' => 500, 'msg' => '删除失败']);
     }
@@ -130,17 +131,29 @@ class Book extends BaseController
                 if (!$dbBook) continue;
             }else{
                 $book->splitCategory2Series();
-                $book->id = BookDao::getInstance()->insertModel($book);
+               try{
+                   $filename = $book->filename;
+                   if (BookManager::instance()->bookExists($filename)) {
+                       BookDao::getInstance()->insertModel($book);
+                   }
+               }catch (\Exception $e){
+               }
             }
         }
 
         $books = BookDao::getInstance()->select()->commit();
 
-
         foreach ($books as &$book) {
-           $book->pushSeries2Category();
+            $book = $book->pushSeries2Category();
+            if (!empty($book->coverUrl)){
+                $file = BookManager::proxy($book->coverUrl);
+                BookManager::instance()->uploadCover($file,$book->filename);
+            }
         }
 
+
+
+        BookManager::instance()->push($books);
 
         return Response::asJson(['code' => 200, 'msg' => '同步完成','data'=>$books]);
     }

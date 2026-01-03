@@ -51,7 +51,7 @@ class Upload extends BaseController
         }
 
         $bookManager = BookManager::instance();
-        if ($bookManager->upload($file->path, $file->name)) {
+        if ($bookManager->uploadBook($file->path, $file->name)) {
             $model = new BookModel();
             $model->deviceId = $bookManager->deviceId;
             $model->addTime = time() * 1000;
