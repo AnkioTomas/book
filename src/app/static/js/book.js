@@ -8,6 +8,7 @@ window.pageLoadFiles = [
     'Pagination',
     "FileUploader",
     "DialogForm",
+    'Layer'
 ];
 
 window.pageOnLoad = function (loading) {
@@ -171,27 +172,15 @@ window.pageOnLoad = function (loading) {
                 that.editBook(book);
             });
 
-            // 下载书籍（事件委托）
-            this.$bookList.on('click', '.btn-download', (e) => {
-                e.stopPropagation();
-                const bookId = parseInt($(e.currentTarget).data('book-id'));
-                const downloadUrl = $(e.currentTarget).data('url');
-                this.downloadBook(bookId, downloadUrl);
-            });
 
             // 删除书籍（事件委托）
-            this.$bookList.on('click', '.btn-delete', (e) => {
+            this.$bookList.on('click', '.btn-delete', function (e) {
                 e.stopPropagation();
-                const bookId = parseInt($(e.currentTarget).data('book-id'));
-                this.deleteBook(bookId);
+                const bookId = parseInt($(this).data('book-id'));
+                that.deleteBook(bookId);
             });
 
-            // 封面点击（打开阅读器）
-            this.$bookList.on('click', '.book-cover', (e) => {
-                e.stopPropagation();
-                const bookId = parseInt($(e.currentTarget).data('book-id'));
-                this.openReader(bookId);
-            });
+
 
             // 同步 WebDAV
             this.$btnSync.on('click', () => {
@@ -511,7 +500,7 @@ window.pageOnLoad = function (loading) {
             const description = book.description || '暂无简介';
 
             return `
-                <div class="col-xs12 col-sm6 col-md4 col-lg3">
+                <div style="max-width: 12rem;" >
                     <mdui-card class="book-card h-full w-100" style="max-width: 12rem;" data-book-id="${book.id}">
                         <div class="book-cover cursor-pointer">${coverHtml}</div>
                         <div class="p-3">
@@ -521,7 +510,6 @@ window.pageOnLoad = function (loading) {
                         </div>
                         <div class="d-flex justify-end gap-1 px-3 pb-3">
                             <mdui-button-icon class="btn-edit" icon="edit" data-book-id="${book.id}" data-index="${index}" title="编辑"></mdui-button-icon>
-                            <mdui-button-icon class="btn-download" icon="download" data-book-id="${book.id}" data-index="${index}"  data-url="${book.downloadUrl || ''}" title="下载"></mdui-button-icon>
                             <mdui-button-icon class="btn-delete" icon="delete" data-book-id="${book.id}" data-index="${index}"  title="删除"></mdui-button-icon>
                         </div>
                     </mdui-card>
@@ -705,18 +693,25 @@ window.pageOnLoad = function (loading) {
          * 删除书籍
          */
         deleteBook(bookId) {
-            if (!confirm('确定要删除这本书籍吗？')) {
-                return;
-            }
+            let that = this;
+            $.layer.confirm({
+                msg: '确定要删除这本书籍吗？',
+                yes: function() {
+                    $.request.postForm('/admin/api/book/delete', {id: bookId}, (res) => {
+                        if (res.code === 200) {
+                            $.toaster.success(res.msg || '删除成功');
+                            that.loadBooks();
+                        } else {
+                            $.toaster.error(res.msg || '删除失败');
+                        }
+                    });
+                },
+                no: function() {
+                    // 取消回调
+                },
+                title: '删除',
+            })
 
-            $.request.post('/admin/api/book/delete', {id: bookId}, (res) => {
-                if (res.code === 200) {
-                    $.toaster.success(res.msg || '删除成功');
-                    this.loadBooks();
-                } else {
-                    $.toaster.error(res.msg || '删除失败');
-                }
-            });
         }
 
         /**

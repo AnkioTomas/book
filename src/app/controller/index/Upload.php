@@ -60,6 +60,7 @@ class Upload extends BaseController
             if (empty($title)){
                 return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
             }
+            $model->bookName = $title;
             $model->author = $author ?? "";
             $model->downloadUrl = "[WebDav]/Apps/Books/".$file->name;
 

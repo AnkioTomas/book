@@ -30,6 +30,7 @@ class Application extends App
             ->getOrPost('/admin/api/book/list', route('index', 'book', 'list'))
             ->getOrPost('/admin/api/book/filters', route('index', 'book', 'filters'))
             ->post('/admin/api/book/update', route('index', 'book', 'update'))
+            ->post('/admin/api/book/delete', route('index', 'book', 'delete'))
             //filters
             ->getOrPost('/admin/api/webdav', route('index', 'webdav', 'config'))
             ->get("/settings/account", route('index', 'main', 'account'))//√

@@ -94,7 +94,7 @@
     </div>
     
     <!-- 书籍列表 -->
-    <div id="bookList" class="row col-space16"></div>
+    <div id="bookList" class="row col-space16 d-flex"></div>
     
     <!-- 分页 -->
     <div class="mt-5">
@@ -214,8 +214,8 @@
 
     <mdui-dialog 
         id="searchDialog" 
-        close-on-overlay-click 
-        style="width: min(90vw, 800px);">
+        close-on-overlay-click
+    >
     </mdui-dialog>
 </div>
 
