@@ -3,6 +3,9 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/components/captcha" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/app/static/components/dataTable" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/app/static/components/fileUpload" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/app/static/components/formDialog" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/components/language" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/components/pjax" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/components/theme" vcs="Git" />
@@ -16,6 +19,9 @@
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/ip" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/login" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/orm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/nova/plugin/task" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/tpl" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/nova/plugin/upload" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/nova/plugin/webdav" vcs="Git" />
   </component>
 </project>

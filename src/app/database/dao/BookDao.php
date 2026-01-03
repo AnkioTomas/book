@@ -32,8 +32,8 @@ class BookDao extends Dao
         // 筛选
         if (!empty($filterType) && !empty($filterValue)) {
             switch ($filterType) {
-                case 'groupName':
-                    $where['groupName'] = $filterValue;
+                case 'series':
+                    $where['seriesName'] = $filterValue;
                     break;
                 case 'category':
                     $where[] = "category LIKE '%:filterValue%'";
@@ -76,15 +76,15 @@ class BookDao extends Dao
     /**
      * 获取所有系列名称（去重）
      */
-    public function getGroupNames(): array
+    public function getSeriesNames(): array
     {
-        $result = $this->select('groupName')
-                       ->where(['groupName <> ""'])
-                       ->groupBy('groupName')
+        $result = $this->select('series')
+                       ->where(['series <> ""'])
+                       ->groupBy('series')
                        ->commit(object: false);
         
         // GROUP BY已经保证唯一性，直接提取列值
-        return array_column($result, 'groupName');
+        return array_column($result, 'series');
     }
     
     /**

@@ -61,6 +61,7 @@ class Upload extends BaseController
                 return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
             }
             $model->author = $author ?? "";
+            $model->downloadUrl = "[WebDav]/Apps/Books/".$file->name;
 
             BookDao::getInstance()->insertModel($model);
             return Response::asJson(["code" => 200, "msg" => "后台上传成功: $title"]);

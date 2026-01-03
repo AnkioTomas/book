@@ -20,8 +20,8 @@
     path = src/nova/plugin/avatar
     url = https://github.com/NovaPHPOrg/nova-avatar
 [submodule "src/nova/plugin/http"]
-    path = src/nova/plugin/http
-    url = https://github.com/NovaPHPOrg/nova-http
+	path = src/nova/plugin/http
+	url = https://github.com/NovaPHPOrg/nova-http
 [submodule "src/nova/plugin/device"]
     path = src/nova/plugin/device
     url = https://github.com/NovaPHPOrg/nova-device
@@ -46,3 +46,18 @@
 [submodule "src/nova/plugin/webdav"]
     path = src/nova/plugin/webdav
     url = https://github.com/NovaPHPOrg/nova-webdav
+[submodule "src/app/static/components/dataTable"]
+	path = src/app/static/components/dataTable
+	url = https://git.ankio.icu/nova-ui/nova-dataTable
+[submodule "src/app/static/components/fileUpload"]
+	path = src/app/static/components/fileUpload
+	url = https://git.ankio.icu/nova-ui/nova-fileUpload
+[submodule "src/nova/plugin/upload"]
+	path = src/nova/plugin/upload
+	url = https://github.com/NovaPHPOrg/nova-upload
+[submodule "src/nova/plugin/task"]
+	path = src/nova/plugin/task
+	url = https://github.com/NovaPHPOrg/nova-task
+[submodule "src/app/static/components/formDialog"]
+	path = src/app/static/components/formDialog
+	url = https://git.ankio.icu/nova-ui/nova-formDialog

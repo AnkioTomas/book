@@ -51,7 +51,7 @@ class Book extends BaseController
             'code' => 200,
             'msg' => 'success',
             'data' => [
-                'groupNames' => BookDao::getInstance()->getGroupNames(),
+                'seriesNames' => BookDao::getInstance()->getSeriesNames(),
                 'categories' => BookDao::getInstance()->getCategories(),
                 'favorites' => BookDao::getInstance()->getFavorites()
             ]
@@ -67,17 +67,17 @@ class Book extends BaseController
         $id = intval($this->request->get('id', 0));
         
         if ($id <= 0) {
-            return Response::asJson(['code' => 1, 'msg' => '参数错误']);
+            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
         }
         
-        $book = $this->bookDao->getById($id);
+        $book = BookDao::getInstance()->getById($id);
         
         if (!$book) {
-            return Response::asJson(['code' => 1, 'msg' => '书籍不存在']);
+            return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
         }
         
         return Response::asJson([
-            'code' => 0,
+            'code' => 200,
             'msg' => 'success',
             'data' => $book
         ]);
@@ -93,21 +93,22 @@ class Book extends BaseController
         
         // 验证必填字段
         if (empty($data['bookName'])) {
-            return Response::asJson(['code' => 1, 'msg' => '书名不能为空']);
+            return Response::asJson(['code' => 400, 'msg' => '书名不能为空']);
         }
         
         $book = new BookModel($data);
-        $book -> addTime = time() * 1000;
+        $book->addTime = time() * 1000;
+        
         // 处理groupBooks（如果是JSON字符串，解码为数组）
         if (isset($data['groupBooks']) && is_string($data['groupBooks'])) {
             $book->groupBooks = Json::decode($data['groupBooks'], true) ?: [];
         }
         
-        if ($this->bookDao->insertModel($book)) {
-            return Response::asJson(['code' => 0, 'msg' => '添加成功']);
+        if (BookDao::getInstance()->insertModel($book)) {
+            return Response::asJson(['code' => 200, 'msg' => '添加成功']);
         }
         
-        return Response::asJson(['code' => 1, 'msg' => '添加失败']);
+        return Response::asJson(['code' => 500, 'msg' => '添加失败']);
     }
     
     /**
@@ -120,32 +121,28 @@ class Book extends BaseController
         $id = intval($data['id'] ?? 0);
         
         if ($id <= 0) {
-            return Response::asJson(['code' => 1, 'msg' => '参数错误']);
+            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
         }
         
-        $book = $this->bookDao->getById($id);
+        $book = BookDao::getInstance()->getById($id);
         
         if (!$book) {
-            return Response::asJson(['code' => 1, 'msg' => '书籍不存在']);
+            return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
         }
         
-        // 更新字段
-        foreach ($data as $key => $value) {
-            if (property_exists($book, $key) && $key !== 'id') {
-                $book->$key = $value;
+        // 更新可编辑字段
+        $editableFields = ['bookName', 'author', 'description', 'category', 'series', 'seriesNum', 'favorite', 'rate'];
+        foreach ($editableFields as $field) {
+            if (isset($data[$field])) {
+                $book->$field = $data[$field];
             }
         }
         
-        // 处理groupBooks
-        if (isset($data['groupBooks']) && is_string($data['groupBooks'])) {
-            $book->groupBooks = Json::decode($data['groupBooks'], true) ?: [];
+        if (BookDao::getInstance()->update($book)) {
+            return Response::asJson(['code' => 200, 'msg' => '更新成功']);
         }
         
-        if ($this->bookDao->update($book)) {
-            return Response::asJson(['code' => 0, 'msg' => '更新成功']);
-        }
-        
-        return Response::asJson(['code' => 1, 'msg' => '更新失败']);
+        return Response::asJson(['code' => 500, 'msg' => '更新失败']);
     }
     
     /**
@@ -157,14 +154,14 @@ class Book extends BaseController
         $id = intval($this->request->post('id', 0));
         
         if ($id <= 0) {
-            return Response::asJson(['code' => 1, 'msg' => '参数错误']);
+            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
         }
         
-        if ($this->bookDao->deleteById($id)) {
-            return Response::asJson(['code' => 0, 'msg' => '删除成功']);
+        if (BookDao::getInstance()->deleteById($id)) {
+            return Response::asJson(['code' => 200, 'msg' => '删除成功']);
         }
         
-        return Response::asJson(['code' => 1, 'msg' => '删除失败']);
+        return Response::asJson(['code' => 500, 'msg' => '删除失败']);
     }
     
     /**
@@ -174,7 +171,7 @@ class Book extends BaseController
     public function sync(): Response
     {
         // TODO: 实现WebDAV同步逻辑
-        return Response::asJson(['code' => 0, 'msg' => '同步功能暂未实现']);
+        return Response::asJson(['code' => 200, 'msg' => '同步功能暂未实现']);
     }
 
 }

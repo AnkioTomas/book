@@ -13,43 +13,33 @@ declare(strict_types=1);
 namespace app;
 
 use nova\framework\App;
-use nova\framework\event\EventManager;
-use nova\framework\exception\AppExitException;
-use nova\framework\http\Response;
-
-use function nova\framework\config;
-use function nova\framework\route;
-
 use nova\framework\route\Route;
-
-use const ROOT_PATH;
+use nova\plugin\task\PoolManager;
+use function nova\framework\route;
 
 class Application extends App
 {
     public function onFrameworkStart(): void
     {
+        PoolManager::start();
         // Route::getInstance()->get()
         Route::getInstance()
-            ->get("/dashboard",route('index','main','dashboard'))
-
-            ->get("/admin/book",route('index','main','book'))
-            ->get("/admin/webdav",route('index','main','webdav'))
-
-            ->getOrPost('/admin/api/book/list',route('index','book','list'))
-            ->getOrPost('/admin/api/book/filters',route('index','book','filters'))
+            ->get("/dashboard", route('index', 'main', 'dashboard'))
+            ->get("/admin/book", route('index', 'main', 'book'))
+            ->get("/admin/webdav", route('index', 'main', 'webdav'))
+            ->getOrPost('/admin/api/book/list', route('index', 'book', 'list'))
+            ->getOrPost('/admin/api/book/filters', route('index', 'book', 'filters'))
             //filters
-            ->getOrPost('/admin/api/webdav',route('index','webdav','config'))
-
-         ->get("/settings/account", route('index', 'main', 'account'))//√
-        ->get("/settings/sso", route('index', 'main', 'sso'))
-
-
-
+            ->getOrPost('/admin/api/webdav', route('index', 'webdav', 'config'))
+            ->get("/settings/account", route('index', 'main', 'account'))//√
+            ->get("/settings/sso", route('index', 'main', 'sso'))
             ->post("/admin/api/upload", route("index", "upload", "upload")) // 文件上传
             ->post("/admin/api/publish", route("index", "upload", "publish")) // 文件上传
-
+            ->post("/admin/api/douban", route("index", "douban", "search"))
+            ->get("/proxy/{uri}",route('index', 'douban', 'proxy'))
 
         ;
+
 
     }
 
