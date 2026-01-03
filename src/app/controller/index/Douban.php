@@ -82,6 +82,11 @@ class Douban extends BaseController
 
        $data =  Context::instance()->cache->get("search/$query");
        if (!empty($data)) {
+           // 根据综合分数重新排序
+           usort($data, function($a, $b) {
+               return $this->calculateScore($b) <=> $this->calculateScore($a);
+           });
+
            return $data;
        }
 
@@ -127,6 +132,11 @@ class Douban extends BaseController
             $doubans[] = $book;
             Context::instance()->cache->delete($key);
         }
+
+        // 根据综合分数重新排序
+        usort($doubans, function($a, $b) {
+            return $this->calculateScore($b) <=> $this->calculateScore($a);
+        });
 
         Context::instance()->cache->set("search/$query",$doubans);
 
@@ -297,6 +307,52 @@ class Douban extends BaseController
         similar_text($s1, $s2, $percent);
 
         return $percent / 100;
+    }
+
+    /**
+     * 计算书籍综合评分
+     * 
+     * @param array $book 书籍数据
+     * @return float 综合分数 (0-100)
+     */
+    private function calculateScore(array $book): float
+    {
+        // 相似度权重 70%
+        $similarityScore = ($book['similarity'] ?? 0) * 70;
+
+        // 字段完整度权重 30%
+        $completenessScore = $this->calculateCompleteness($book) * 30;
+
+        return $similarityScore + $completenessScore;
+    }
+
+    /**
+     * 计算字段完整度
+     * 
+     * @param array $book 书籍数据
+     * @return float 完整度 (0-1)
+     */
+    private function calculateCompleteness(array $book): float
+    {
+        // 关键字段权重分配（title相似度已在similarity中占70%）
+        $fields = [
+            'author' => 0.35,      // 作者最重要
+            'full_intro' => 0.25,  // 完整简介其次
+            'cover_url' => 0.15,   // 封面图
+            'rating' => 0.15,      // 评分
+            'isbn' => 0.05,        // ISBN
+            'publisher' => 0.03,   // 出版社
+            'year' => 0.02,        // 出版年份
+        ];
+
+        $score = 0;
+        foreach ($fields as $field => $weight) {
+            if (!empty($book[$field])) {
+                $score += $weight;
+            }
+        }
+
+        return $score;
     }
 
     /**

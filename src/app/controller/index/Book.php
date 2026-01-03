@@ -57,59 +57,7 @@ class Book extends BaseController
             ]
         ]);
     }
-    
-    /**
-     * 获取单本书籍详情
-     * GET /book/detail?id=1
-     */
-    public function detail(): Response
-    {
-        $id = intval($this->request->get('id', 0));
-        
-        if ($id <= 0) {
-            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
-        }
-        
-        $book = BookDao::getInstance()->getById($id);
-        
-        if (!$book) {
-            return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
-        }
-        
-        return Response::asJson([
-            'code' => 200,
-            'msg' => 'success',
-            'data' => $book
-        ]);
-    }
-    
-    /**
-     * 添加书籍
-     * POST /book/add
-     */
-    public function add(): Response
-    {
-        $data = $this->request->post();
-        
-        // 验证必填字段
-        if (empty($data['bookName'])) {
-            return Response::asJson(['code' => 400, 'msg' => '书名不能为空']);
-        }
-        
-        $book = new BookModel($data);
-        $book->addTime = time() * 1000;
-        
-        // 处理groupBooks（如果是JSON字符串，解码为数组）
-        if (isset($data['groupBooks']) && is_string($data['groupBooks'])) {
-            $book->groupBooks = Json::decode($data['groupBooks'], true) ?: [];
-        }
-        
-        if (BookDao::getInstance()->insertModel($book)) {
-            return Response::asJson(['code' => 200, 'msg' => '添加成功']);
-        }
-        
-        return Response::asJson(['code' => 500, 'msg' => '添加失败']);
-    }
+
     
     /**
      * 更新书籍
@@ -131,14 +79,14 @@ class Book extends BaseController
         }
         
         // 更新可编辑字段
-        $editableFields = ['bookName', 'author', 'description', 'category', 'series', 'seriesNum', 'favorite', 'rate'];
+        $editableFields = ['bookName', 'author', 'description', 'category', 'series', 'seriesNum', 'favorite', 'rate','coverUrl'];
         foreach ($editableFields as $field) {
             if (isset($data[$field])) {
                 $book->$field = $data[$field];
             }
         }
         
-        if (BookDao::getInstance()->update($book)) {
+        if (BookDao::getInstance()->updateModel($book)) {
             return Response::asJson(['code' => 200, 'msg' => '更新成功']);
         }
         

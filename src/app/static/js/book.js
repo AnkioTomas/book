@@ -306,34 +306,20 @@ window.pageOnLoad = function (loading) {
             const form = document.querySelector('#bookEditForm');
             if (!form) return;
             
-            // 填充基本信息
-            const setFieldValue = (name, value) => {
-                const field = form.querySelector(`[name="${name}"]`);
-                if (field && value) {
-                    field.value = value;
-                }
-            };
+            // 字段映射：表单name -> 豆瓣数据字段
+            $.form.val('#bookEditForm', {
+                bookName: book.title,
+                author: book.author,
+                description: book.full_intro || book.intro,
+                publisher: book.publisher,
+                publishYear: book.year,
+                isbn: book.isbn,
+                pages: book.pages,
+                price: book.price,
+                coverUrl: book.cover_url,
+                rate: Math.floor(( book.rating || 0) / 2)
+            });
             
-            setFieldValue('bookName', book.title);
-            setFieldValue('author', book.author);
-            setFieldValue('description', book.full_intro || book.intro);
-            setFieldValue('publisher', book.publisher);
-            setFieldValue('publishYear', book.year);
-            setFieldValue('isbn', book.isbn);
-            setFieldValue('pages', book.pages);
-            setFieldValue('price', book.price);
-            
-            // 填充标签
-            if (book.tags && book.tags.length > 0) {
-                setFieldValue('tags', book.tags.join(', '));
-            }
-            
-            // 填充封面 URL
-            if (book.cover_url) {
-                setFieldValue('coverUrl', book.cover_url);
-            }
-            
-            // 显示成功提示
             $.toaster.success('已填充书籍信息');
         }
 
@@ -519,7 +505,7 @@ window.pageOnLoad = function (loading) {
          */
         renderBookCard(book, index) {
             const coverHtml = book.coverUrl
-                ? `<img src="${book.coverUrl}" alt="${book.bookName}">`
+                ? `<img src="/proxy/${encodeURIComponent(book.coverUrl)}" alt="${book.bookName}">`
                 : `<span>${book.bookName.charAt(0)}</span>`;
 
             const description = book.description || '暂无简介';
@@ -531,7 +517,7 @@ window.pageOnLoad = function (loading) {
                         <div class="p-3">
                             <div class="title-medium text-ellipsis mb-1" title="${book.bookName}">${book.bookName}</div>
                             <div class="body-small text-on-surface-variant mb-2">${book.author || '未知作者'}</div>
-                            <div class="body-small text-on-surface-variant line-clamp-2" style="min-height: 2.5rem;">${description}</div>
+                            <div class="body-small text-on-surface-variant line-clamp-3">${description}</div>
                         </div>
                         <div class="d-flex justify-end gap-1 px-3 pb-3">
                             <mdui-button-icon class="btn-edit" icon="edit" data-book-id="${book.id}" data-index="${index}" title="编辑"></mdui-button-icon>

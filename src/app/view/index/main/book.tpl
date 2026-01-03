@@ -104,7 +104,7 @@
     <!-- 编辑对话框 -->
     <mdui-dialog-form id="bookEditDialog" label="编辑书籍" saveName="保存" >
         <form id="bookEditForm">
-            <input type="hidden" name="id">
+            <mdui-text-field type="hidden" name="id" ></mdui-text-field>
 
             <div class="row col-space12">
                 <div class="col-xs12 d-flex items-end gap-2">
@@ -122,6 +122,13 @@
                     <mdui-text-field
                             label="作者"
                             name="author"
+                    ></mdui-text-field>
+                </div>
+
+                <div class="col-xs12">
+                    <mdui-text-field
+                            label="封面"
+                            name="coverUrl"
                     ></mdui-text-field>
                 </div>
 
