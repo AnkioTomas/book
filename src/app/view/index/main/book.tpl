@@ -249,15 +249,16 @@
         close-on-overlay-click
     >
     </mdui-dialog>
-</div>
-
-<!-- 拖拽上传覆盖层 -->
-<div id="dragOverlay" class="drag-overlay">
-    <div class="drag-overlay-content">
-        <mdui-icon name="upload" style="font-size: 64px; color: rgba(var(--mdui-color-primary));"></mdui-icon>
-        <div class="headline-medium mt-3">拖放文件到此处上传</div>
-        <div class="body-medium text-on-surface-variant mt-2">支持格式: EPUB, MOBI, AZW, AZW3, PDF, TXT</div>
+    <!-- 拖拽上传覆盖层 -->
+    <div id="dragOverlay" class="drag-overlay">
+        <div class="drag-overlay-content">
+            <mdui-icon name="upload" style="font-size: 64px; color: rgba(var(--mdui-color-primary));"></mdui-icon>
+            <div class="headline-medium mt-3">拖放文件到此处上传</div>
+            <div class="body-medium text-on-surface-variant mt-2">支持格式: EPUB, MOBI, AZW, AZW3, PDF, TXT</div>
+        </div>
     </div>
 </div>
+
+
 
 <script id="script" src="/static/js/book.js"></script>
