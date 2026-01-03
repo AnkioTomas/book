@@ -41,6 +41,7 @@ class Upload extends BaseController
     {
 
         $name = $this->request->post('name', '');
+        $series = $this->request->post('series', '');
         $file = FileDao::getInstance()->getFile($name);
         if (empty($file)) return Response::asJson(["code" => 404, "msg" => "文件不存在"]);
 
@@ -62,6 +63,7 @@ class Upload extends BaseController
                 $model->deviceId = $bookManager->deviceId;
                 $model->addTime = time() * 1000;
                 $model->filename = $file->name;
+                $model->series = $series;
 
                 $model->bookName = $title;
                 $model->author = $author ?? "";

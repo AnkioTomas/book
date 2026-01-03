@@ -94,6 +94,15 @@ window.pageOnLoad = function (loading) {
                         }
                     },
                     {
+                        field: "seriesNum",
+                        name: "版本",
+                        align: "left",
+                        width: 50,
+                        formatter: (value, row, index) => {
+                            return value || '-';
+                        }
+                    },
+                    {
                         field: "category",
                         name: "分类",
                         align: "center",
@@ -163,7 +172,7 @@ window.pageOnLoad = function (loading) {
                         $.request.postForm('/admin/api/book/delete', {id: bookId}, (res) => {
                             if (res.code === 200) {
                                 $.toaster.success(res.msg || '删除成功');
-                                that.dataTable.reload({}, false);
+                                that.dataTable.reload($.form.val("#searchForm"), true);
                             } else {
                                 $.toaster.error(res.msg || '删除失败');
                             }
@@ -198,9 +207,12 @@ window.pageOnLoad = function (loading) {
                     chunkSize: 1024 * 1024 * 2,          // 2MB 分片
                     maxDirectSize: 10 * 1024 * 1024,     // 超过 10MB 强制分片
                     onSuccess: (res) => {
-                        $.request.postForm("/admin/api/publish", {name: res.data}, (res) => {
+                        $.request.postForm("/admin/api/publish", {
+                            name: res.data,
+                            series: $("mdui-select[name=series]").val()
+                        }, (res) => {
                             $.toaster.success(res.msg);
-                            that.dataTable.reload({}, false);
+                            that.dataTable.reload($.form.val("#searchForm"), true);
                         });
                     },
                     onError: (msg) => $.toaster.error(msg || '上传失败')
@@ -214,7 +226,7 @@ window.pageOnLoad = function (loading) {
                     $("body").closeLoading();
                     if (res.code === 200) {
                         $.toaster.success(res.msg);
-                        that.dataTable.reload({}, false);
+                        that.dataTable.reload($.form.val("#searchForm"), true);
                     } else {
                         $.toaster.error(res.msg);
                     }
@@ -226,7 +238,7 @@ window.pageOnLoad = function (loading) {
 
             // 编辑书籍提交
             this.editDialog.submit('/admin/api/book/update', () => {
-                this.dataTable.reload({}, false);
+                that.dataTable.reload($.form.val("#searchForm"), true);
             });
 
             // 豆瓣搜索
@@ -446,9 +458,12 @@ window.pageOnLoad = function (loading) {
                 chunkSize: 1024 * 1024 * 2, // 2MB
                 maxDirectSize: 10 * 1024 * 1024, // 10MB
                 onSuccess: (res) => {
-                    $.request.postForm("/admin/api/publish", {name: res.data}, (response) => {
+                    $.request.postForm("/admin/api/publish", {
+                        name: res.data,
+                        series: $("mdui-select[name=series]").val()
+                    }, (response) => {
                         $.toaster.success(response.msg);
-                        this.dataTable.reload({}, false);
+                        this.dataTable.reload($.form.val("#searchForm"), true);
                     });
                 },
                 onError: (msg) => $.toaster.error(msg || '上传失败')

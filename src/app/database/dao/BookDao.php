@@ -22,7 +22,8 @@ class BookDao extends Dao
     public function getList(int $page = 1, int $limit = 20, string $search = '', string $series = '', string $category = '', string $favorite = ''): array
     {
         $where = [];
-        
+
+        $orderBy = "addTime";
         // 搜索：书名或作者
         if (!empty($search)) {
             $where[] = "(bookName LIKE '%:search%' OR author LIKE '%:search%')";
@@ -32,6 +33,7 @@ class BookDao extends Dao
         // 筛选：系列
         if (!empty($series)) {
             $where['series'] = $series;
+            $orderBy = "seriesNum";
         }
         
         // 筛选：分类（模糊匹配）
@@ -45,7 +47,7 @@ class BookDao extends Dao
             $where['favorite'] = $favorite;
         }
         
-        $result = $this->getAll([], $where, $page, $limit, true, 'addTime');
+        $result = $this->getAll([], $where, $page, $limit, true, $orderBy);
         
         return [
             'total' => $result['total'],

@@ -136,6 +136,21 @@ class Book extends BaseController
             if ($book->id > 0){
                 $dbBook = BookDao::getInstance()->getById($book->id);
                 if (!$dbBook) continue;
+                
+                // 差异比较：用 $book 的非空值填充 $dbBook 的空字段
+                $needUpdate = false;
+                $fields = ['bookName', 'author', 'description',  'series', 'seriesNum', 'favorite', 'rate', 'coverUrl'];
+                
+                foreach ($fields as $field) {
+                    if (!empty($book->$field) && empty($dbBook->$field)) {
+                        $dbBook->$field = $book->$field;
+                        $needUpdate = true;
+                    }
+                }
+                
+                if ($needUpdate) {
+                    BookDao::getInstance()->updateModel($dbBook);
+                }
             }else{
                 $book->splitCategory2Series();
                try{
