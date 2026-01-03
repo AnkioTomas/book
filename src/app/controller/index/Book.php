@@ -5,6 +5,8 @@ namespace app\controller\index;
 use app\database\dao\BookDao;
 use app\database\model\BookModel;
 use app\utils\BookManager;
+use nova\framework\cache\Cache;
+use nova\framework\core\Context;
 use nova\framework\http\Response;
 use function nova\framework\dump;
 
@@ -83,6 +85,10 @@ class Book extends BaseController
                 $book->$field = $data[$field];
             }
         }
+        if(!empty($book->coverUrl)){
+            Context::instance()->cache->set("coverUrl/{$book->coverUrl}",true);
+        }
+
         
         if (BookDao::getInstance()->updateModel($book)) {
             return Response::asJson(['code' => 200, 'msg' => '更新成功']);
@@ -146,9 +152,11 @@ class Book extends BaseController
 
         foreach ($books as &$book) {
             $book = $book->pushSeries2Category();
-            if (!empty($book->coverUrl)){
+            if (!empty($book->coverUrl) && Context::instance()->cache->get("coverUrl/{$book->coverUrl}")){
                 $file = BookManager::proxy($book->coverUrl);
-                BookManager::instance()->uploadCover($file,$book->filename);
+                if(BookManager::instance()->uploadCover($file,$book->filename)){
+                    Context::instance()->cache->delete("coverUrl/{$book->coverUrl}");
+                }
             }
         }
 

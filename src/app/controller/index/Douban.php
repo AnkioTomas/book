@@ -162,7 +162,8 @@ class Douban extends BaseController
         // 按相似度降序排序
         usort($books, fn($a, $b) => $b['similarity'] <=> $a['similarity']);
 
-        return $books;
+        // 优先返回高相似度结果，最多10个
+        return array_slice($books, 0, 10);
     }
 
     /**

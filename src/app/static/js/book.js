@@ -21,7 +21,8 @@ window.pageOnLoad = function (loading) {
         constructor() {
             this.dataTable = null;
             this.filterOptions = {};
-            this.editDialog = document.querySelector("#bookEditDialog")
+            this.editDialog = document.querySelector("#bookEditDialog");
+            this.$dragOverlay = $("#dragOverlay");
         }
 
         init() {
@@ -42,7 +43,7 @@ window.pageOnLoad = function (loading) {
                         align: "center",
                         width: 80,
                         formatter: (value, row, index) => {
-                            return `<img src="/webdav/${encodeURI(row.filename)}" alt="${row.bookName}" class="book-cover-thumb">`;
+                            return `<img src="/webdav/${encodeURIComponent(row.filename)}" alt="${row.bookName}" class="book-cover-thumb">`;
                         }
                     },
                     {
@@ -154,10 +155,6 @@ window.pageOnLoad = function (loading) {
                 let book = that.dataTable.getRow(index);
                 that.editDialog.open();
                 that.editDialog.setValue(book);
-                // 延迟初始化自动完成（确保对话框已完全打开）
-                setTimeout(() => {
-                    that.initAutocomplete();
-                }, 100);
             }).on('click', '.btn-delete', function (e) {
                 const bookId = $(this).data('id');
                 $.layer.confirm({
@@ -191,11 +188,15 @@ window.pageOnLoad = function (loading) {
                 }
             });
 
-            // 添加书籍
+            // 添加书籍（分片上传）
             $('#btnAdd').on('click', () => {
                 $.file.upload({
                     accept: '.epub,.mobi,.azw,.azw3,.pdf,.txt',
                     uploadEndpoint: '/admin/api/upload',
+                    uploadData: {},
+                    chunked: true,                        // 启用分片
+                    chunkSize: 1024 * 1024 * 2,          // 2MB 分片
+                    maxDirectSize: 10 * 1024 * 1024,     // 超过 10MB 强制分片
                     onSuccess: (res) => {
                         $.request.postForm("/admin/api/publish", {name: res.data}, (res) => {
                             $.toaster.success(res.msg);
@@ -347,6 +348,8 @@ window.pageOnLoad = function (loading) {
                     // 筛选选项加载完成后初始化表格和事件
                     this.initDataTable();
                     this.bindEvents();
+                    // 初始化自动完成（只执行一次）
+                    this.initAutocomplete();
                 }
             });
         }
@@ -433,12 +436,15 @@ window.pageOnLoad = function (loading) {
         }
 
         /**
-         * 上传单个文件
+         * 上传单个文件（自动分片）
          */
         uploadFile(file) {
-            $.file._uploadDirect(file, {
+            const config = {
                 uploadEndpoint: '/admin/api/upload',
                 uploadData: {},
+                chunked: true,
+                chunkSize: 1024 * 1024 * 2, // 2MB
+                maxDirectSize: 10 * 1024 * 1024, // 10MB
                 onSuccess: (res) => {
                     $.request.postForm("/admin/api/publish", {name: res.data}, (response) => {
                         $.toaster.success(response.msg);
@@ -446,11 +452,20 @@ window.pageOnLoad = function (loading) {
                     });
                 },
                 onError: (msg) => $.toaster.error(msg || '上传失败')
-            });
+            };
+
+            // 根据文件大小自动选择上传方式
+            const shouldUseChunked = config.chunked || file.size > config.maxDirectSize;
+            
+            if (shouldUseChunked) {
+                $.file._uploadWithChunks(file, config);
+            } else {
+                $.file._uploadDirect(file, config);
+            }
         }
 
         /**
-         * 初始化自动完成功能
+         * 初始化自动完成功能（只执行一次）
          */
         initAutocomplete() {
             const fields = [
@@ -480,6 +495,10 @@ window.pageOnLoad = function (loading) {
                 const list = document.getElementById(field.listId);
 
                 if (!input || !dropdown || !list) return;
+                
+                // 防止重复初始化
+                if (input.dataset.autocompleteInit === 'true') return;
+                input.dataset.autocompleteInit = 'true';
 
                 // 更新列表内容
                 const updateList = (filterText = '') => {
@@ -511,21 +530,10 @@ window.pageOnLoad = function (loading) {
                 // 初始填充
                 updateList();
 
-                // 点击输入框显示下拉
-                input.addEventListener('click', () => {
-                    if (field.options.length > 0) {
-                        updateList(input.value || '');
-                        dropdown.open = true;
-                    }
-                });
-
-                // 输入时实时过滤
+                // 输入时实时过滤（但不自动打开下拉框）
                 input.addEventListener('input', () => {
                     const val = input.value || '';
                     updateList(val);
-                    if (field.options.length > 0) {
-                        dropdown.open = true;
-                    }
                 });
 
                 // 点击下拉图标打开/关闭

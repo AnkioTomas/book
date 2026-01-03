@@ -23,9 +23,16 @@
     }
     
     /* 自动完成下拉列表 */
+    mdui-dropdown {
+        --mdui-comp-dropdown-z-index: 2000;
+    }
+    
     mdui-dropdown mdui-list {
         max-height: 240px;
         overflow-y: auto;
+        background: rgb(var(--mdui-color-surface-container));
+        box-shadow: var(--mdui-elevation-level2);
+        border-radius: 4px;
     }
     
     mdui-dropdown mdui-list-item {
