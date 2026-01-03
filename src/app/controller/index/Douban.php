@@ -82,7 +82,7 @@ class Douban extends BaseController
 
         // 发送HTTP请求（使用随机UA和IP）
         $client = HttpClient::init()
-            ->timeout(10)
+            ->timeout(300)
             ->gzip()
             ->setHeader('User-Agent', BookManager::getRandomUserAgent())
             ->setHeader('X-Forwarded-For', BookManager::getRandomIP())
