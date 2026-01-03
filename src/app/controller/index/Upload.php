@@ -50,21 +50,26 @@ class Upload extends BaseController
             return Response::asJson(["code" => 404, "msg" => "文件不存在"]);
         }
 
+        $model = BookDao::getInstance()->getByFileName($file->name);
         $bookManager = BookManager::instance();
         if ($bookManager->uploadBook($file->path, $file->name)) {
-            $model = new BookModel();
-            $model->deviceId = $bookManager->deviceId;
-            $model->addTime = time() * 1000;
-            $model->filename = $file->name;
             [$author, $title, $year, $ext] = Parser::filename($file->name);
             if (empty($title)){
                 return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
             }
-            $model->bookName = $title;
-            $model->author = $author ?? "";
-            $model->downloadUrl = "[WebDav]/Apps/Books/".$file->name;
+            if (empty($model)){
+                $model = new BookModel();
+                $model->deviceId = $bookManager->deviceId;
+                $model->addTime = time() * 1000;
+                $model->filename = $file->name;
 
-            BookDao::getInstance()->insertModel($model);
+                $model->bookName = $title;
+                $model->author = $author ?? "";
+                $model->downloadUrl = "[WebDav]/Apps/Books/".$file->name;
+
+                BookDao::getInstance()->insertModel($model);
+            }
+
             return Response::asJson(["code" => 200, "msg" => "后台上传成功: $title"]);
         } else {
             return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
