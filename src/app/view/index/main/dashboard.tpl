@@ -92,7 +92,7 @@
     <div class="row col-space16">
         <!-- 最新添加 -->
         <div class="col-xs12 col-md6">
-            <mdui-card class="p-3">
+            <mdui-card class="p-3 w-100">
                 <div class="title-medium d-flex items-center mb-3">
                     <mdui-icon name="schedule" class="mr-2"></mdui-icon>
                     最新添加
@@ -110,9 +110,9 @@
                             {/if}
                             <div class="flex-1 min-w-0">
                                 <div class="title-small mb-1">{$book.bookName}</div>
-                                <div class="body-medium text-on-surface-variant mb-1">
-                                    <mdui-icon name="person" class="text-xs"></mdui-icon>
-                                    {$book.author}
+                                <div class="body-medium text-on-surface-variant mb-1 d-flex items-center mt-1" style="line-height: 1;">
+                                    <mdui-icon name="person" class="mr-1" style="font-size: 1.1rem; display: flex;"></mdui-icon>
+                                    <span class="text-ellipsis">{$book.author}</span>
                                 </div>
                                 {if $book.series}
                                 <div class="body-small mb-1">
@@ -155,9 +155,9 @@
                             {/if}
                             <div class="flex-1 min-w-0">
                                 <div class="title-small mb-1">{$book.bookName}</div>
-                                <div class="body-medium text-on-surface-variant mb-1">
-                                    <mdui-icon name="person" class="text-xs"></mdui-icon>
-                                    {$book.author}
+                                <div class="body-medium text-on-surface-variant mb-1 d-flex items-center  mt-1" style="line-height: 1;">
+                                    <mdui-icon name="person" class="mr-1" style="font-size: 1.1rem; display: flex;"></mdui-icon>
+                                    <span class="text-ellipsis">{$book.author}</span>
                                 </div>
                                 {if $book.favorite}
                                 <div class="body-small">
