@@ -188,4 +188,9 @@ class Main extends BaseController
         return $books;
     }
 
+    public function index():Response
+    {
+        return Response::asRedirect("/admin/dashboard");
+    }
+
 }
