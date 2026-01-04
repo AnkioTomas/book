@@ -96,6 +96,7 @@
         <div class="d-flex gap-2">
             <mdui-button id="btnAdd" icon="add" variant="filled">导入</mdui-button>
             <mdui-button id="btnSync" icon="sync" variant="filled">同步</mdui-button>
+            <mdui-button id="btnBatchEdit" icon="edit_note" variant="outlined">批量操作</mdui-button>
         </div>
     </div>
     
@@ -263,6 +264,49 @@
         close-on-overlay-click
     >
     </mdui-dialog>
+
+    <!-- 批量编辑对话框 -->
+    <mdui-dialog-form id="batchEditDialog" label="批量编辑书籍">
+        <form id="batchEditForm">
+            <div class="mb-3">
+                <mdui-text-field
+                    label="批量设置分类"
+                    name="category"
+                    id="batchCategory"
+                    clearable
+                    helper="将选中的所有书籍设置为该分类"
+                ></mdui-text-field>
+            </div>
+            
+            <div class="mb-3">
+                <mdui-text-field
+                    label="批量设置收藏夹"
+                    name="favorite"
+                    id="batchFavorite"
+                    clearable
+                    helper="将选中的所有书籍设置为该收藏夹"
+                ></mdui-text-field>
+            </div>
+            
+            <div class="mb-3">
+                <mdui-text-field
+                    label="批量设置系列"
+                    name="series"
+                    id="batchSeries"
+                    clearable
+                    helper="将选中的所有书籍设置为该系列"
+                ></mdui-text-field>
+            </div>
+            
+            <div class="body-small text-on-surface-variant">
+                提示：只填写需要批量设置的字段，留空的字段不会被修改
+            </div>
+        </form>
+        
+        <mdui-button slot="action" variant="text" onclick="this.closest('mdui-dialog').open = false">取消</mdui-button>
+        <mdui-button slot="action" variant="filled" id="btnBatchSubmit">批量更新</mdui-button>
+    </mdui-dialog-form>
+
     <!-- 拖拽上传覆盖层 -->
     <div id="dragOverlay" class="drag-overlay">
         <div class="drag-overlay-content">

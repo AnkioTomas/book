@@ -22,6 +22,7 @@ window.pageOnLoad = function (loading) {
             this.dataTable = null;
             this.filterOptions = {};
             this.editDialog = document.querySelector("#bookEditDialog");
+            this.batchDialog = document.querySelector("#batchEditDialog");
             this.$dragOverlay = $("#dragOverlay");
         }
 
@@ -152,7 +153,8 @@ window.pageOnLoad = function (loading) {
                 },
                 empty_msg: "暂无书籍数据",
                 page: true,
-                selectable: false
+                pageSizes: [ 20, 50, 100],  // 默认每页 50 条，别太短浪费时间
+                selectable: true  // 启用多选，批量操作的基础
             });
 
             let that = this;
@@ -229,12 +231,86 @@ window.pageOnLoad = function (loading) {
                 });
             });
 
+            // 批量操作按钮
+            $('#btnBatchEdit').on('click', () => {
+                const selected = that.dataTable.getSelectedRows();
+                if (!selected || selected.length === 0) {
+                    $.toaster.warning('请先选择要操作的书籍');
+                    return;
+                }
+                that.batchDialog.open();
+            });
+
             // 拖拽上传
             this.initDragUpload();
 
             // 编辑书籍提交
             this.editDialog.submit('/admin/api/book/update', () => {
                 that.dataTable.reload($.form.val("#searchForm"), true);
+            });
+
+            // 批量编辑提交 - 前端循环调用现有接口
+            $(this.batchDialog).on('click', '#btnBatchSubmit', () => {
+                const selected = that.dataTable.getSelectedRows();
+                if (!selected || selected.length === 0) {
+                    $.toaster.warning('没有选中的书籍');
+                    return;
+                }
+
+                // 获取批量设置的值（只更新用户填写的字段）
+                const batchData = {};
+                const category = $('#batchCategory').val();
+                const favorite = $('#batchFavorite').val();
+                const series = $('#batchSeries').val();
+                
+                if (category) batchData.category = category;
+                if (favorite) batchData.favorite = favorite;
+                if (series) batchData.series = series;
+
+                if (Object.keys(batchData).length === 0) {
+                    $.toaster.warning('请至少填写一个要批量设置的字段');
+                    return;
+                }
+
+                // 简单粗暴：循环调用现有接口
+                that.batchDialog.open = false;
+                $("body").showLoading(`正在批量更新 ${selected.length} 本书籍...`);
+                
+                let successCount = 0;
+                let failCount = 0;
+                const total = selected.length;
+
+                const updateNext = (index) => {
+                    if (index >= total) {
+                        $("body").closeLoading();
+                        if (failCount === 0) {
+                            $.toaster.success(`批量更新完成：${successCount} 本成功`);
+                        } else {
+                            $.toaster.warn(`批量更新完成：${successCount} 本成功，${failCount} 本失败`);
+                        }
+                        that.dataTable.reload($.form.val("#searchForm"), true);
+                        // 清空表单
+                        $('#batchCategory, #batchFavorite, #batchSeries').val('');
+                        return;
+                    }
+
+                    const book = selected[index];
+                    const updateData = { ...book, ...batchData };
+
+                    $.request.postForm('/admin/api/book/update', updateData, (res) => {
+                        if (res.code === 200) {
+                            successCount++;
+                        } else {
+                            failCount++;
+                        }
+                        updateNext(index + 1);
+                    }, () => {
+                        failCount++;
+                        updateNext(index + 1);
+                    });
+                };
+
+                updateNext(0);
             });
 
             // 豆瓣搜索
