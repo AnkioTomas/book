@@ -10,6 +10,7 @@ use nova\framework\json\Json;
 use nova\plugin\http\HttpClient;
 use nova\plugin\webdav\SimpleWebDAVClient;
 use function nova\framework\config;
+use function nova\framework\dump;
 
 class BookManager
 {
@@ -50,7 +51,9 @@ class BookManager
         File::mkDir($this->runtime);
         $runtime = $this->runtime . "books.sync";
         if ($this->client->download($path, $runtime)) {
-            $json = Json::decode(zlib_decode(file_get_contents($runtime)), true);
+            $data = file_get_contents($runtime);
+
+            $json = Json::decode(zlib_decode($data), true);
             $items = [];
             foreach ($json as $book) {
                 $items[] = new BookModel($book);

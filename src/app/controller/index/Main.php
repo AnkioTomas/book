@@ -117,4 +117,9 @@ class Main extends BaseController
     {
         return $this->viewResponse->asTpl();
     }
+
+    public function qing():Response
+    {
+        return $this->viewResponse->asTpl();
+    }
 }

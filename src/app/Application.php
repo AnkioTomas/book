@@ -27,6 +27,7 @@ class Application extends App
             ->get("/dashboard", route('index', 'main', 'dashboard'))
             ->get("/admin/book", route('index', 'main', 'book'))
             ->get("/admin/webdav", route('index', 'main', 'webdav'))
+            ->get("/admin/qing", route('index', 'main', 'qing'))
             ->getOrPost('/admin/api/book/list', route('index', 'book', 'list'))
             ->getOrPost('/admin/api/book/filters', route('index', 'book', 'filters'))
             ->post('/admin/api/book/update', route('index', 'book', 'update'))
@@ -39,6 +40,8 @@ class Application extends App
             ->post("/admin/api/upload", route("index", "upload", "upload")) // 文件上传
             ->post("/admin/api/publish", route("index", "upload", "publish")) // 文件上传
             ->post("/admin/api/douban", route("index", "douban", "search"))
+            ->getOrPost("/admin/api/qing/cron", route("index", "qing", "cron"))
+            ->get("/admin/api/qing/status", route("index", "qing", "status"))
             ->get("/webdav/{filename}",route('index', 'douban', 'webdav'))
             ->get("/proxy/{uri}",route('index', 'douban', 'proxy'))
 

@@ -61,3 +61,6 @@
 [submodule "src/app/static/components/formDialog"]
 	path = src/app/static/components/formDialog
 	url = https://git.ankio.icu/nova-ui/nova-formDialog
+[submodule "src/nova/plugin/corn"]
+	path = src/nova/plugin/corn
+	url = https://github.com/NovaPHPOrg/nova-corn
