@@ -181,5 +181,71 @@ class Book extends BaseController
 
         return Response::asJson(['code' => 200, 'msg' => '同步完成','data'=>$books]);
     }
+    
+    /**
+     * 删除重复书籍（根据书名+作者判断，保留最早导入的）
+     * POST /book/removeDuplicates
+     */
+    public function removeDuplicates(): Response
+    {
+        // 获取所有书籍
+        $allBooks = BookDao::getInstance()->select()->commit();
+        
+        // 按 bookName + author 分组
+        $groups = [];
+        foreach ($allBooks as $book) {
+            $key = trim($book->bookName) . '|' . trim($book->author);
+            if (!isset($groups[$key])) {
+                $groups[$key] = [];
+            }
+            $groups[$key][] = $book;
+        }
+        
+        // 找出重复的书籍并删除（保留最早的）
+        $deletedCount = 0;
+        $deletedBooks = [];
+        
+        foreach ($groups as $key => $books) {
+            if (count($books) <= 1) {
+                continue; // 没有重复，跳过
+            }
+            
+            // 找出 addTime 最小的（最早导入的）
+            $oldest = $books[0];
+            foreach ($books as $book) {
+                if ($book->addTime < $oldest->addTime) {
+                    $oldest = $book;
+                }
+            }
+            
+            // 删除所有不是最老的书籍
+            foreach ($books as $book) {
+                if ($book->id === $oldest->id) {
+                    continue; // 保留最老的
+                }
+                
+                BookManager::instance()->deleteBook($book->filename);
+                BookManager::instance()->deleteCover($book->filename);
+                BookDao::getInstance()->deleteById($book->id);
+                
+                $deletedBooks[] = [
+                    'id' => $book->id,
+                    'bookName' => $book->bookName,
+                    'author' => $book->author,
+                    'addTime' => $book->addTime
+                ];
+                $deletedCount++;
+            }
+        }
+        
+        return Response::asJson([
+            'code' => 200,
+            'msg' => $deletedCount > 0 ? "已删除 {$deletedCount} 本重复书籍" : '未发现重复书籍',
+            'data' => [
+                'deletedCount' => $deletedCount,
+                'deletedBooks' => $deletedBooks
+            ]
+        ]);
+    }
 
 }

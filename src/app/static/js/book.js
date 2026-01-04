@@ -231,6 +231,27 @@ window.pageOnLoad = function (loading) {
                 });
             });
 
+            // 删除重复书籍
+            $('#btnRemoveDuplicates').on('click', () => {
+                $.layer.confirm({
+                    msg: '确定要删除重复书籍吗？<br><small class="text-on-surface-variant">将保留相同书名+作者中最后导入的版本</small>',
+                    yes: () => {
+                        $("body").showLoading("正在查找并删除重复书籍...");
+                        $.request.postForm('/admin/api/book/removeDuplicates', {}, (res) => {
+                            $("body").closeLoading();
+                            if (res.code === 200) {
+                                $.toaster.success(res.msg);
+                                that.dataTable.reload($.form.val("#searchForm"), true);
+                            } else {
+                                $.toaster.error(res.msg);
+                            }
+                        });
+                    },
+                    no: () => {},
+                    title: '删除重复书籍'
+                });
+            });
+
             // 批量操作按钮
             $('#btnBatchEdit').on('click', () => {
                 const selected = that.dataTable.getSelectedRows();
@@ -249,8 +270,8 @@ window.pageOnLoad = function (loading) {
                 that.dataTable.reload($.form.val("#searchForm"), true);
             });
 
-            // 批量编辑提交 - 前端循环调用现有接口
-            $(this.batchDialog).on('click', '#btnBatchSubmit', () => {
+            // 批量编辑提交 - 传入 null 作为 URL，直接处理数据
+            this.batchDialog.submit(null, (formData) => {
                 const selected = that.dataTable.getSelectedRows();
                 if (!selected || selected.length === 0) {
                     $.toaster.warning('没有选中的书籍');
@@ -259,21 +280,18 @@ window.pageOnLoad = function (loading) {
 
                 // 获取批量设置的值（只更新用户填写的字段）
                 const batchData = {};
-                const category = $('#batchCategory').val();
-                const favorite = $('#batchFavorite').val();
-                const series = $('#batchSeries').val();
-                
-                if (category) batchData.category = category;
-                if (favorite) batchData.favorite = favorite;
-                if (series) batchData.series = series;
+                if (formData.author) batchData.author = formData.author;
+                if (formData.category) batchData.category = formData.category;
+                if (formData.favorite) batchData.favorite = formData.favorite;
+                if (formData.series) batchData.series = formData.series;
 
                 if (Object.keys(batchData).length === 0) {
                     $.toaster.warning('请至少填写一个要批量设置的字段');
                     return;
                 }
 
-                // 简单粗暴：循环调用现有接口
-                that.batchDialog.open = false;
+                // 关闭对话框，开始批量更新
+                that.batchDialog.close();
                 $("body").showLoading(`正在批量更新 ${selected.length} 本书籍...`);
                 
                 let successCount = 0;
@@ -289,8 +307,6 @@ window.pageOnLoad = function (loading) {
                             $.toaster.warn(`批量更新完成：${successCount} 本成功，${failCount} 本失败`);
                         }
                         that.dataTable.reload($.form.val("#searchForm"), true);
-                        // 清空表单
-                        $('#batchCategory, #batchFavorite, #batchSeries').val('');
                         return;
                     }
 
@@ -643,7 +659,7 @@ window.pageOnLoad = function (loading) {
          */
         destroy() {
             if (this.dataTable) this.dataTable.destroy();
-            $('#searchForm, #btnAdd, #btnSync').off();
+            $('#searchForm, #btnAdd, #btnSync, #btnRemoveDuplicates').off();
             $(this.editDialog).off();
             $(document).off('dragover drop dragenter dragleave');
         }

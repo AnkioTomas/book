@@ -33,6 +33,7 @@ class Application extends App
             ->post('/admin/api/book/update', route('index', 'book', 'update'))
             ->post('/admin/api/book/delete', route('index', 'book', 'delete'))
             ->post('/admin/api/sync', route('index', 'book', 'sync'))
+           ->post("/admin/api/book/removeDuplicates", route('index', 'book', 'removeDuplicates'))
             //filters
             ->getOrPost('/admin/api/webdav', route('index', 'webdav', 'config'))
             ->get("/settings/account", route('index', 'main', 'account'))//√

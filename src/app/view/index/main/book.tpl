@@ -97,6 +97,7 @@
             <mdui-button id="btnAdd" icon="add" variant="filled">导入</mdui-button>
             <mdui-button id="btnSync" icon="sync" variant="filled">同步</mdui-button>
             <mdui-button id="btnBatchEdit" icon="edit_note" variant="outlined">批量操作</mdui-button>
+            <mdui-button id="btnRemoveDuplicates" icon="content_copy" variant="tonal">删除重复</mdui-button>
         </div>
     </div>
     
@@ -268,6 +269,16 @@
     <!-- 批量编辑对话框 -->
     <mdui-dialog-form id="batchEditDialog" label="批量编辑书籍">
         <form id="batchEditForm">
+            <div class="mb-3">
+                <mdui-text-field
+                    label="批量设置作者"
+                    name="author"
+                    id="batchAuthor"
+                    clearable
+                    helper="将选中的所有书籍设置为该作者"
+                ></mdui-text-field>
+            </div>
+            
             <div class="mb-3">
                 <mdui-text-field
                     label="批量设置分类"
