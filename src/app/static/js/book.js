@@ -43,7 +43,7 @@ window.pageOnLoad = function (loading) {
                         align: "center",
                         width: 80,
                         formatter: (value, row, index) => {
-                            return `<img src="/webdav/${encodeURIComponent(row.filename)}" alt="${row.bookName}" class="book-cover-thumb">`;
+                            return `<image-loader src="/webdav/${encodeURIComponent(row.filename)}" class="book-cover-thumb" style="height: 56px;"></image-loader>`;
                         }
                     },
                     {
@@ -275,9 +275,9 @@ window.pageOnLoad = function (loading) {
                 return `
                     <mdui-list-item data-index="${index}" style="cursor: pointer; --mdui-comp-list-item-one-line-height: auto; padding: 12px 16px;">
                         <div class="d-flex gap-3" style="width: 100%;">
-                            <img src="/proxy/${cover}" 
-                                 style="width: 60px; height: 80px; object-fit: cover; border-radius: 4px; flex-shrink: 0;" 
-                                >
+                            <image-loader src="/proxy/${cover}" 
+                                 style="width: 60px; height: 80px; border-radius: 4px; flex-shrink: 0;" 
+                                ></image-loader>
                             <div class="flex-1" style="min-width: 0;">
                                 <div class="font-semibold mb-1" style="font-size: 1rem;">${title}</div>
                                 <div class="text-on-surface-variant mb-1" style="font-size: 0.875rem;">

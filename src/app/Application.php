@@ -24,7 +24,7 @@ class Application extends App
         PoolManager::start();
         // Route::getInstance()->get()
         Route::getInstance()
-            ->get("/dashboard", route('index', 'main', 'dashboard'))
+            ->get("/admin/dashboard", route('index', 'main', 'dashboard'))
             ->get("/admin/book", route('index', 'main', 'book'))
             ->get("/admin/webdav", route('index', 'main', 'webdav'))
             ->get("/admin/qing", route('index', 'main', 'qing'))
