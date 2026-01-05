@@ -203,15 +203,14 @@ window.pageOnLoad = function (loading) {
             $('#btnAdd').on('click', () => {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.multiple = true;  // 启用多文件选择
+                input.multiple = true;
                 input.accept = '.epub,.mobi,.azw,.azw3,.pdf,.txt';
                 
                 input.onchange = (e) => {
                     const files = e.target.files;
-                    if (!files || files.length === 0) return;
-                    
-                    // 使用统一的上传逻辑（和拖拽一样）
-                    Array.from(files).forEach(file => that.uploadFile(file));
+                    if (files && files.length > 0) {
+                        that.uploadBatch(Array.from(files));
+                    }
                 };
                 
                 input.click();
@@ -513,7 +512,6 @@ window.pageOnLoad = function (loading) {
                 dragCounter = 0;
                 this.$dragOverlay.removeClass('active');
 
-                // 获取原生事件对象
                 const evt = e.originalEvent || e;
                 const files = evt.dataTransfer?.files;
                 
@@ -530,42 +528,53 @@ window.pageOnLoad = function (loading) {
                     return;
                 }
 
-                // 上传所有有效文件
-                validFiles.forEach(file => this.uploadFile(file));
+                // 批量上传
+                this.uploadBatch(validFiles);
             });
         }
 
         /**
-         * 上传单个文件（自动分片，支持多文件）
+         * 批量上传文件
          */
-        uploadFile(file) {
+        uploadBatch(files) {
             const that = this;
+            const total = files.length;
+            let count = 0;
+            
+            files.forEach(file => {
+                this.uploadFile(file, () => {
+                    if (++count === total) {
+                        $.toaster.success(`${total} 个文件上传完成`);
+                        that.dataTable.reload($.form.val("#searchForm"), true);
+                    }
+                });
+            });
+        }
+
+        /**
+         * 上传单个文件
+         */
+        uploadFile(file, onDone) {
             const config = {
                 uploadEndpoint: '/admin/api/upload',
                 uploadData: {},
                 chunked: true,
-                chunkSize: 1024 * 1024 * 2, // 2MB
-                maxDirectSize: 10 * 1024 * 1024, // 10MB
+                chunkSize: 1024 * 1024 * 2,
+                maxDirectSize: 10 * 1024 * 1024,
                 onSuccess: (res) => {
                     $.request.postForm("/admin/api/publish", {
                         name: res.data,
                         series: $("mdui-select[name=series]").val()
-                    }, (response) => {
-                        $.toaster.success(response.msg);
-                        that.dataTable.reload($.form.val("#searchForm"), true);
-                    });
+                    }, () => onDone && onDone());
                 },
-                onError: (msg) => $.toaster.error(`${file.name}: ${msg || '上传失败'}`)
+                onError: (msg) => {
+                    $.toaster.error(`${file.name}: ${msg || '上传失败'}`);
+                    onDone && onDone();
+                }
             };
 
-            // 根据文件大小自动选择上传方式
             const shouldUseChunked = config.chunked || file.size > config.maxDirectSize;
-            
-            if (shouldUseChunked) {
-                $.file._uploadWithChunks(file, config);
-            } else {
-                $.file._uploadDirect(file, config);
-            }
+            shouldUseChunked ? $.file._uploadWithChunks(file, config) : $.file._uploadDirect(file, config);
         }
 
         /**
