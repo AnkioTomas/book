@@ -9,6 +9,7 @@ use app\database\dao\BookDao;
 use nova\framework\http\Response;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
+use nova\plugin\task\Task;
 use nova\plugin\tpl\ViewResponse;
 
 class Main extends BaseController
@@ -53,6 +54,12 @@ class Main extends BaseController
                             "icon" => "article",
                             "pjax" => true
                         ],
+                        [
+                            "title" => "读者阁采集",
+                            "url" => "/admin/dzg",
+                            "icon" => "article",
+                            "pjax" => true
+                        ],
                     ]
                 ],
                 [
@@ -74,7 +81,13 @@ class Main extends BaseController
                         [
                             "title" => "WebDav配置",
                             "url" => "/admin/webdav",
-                            "icon" => "vpn_key",
+                            "icon" => "cloud_sync",
+                            "pjax" => true
+                        ],
+                        [
+                            "title" => "任务列表",
+                            "url" => "/admin/task",
+                            "icon" => "checklist",
                             "pjax" => true
                         ],
                     ]
@@ -188,9 +201,19 @@ class Main extends BaseController
         return $books;
     }
 
+    public function task():Response
+    {
+        return $this->viewResponse->asTpl(Task::TASK_TPL);
+    }
+
     public function index():Response
     {
         return Response::asRedirect("/admin/dashboard");
+    }
+
+    public function dzg():Response
+    {
+        return $this->viewResponse->asTpl('',['books' => Duzhege::$books]);
     }
 
 }

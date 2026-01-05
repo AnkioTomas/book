@@ -18,21 +18,15 @@ use Throwable;
 /**
  * 青年文摘自动下载任务
  */
-class QingTasker extends TaskerAbstract
+class DuzhegeTasker extends TaskerAbstract
 {
-    private const API_URL = "https://weixin65732.raysclab.com/ebook/v1.0/ebookPdf/getPdfByAppId?appId=2136122&t=OLA755jLm";
-    private const PDF_BASE_URL = "https://oss.5rs.me/oss/uploadfe/pdf";
-    private const DEFAULT_COOKIE = "userInfo=officialAccountsId%3D999%26wechatUserId%3D316275201%26hasSnapsis%3D0%26channelId%3D1000005632%26userType%3DTEMP%26spreadType%3D0";
-
+    private const string API_URL = "https://yun.duzhege.cn/api/fs/list";
     private string $downloadDir;
-    private string $cookie;
 
-    public function __construct()
+    public function __construct(private readonly string $book, private readonly string $path, private readonly int $minYear)
     {
-        $this->downloadDir = RUNTIME_PATH . DS . "青年文摘";
+        $this->downloadDir = RUNTIME_PATH . DS . $book;
         File::mkdir($this->downloadDir);
-        $this->cookie = self::DEFAULT_COOKIE;
-
     }
 
     public function getTimeOut(): int
@@ -42,13 +36,13 @@ class QingTasker extends TaskerAbstract
 
     public function onStart(): void
     {
-        Logger::info("青年文摘下载任务开始");
-        if (Context::instance()->cache->get(QingTasker::class) === true) return;
-        Context::instance()->cache->set(QingTasker::class,true ,3600);
+        Logger::info($this->book . "下载任务开始");
+        if (Context::instance()->cache->get($this->book) === true) return;
+        Context::instance()->cache->set($this->book, true, 3600);
         $ebooks = $this->fetchEbookList();
         if (empty($ebooks)) {
             Logger::warning("未获取到电子书列表");
-            Context::instance()->cache->delete(QingTasker::class);
+            Context::instance()->cache->delete($this->book);
             return;
         }
 
@@ -57,24 +51,24 @@ class QingTasker extends TaskerAbstract
         $success = 0;
         $bookManager = BookManager::instance();
         foreach ($ebooks as $ebook) {
-            Context::instance()->cache->set(QingTasker::class,true ,3600);
-            $filename = $ebook['ebookName'] ?? "";
+            Context::instance()->cache->set($this->book, true, 3600);
+            $filename = $ebook['name'] ?? "";
+            $url = $ebook['url'] ?? "";
             if (empty($filename)) continue;
-            $filename .=".pdf";
             $model = BookDao::getInstance()->getByFileName($filename);
-            if (empty($model) && $this->downloadEbook($ebook,$filename)) {
+            if (empty($model) && $this->downloadEbook($url, $filename)) {
                 $filepath = $this->downloadDir . '/' . $filename;
                 if ($bookManager->uploadBook($filepath, $filename)) {
                     $model = new BookModel();
                     $model->deviceId = $bookManager->deviceId;
                     $model->addTime = time() * 1000;
                     $model->filename = $filename;
-                    $model->series = "青年文摘";
+                    $model->series = $this->book;
 
                     $title = pathinfo($filename, PATHINFO_FILENAME);
 
                     $model->bookName = $title;
-                    $model->author = "青年文摘编辑部";
+                    $model->author = $this->book . "编辑部";
                     $model->favorite = "杂志";
                     $model->downloadUrl = "[WebDav]/Apps/Books/" . $filename;
 
@@ -85,21 +79,20 @@ class QingTasker extends TaskerAbstract
 
 
         }
-        Context::instance()->cache->delete(QingTasker::class);
+        Context::instance()->cache->delete($this->book);
         Logger::info("下载完成: {$success}/" . count($ebooks));
         BookDao::getInstance()->syncBooks();
         File::del($this->downloadDir);
-
     }
 
     public function onStop(): void
     {
-        Logger::info("青年文摘下载任务结束");
+        Logger::info($this->book . "下载任务结束");
     }
 
     public function onAbort(Throwable $e): void
     {
-        Logger::error("青年文摘下载任务异常终止: " . $e->getMessage(), $e->getTrace());
+        Logger::error($this->book . "下载任务异常终止: " . $e->getMessage(), $e->getTrace());
     }
 
     /**
@@ -107,48 +100,58 @@ class QingTasker extends TaskerAbstract
      */
     private function fetchEbookList(): array
     {
-        $client = HttpClient::init()
-            ->setHeader('Referer', 'https://weixin65732.raysclab.com/')
-            ->setOption(CURLOPT_COOKIE, $this->cookie)
-            ->timeout(300)
-            ->get();
 
-        $response = $client->send(self::API_URL);
+        $year = $this->minYear;
 
-        if (!$response || $response->getHttpCode() !== 200) {
-            Logger::error("API请求失败: HTTP " . ($response->getHttpCode()));
-            return [];
+        $now = (int)date("Y");
+        $path = $this->path;
+
+        $links = [];
+
+        for ($i = $year; $i <= $now; $i++) {
+            $link = str_replace("{year}", (string)$i, $path);
+            $response = HttpClient::init()
+                ->setHeader('Referer', 'https://yun.duzhege.cn')
+                ->timeout(300)
+                ->post([
+                    'path' => $link,
+                    'password' => '',
+                    'page' => 1,
+                    'per_page' => 0,
+                    'refresh' => false
+                ])
+                ->send(self::API_URL);
+            if (!$response || $response->getHttpCode() !== 200) {
+                Logger::error("API请求失败: HTTP " . ($response->getHttpCode()));
+                continue;
+            }
+
+            $data = Json::decode($response->getBody(), true);
+
+            if ($data['code'] != 200) {
+                Logger::error("API请求失败 $link ", $data);
+                continue;
+            }
+            // https://yun.duzhege.cn/d/OneDrive/%E6%B0%91%E9%97%B4%E4%BC%A0%E5%A5%87%E6%95%85%E4%BA%8B/2024/%E6%AD%A3%E5%88%8A/%E3%80%8A%E6%B0%91%E9%97%B4%E4%BC%A0%E5%A5%87%E6%95%85%E4%BA%8B%E3%80%8B2024%E5%B9%B4%E7%AC%AC12%E6%9C%9F.pdf
+
+            $content = $data['data']['content'];
+
+            foreach ($content as $ebook) {
+                $links[] = [
+                    "name" => $ebook['name'],
+                    "url" => "https://yun.duzhege.cn/d" . $link . "/" . rawurlencode($ebook['name']),
+                ];
+            }
         }
 
-        $data = Json::decode($response->getBody(), true);
-
-        if (!isset($data['errCode']) || $data['errCode'] !== 0) {
-            Logger::error("API返回错误: " . ($data['message'] ?? '未知错误'));
-            return [];
-        }
-
-        return $data['data'] ?? [];
+        return $links;
     }
 
     /**
      * 下载单个电子书
      */
-    private function downloadEbook(array $ebook,string $filename): bool
+    private function downloadEbook(string $pdfUrl, string $filename): bool
     {
-        $resource = $ebook['resource'] ?? null;
-        if ($resource === null) {
-            Logger::warning("电子书资源数据不存在: " . Json::encode($ebook));
-            return false;
-        }
-
-        $fileId = $resource['fileId'] ?? '';
-        $ebookName = $ebook['ebookName'] ?? '';
-
-        if (empty($fileId) || empty($ebookName)) {
-            Logger::warning("电子书数据不完整: fileId={$fileId}, name={$ebookName}");
-            return false;
-        }
-
 
         $filepath = $this->downloadDir . '/' . $filename;
 
@@ -158,15 +161,12 @@ class QingTasker extends TaskerAbstract
             return true;
         }
 
-        $pdfUrl = self::PDF_BASE_URL . '/' . $fileId . '.pdf';
-
         try {
             Logger::info("开始下载: {$filename}");
             $client = HttpClient::init()
                 ->timeout(300)
                 ->get();
             $download = new HttpDownloadManager($client);
-
 
             if (!$download->download($pdfUrl, $filepath)) {
                 Logger::error("下载失败: {$filename} - HTTP ");

@@ -8,7 +8,7 @@ use nova\plugin\corn\schedule\TaskerManager;
 
 class Qing extends BaseController
 {
-    private const TASK_NAME = "青年文摘";
+    private const string TASK_NAME = "青年文摘";
 
     /**
      * 获取或设置定时任务
@@ -19,7 +19,10 @@ class Qing extends BaseController
     {
         // GET 请求：返回当前配置
         if ($this->request->isGet()) {
-            return $this->status();
+            return Response::asJson([
+                'code' => 200,
+                'data' => TaskerManager::get(self::TASK_NAME)->cron
+            ]);
         }
         
         // POST 请求：设置任务
@@ -43,33 +46,4 @@ class Qing extends BaseController
         ]);
     }
 
-    /**
-     * 获取当前任务状态
-     */
-    function status(): Response
-    {
-        $exists = TaskerManager::has(self::TASK_NAME);
-        $cron = '';
-        $nextRun = '';
-        
-        if ($exists) {
-            $list = TaskerManager::list();
-            foreach ($list as $task) {
-                if ($task->name === self::TASK_NAME) {
-                    $cron = $task->cron;
-                    $nextRun = date('Y-m-d H:i:s', $task->next);
-                    break;
-                }
-            }
-        }
-        
-        return Response::asJson([
-            'code' => 200,
-            'data' => [
-                'enabled' => $exists,
-                'cron' => $cron,
-                'nextRun' => $nextRun
-            ]
-        ]);
-    }
 }

@@ -3,6 +3,9 @@
 namespace app\database\dao;
 
 use app\database\model\BookModel;
+use app\utils\SyncTask;
+use nova\plugin\corn\schedule\TaskerManager;
+use nova\plugin\corn\schedule\TaskerTime;
 use nova\plugin\orm\object\Dao;
 use nova\plugin\orm\object\Field;
 use function nova\framework\dump;
@@ -129,5 +132,12 @@ class BookDao extends Dao
     public function getByFileName(string $filename): ?BookModel
     {
         return $this->find(null, ['filename' => $filename]);
+    }
+
+    public function syncBooks($force = false): void
+    {
+        TaskerManager::del("syncBooks");
+        $cron = $force? TaskerTime::after(0) : TaskerTime::after(300);
+        TaskerManager::add($cron,new SyncTask(),"syncBooks");
     }
 }

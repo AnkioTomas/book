@@ -64,3 +64,6 @@
 [submodule "src/nova/plugin/corn"]
 	path = src/nova/plugin/corn
 	url = https://github.com/NovaPHPOrg/nova-corn
+[submodule "src/app/static/components/cron"]
+	path = src/app/static/components/cron
+	url = https://git.ankio.icu/nova-ui/nova-cron
