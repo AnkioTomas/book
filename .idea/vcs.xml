@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/components/captcha" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/app/static/components/cron" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/components/dataTable" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/components/fileUpload" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/components/formDialog" vcs="Git" />
@@ -14,6 +15,7 @@
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/avatar" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/captcha" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/cookie" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/nova/plugin/corn" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/device" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/http" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/ip" vcs="Git" />
