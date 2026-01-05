@@ -95,9 +95,16 @@
         </div>
         <div class="d-flex gap-2">
             <mdui-button id="btnAdd" icon="add" variant="filled">导入</mdui-button>
-            <mdui-button id="btnSync" icon="sync" variant="filled">同步</mdui-button>
-            <mdui-button id="btnBatchEdit" icon="edit_note" variant="outlined">批量操作</mdui-button>
-            <mdui-button id="btnRemoveDuplicates" icon="content_copy" variant="tonal">删除重复</mdui-button>
+            <mdui-button id="btnSync" icon="sync" variant="tonal">同步</mdui-button>
+            <mdui-dropdown>
+                <mdui-button slot="trigger" icon="more_vert" variant="outlined" end-icon="arrow_drop_down">批量操作</mdui-button>
+                <mdui-menu>
+                    <mdui-menu-item id="btnBatchEdit" icon="edit_note">批量编辑</mdui-menu-item>
+                    <mdui-menu-item id="btnBatchDelete" icon="delete_sweep">批量删除</mdui-menu-item>
+                    <mdui-divider></mdui-divider>
+                    <mdui-menu-item id="btnRemoveDuplicates" icon="content_copy">删除重复</mdui-menu-item>
+                </mdui-menu>
+            </mdui-dropdown>
         </div>
     </div>
     

@@ -251,7 +251,7 @@ window.pageOnLoad = function (loading) {
                 });
             });
 
-            // 批量操作按钮
+            // 批量编辑按钮
             $('#btnBatchEdit').on('click', () => {
                 const selected = that.dataTable.getSelectedRows();
                 if (!selected || selected.length === 0) {
@@ -259,6 +259,22 @@ window.pageOnLoad = function (loading) {
                     return;
                 }
                 that.batchDialog.open();
+            });
+
+            // 批量删除按钮
+            $('#btnBatchDelete').on('click', () => {
+                const selected = that.dataTable.getSelectedRows();
+                if (!selected || selected.length === 0) {
+                    $.toaster.warning('请先选择要删除的书籍');
+                    return;
+                }
+                
+                $.layer.confirm({
+                    msg: `确定要删除选中的 ${selected.length} 本书籍吗？<br><small class="text-on-surface-variant">此操作不可恢复</small>`,
+                    yes: () => that.batchDelete(selected),
+                    no: () => {},
+                    title: '批量删除'
+                });
             });
 
             // 拖拽上传
@@ -534,6 +550,42 @@ window.pageOnLoad = function (loading) {
         }
 
         /**
+         * 批量删除书籍
+         * @param {Array} books - 选中的书籍数组
+         */
+        batchDelete(books) {
+            const that = this;
+            const total = books.length;
+            let successCount = 0;
+            let failCount = 0;
+
+            $("body").showLoading(`正在删除 ${total} 本书籍...`);
+
+            const deleteNext = (index) => {
+                if (index >= total) {
+                    $("body").closeLoading();
+                    if (failCount === 0) {
+                        $.toaster.success(`批量删除完成：${successCount} 本成功`);
+                    } else {
+                        $.toaster.warn(`批量删除完成：${successCount} 本成功，${failCount} 本失败`);
+                    }
+                    that.dataTable.reload($.form.val("#searchForm"), true);
+                    return;
+                }
+
+                $.request.postForm('/admin/api/book/delete', { id: books[index].id }, (res) => {
+                    res.code === 200 ? successCount++ : failCount++;
+                    deleteNext(index + 1);
+                }, () => {
+                    failCount++;
+                    deleteNext(index + 1);
+                });
+            };
+
+            deleteNext(0);
+        }
+
+        /**
          * 批量上传文件
          */
         uploadBatch(files) {
@@ -668,7 +720,7 @@ window.pageOnLoad = function (loading) {
          */
         destroy() {
             if (this.dataTable) this.dataTable.destroy();
-            $('#searchForm, #btnAdd, #btnSync, #btnRemoveDuplicates').off();
+            $('#searchForm, #btnAdd, #btnSync, #btnRemoveDuplicates, #btnBatchDelete').off();
             $(this.editDialog).off();
             $(document).off('dragover drop dragenter dragleave');
         }
