@@ -44,7 +44,7 @@ class Duzhege extends BaseController
             foreach (self::$books as $key => $book) {
                 $books[] = [
                     'book' => $key,
-                    'cron' => TaskerManager::get($key)?->cron?:""
+                    'cron' => TaskerManager::getByName($key)?->cron?:""
                 ];
             }
 

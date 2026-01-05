@@ -21,7 +21,7 @@ class Qing extends BaseController
         if ($this->request->isGet()) {
             return Response::asJson([
                 'code' => 200,
-                'data' => TaskerManager::get(self::TASK_NAME)->cron
+                'data' => TaskerManager::getByName(self::TASK_NAME)?->cron?:""
             ]);
         }
         

@@ -137,7 +137,11 @@ class BookDao extends Dao
     public function syncBooks($force = false): void
     {
         TaskerManager::del("syncBooks");
-        $cron = $force? TaskerTime::after(0) : TaskerTime::after(300);
-        TaskerManager::add($cron,new SyncTask(),"syncBooks");
+        if ($force){
+            (new SyncTask())->onStart();
+        }else{
+            TaskerManager::add(TaskerTime::after(300),new SyncTask(),"syncBooks");
+        }
+
     }
 }

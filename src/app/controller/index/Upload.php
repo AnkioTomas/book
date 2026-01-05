@@ -72,6 +72,8 @@ class Upload extends BaseController
                 BookDao::getInstance()->insertModel($model);
             }
 
+            BookDao::getInstance()->syncBooks();
+
             return Response::asJson(["code" => 200, "msg" => "后台上传成功: $title"]);
         } else {
             return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);

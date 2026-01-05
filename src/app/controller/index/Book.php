@@ -91,6 +91,7 @@ class Book extends BaseController
 
         
         if (BookDao::getInstance()->updateModel($book)) {
+            BookDao::getInstance()->syncBooks();
             return Response::asJson(['code' => 200, 'msg' => '更新成功']);
         }
         
@@ -113,6 +114,7 @@ class Book extends BaseController
         BookManager::instance()->deleteBook($book->filename);
         BookManager::instance()->deleteCover($book->filename);
         if (BookDao::getInstance()->deleteById($id)) {
+            BookDao::getInstance()->syncBooks();
             return Response::asJson(['code' => 200, 'msg' => '删除成功']);
         }
 
@@ -128,58 +130,9 @@ class Book extends BaseController
      */
     public function sync(): Response
     {
-        $list = BookManager::instance()->list();
-        /**
-         * @var $book BookModel
-         */
-        foreach ($list as $book) {
-            if ($book->id > 0){
-                $dbBook = BookDao::getInstance()->getById($book->id);
-                if (!$dbBook) continue;
-                
-                // 差异比较：用 $book 的非空值填充 $dbBook 的空字段
-                $needUpdate = false;
-                $fields = ['bookName', 'author', 'description',  'series', 'seriesNum', 'favorite', 'rate', 'coverUrl'];
-                
-                foreach ($fields as $field) {
-                    if (!empty($book->$field) && empty($dbBook->$field)) {
-                        $dbBook->$field = $book->$field;
-                        $needUpdate = true;
-                    }
-                }
-                
-                if ($needUpdate) {
-                    BookDao::getInstance()->updateModel($dbBook);
-                }
-            }else{
-                $book->splitCategory2Series();
-               try{
-                   $filename = $book->filename;
-                   if (BookManager::instance()->bookExists($filename)) {
-                       BookDao::getInstance()->insertModel($book);
-                   }
-               }catch (\Exception $e){
-               }
-            }
-        }
+        BookDao::getInstance()->syncBooks(true);
 
-        $books = BookDao::getInstance()->select()->commit();
-
-        foreach ($books as &$book) {
-            $book = $book->pushSeries2Category();
-            if (!empty($book->coverUrl) && Context::instance()->cache->get("coverUrl/{$book->coverUrl}")){
-                $file = BookManager::proxy($book->coverUrl);
-                if(BookManager::instance()->uploadCover($file,$book->filename)){
-                    Context::instance()->cache->delete("coverUrl/{$book->coverUrl}");
-                }
-            }
-        }
-
-
-
-        BookManager::instance()->push($books);
-
-        return Response::asJson(['code' => 200, 'msg' => '同步完成','data'=>$books]);
+        return Response::asJson(['code' => 200, 'msg' => '同步完成']);
     }
     
     /**

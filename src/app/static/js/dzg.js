@@ -32,7 +32,10 @@ window.pageOnLoad = function (loading) {
         $.request.get("/admin/api/dzg/cron", {}, (response) => {
             if (response.code === 200 && response.data) {
                 for (let i = 0; i < response.data.length; i++) {
-                  //  let cronComponent = document.querySelector('mdui-cron[data-book="'+book+'"]');
+                    let book = encodeURIComponent(response.data[i].book);
+                    let cron = response.data[i].cron;
+                   let cronComponent = document.querySelector('mdui-cron[data-book="'+book+'"]');
+                    cronComponent.setValue(cron);
 
                 }
               //  cronComponent.setValue(response.data);
