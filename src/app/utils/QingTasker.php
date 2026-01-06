@@ -95,13 +95,14 @@ class QingTasker extends TaskerAbstract
         Context::instance()->cache->delete(QingTasker::class);
         Logger::info("下载完成: {$success}/" . count($ebooks));
         BookDao::getInstance()->syncBooks();
-        File::del($this->downloadDir);
+
 
     }
 
     public function onStop(): void
     {
         Logger::info("青年文摘下载任务结束");
+        File::del($this->downloadDir,true);
     }
 
     public function onAbort(Throwable $e): void

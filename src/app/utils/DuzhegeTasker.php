@@ -89,11 +89,11 @@ class DuzhegeTasker extends TaskerAbstract
         Context::instance()->cache->delete($this->book);
         Logger::info("下载完成: {$success}/" . count($ebooks));
         BookDao::getInstance()->syncBooks();
-        File::del($this->downloadDir);
     }
 
     public function onStop(): void
     {
+        File::del($this->downloadDir,true);
         Logger::info($this->book . "下载任务结束");
     }
 
