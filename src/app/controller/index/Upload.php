@@ -68,7 +68,6 @@ class Upload extends BaseController
                 $model->bookName = $title;
                 $model->author = $author ?? "";
                 $model->downloadUrl = "[WebDav]/Apps/Books/".$file->name;
-                $model->extractSeriesNumber();
                 $path = Parser::cover($path,$model);
                 if (!empty($path)){
                     $bookManager->uploadCover($path, $model->filename);

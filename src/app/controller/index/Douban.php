@@ -84,6 +84,7 @@ class Douban extends BaseController
         $client = HttpClient::init()
             ->timeout(300)
             ->gzip()
+            ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
             ->setHeader('User-Agent', BookManager::getRandomUserAgent())
             ->setHeader('X-Forwarded-For', BookManager::getRandomIP())
             ->get();
@@ -357,6 +358,7 @@ class Douban extends BaseController
         $client = HttpClient::init()
             ->timeout(300)
             ->gzip()
+            ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
             ->setHeader('User-Agent', BookManager::getRandomUserAgent())
             ->setHeader('X-Forwarded-For', BookManager::getRandomIP())
             ->get();

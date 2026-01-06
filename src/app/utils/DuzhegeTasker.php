@@ -72,7 +72,6 @@ class DuzhegeTasker extends TaskerAbstract
                     $model->author = $this->book . "编辑部";
                     $model->favorite = "杂志";
                     $model->downloadUrl = "[WebDav]/Apps/Books/" . $filename;
-                    $model->extractSeriesNumber();
                     $path = Parser::cover($filepath,$model);
                     if (!empty($path)){
                         $bookManager->uploadCover($path, $model->filename);
@@ -80,8 +79,6 @@ class DuzhegeTasker extends TaskerAbstract
                     BookDao::getInstance()->insertModel($model);
                 }
                 $success++;
-            }else{
-                $model->extractSeriesNumber();
             }
 
 
