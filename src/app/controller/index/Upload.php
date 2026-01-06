@@ -68,7 +68,7 @@ class Upload extends BaseController
                 $model->bookName = $title;
                 $model->author = $author ?? "";
                 $model->downloadUrl = "[WebDav]/Apps/Books/".$file->name;
-
+                $model->extractSeriesNumber();
                 BookDao::getInstance()->insertModel($model);
             }
 

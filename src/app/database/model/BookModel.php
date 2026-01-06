@@ -2,6 +2,7 @@
 
 namespace app\database\model;
 
+use app\database\dao\BookDao;
 use nova\plugin\orm\object\Model;
 
 class BookModel extends Model
@@ -112,6 +113,23 @@ class BookModel extends Model
             $seriesLine = "<{$this->series}>\n#{$this->seriesNum}#\n";
             $this->category = $seriesLine . $this->category;
         }
+        return $this;
+    }
+
+    /**
+     * 从书名中提取系列编号
+     * 简单粗暴：移除所有非数字字符，剩余数字转为 int
+     * 例如: "哈利波特7" -> 7, "第12卷" -> 12
+     */
+    public function extractSeriesNumber(): self
+    {
+        if ($this->seriesNum > 0) return $this;
+        
+        $digits = preg_replace('/\D+/', '', $this->bookName);
+        $this->seriesNum = $digits !== '' ? (int)$digits : 0;
+
+        BookDao::getInstance()->updateModel($this);
+
         return $this;
     }
 

@@ -71,10 +71,12 @@ class DuzhegeTasker extends TaskerAbstract
                     $model->author = $this->book . "编辑部";
                     $model->favorite = "杂志";
                     $model->downloadUrl = "[WebDav]/Apps/Books/" . $filename;
-
+                    $model->extractSeriesNumber();
                     BookDao::getInstance()->insertModel($model);
                 }
                 $success++;
+            }else{
+                $model->extractSeriesNumber();
             }
 
 

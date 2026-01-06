@@ -77,10 +77,12 @@ class QingTasker extends TaskerAbstract
                     $model->author = "青年文摘编辑部";
                     $model->favorite = "杂志";
                     $model->downloadUrl = "[WebDav]/Apps/Books/" . $filename;
-
+                    $model->extractSeriesNumber();
                     BookDao::getInstance()->insertModel($model);
                 }
                 $success++;
+            }else{
+                $model->extractSeriesNumber();
             }
 
 
