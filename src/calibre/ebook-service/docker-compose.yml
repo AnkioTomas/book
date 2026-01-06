@@ -1,0 +1,50 @@
+# 电子书能力微服务 - Docker Compose
+#
+# 开发环境：docker-compose up
+# 生产环境：docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  ebook-service:
+    build: .
+    container_name: ebook-service
+    ports:
+      - "8080:5000"
+    
+    # 资源限制（很重要！转换是 CPU 密集型）
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # 临时文件目录（可选：挂载 tmpfs 提升性能）
+    tmpfs:
+      - /tmp:size=500M
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # 重启策略
+    restart: unless-stopped
+    
+    environment:
+      - TZ=Asia/Shanghai
+      - PYTHONUNBUFFERED=1
+
