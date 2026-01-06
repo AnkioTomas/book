@@ -6,6 +6,7 @@ namespace app\utils;
 
 use app\database\dao\BookDao;
 use app\database\model\BookModel;
+use app\utils\BookOrganizer\Parser;
 use nova\framework\core\Context;
 use nova\framework\core\File;
 use nova\framework\core\Logger;
@@ -72,6 +73,10 @@ class DuzhegeTasker extends TaskerAbstract
                     $model->favorite = "杂志";
                     $model->downloadUrl = "[WebDav]/Apps/Books/" . $filename;
                     $model->extractSeriesNumber();
+                    $path = Parser::cover($filepath,$model);
+                    if (!empty($path)){
+                        $bookManager->uploadCover($path, $model->filename);
+                    }
                     BookDao::getInstance()->insertModel($model);
                 }
                 $success++;

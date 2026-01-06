@@ -101,14 +101,14 @@ class EbookServiceClient
     }
     
     /**
-     * 格式转换
+     * 格式转换并保存到文件（流式下载，不占内存）
      * 
      * @param string $bookPath 电子书文件路径
      * @param string $targetFormat 目标格式（epub, mobi, azw3, pdf, txt）
-     * @return string 转换后文件的二进制数据
+     * @param string $savePath 保存路径
      * @throws RuntimeException
      */
-    public function convert(string $bookPath, string $targetFormat): string
+    public function convertToFile(string $bookPath, string $targetFormat, string $savePath): void
     {
         $this->validateFile($bookPath);
         
@@ -119,30 +119,89 @@ class EbookServiceClient
             throw new RuntimeException("不支持的目标格式: $targetFormat");
         }
         
-        $response = $this->postFile('/convert', $bookPath, false, [
-            'target' => $targetFormat
-        ]);
+        $url = $this->baseUrl . '/convert';
         
-        if (empty($response)) {
-            throw new RuntimeException('转换失败');
+        // 打开目标文件用于写入
+        $fp = fopen($savePath, 'wb');
+        if (!$fp) {
+            throw new RuntimeException("无法创建文件: $savePath");
         }
         
-        return $response;
-    }
-    
-    /**
-     * 格式转换并保存到文件
-     * 
-     * @param string $bookPath 电子书文件路径
-     * @param string $targetFormat 目标格式
-     * @param string $savePath 保存路径
-     * @throws RuntimeException
-     */
-    public function convertToFile(string $bookPath, string $targetFormat, string $savePath): void
-    {
-        $data = $this->convert($bookPath, $targetFormat);
-        if (file_put_contents($savePath, $data) === false) {
-            throw new RuntimeException("无法写入文件: $savePath");
+        // 用于捕获响应头
+        $responseHeaders = [];
+        $httpCode = 0;
+        
+        try {
+            $postData = [
+                'file' => new \CURLFile($bookPath, mime_content_type($bookPath) ?: 'application/octet-stream', basename($bookPath)),
+                'target' => $targetFormat
+            ];
+            
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $url,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $postData,
+                CURLOPT_TIMEOUT => $this->timeout,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                // 关键：直接写入文件，不占内存
+                CURLOPT_FILE => $fp,
+                // 捕获响应头
+                CURLOPT_HEADERFUNCTION => function ($ch, $header) use (&$responseHeaders, &$httpCode) {
+                    $len = strlen($header);
+                    // 解析 HTTP 状态码
+                    if (preg_match('/^HTTP\/\S+\s+(\d+)/', $header, $m)) {
+                        $httpCode = (int)$m[1];
+                    }
+                    // 解析响应头
+                    if (strpos($header, ':') !== false) {
+                        [$key, $value] = explode(':', $header, 2);
+                        $responseHeaders[trim($key)] = trim($value);
+                    }
+                    return $len;
+                }
+            ]);
+            
+            $result = curl_exec($ch);
+            $error = curl_error($ch);
+            curl_close($ch);
+            
+            fclose($fp);
+            
+            // 检查错误
+            if ($result === false) {
+                @unlink($savePath);
+                throw new RuntimeException("请求失败: $error");
+            }
+            
+            // 检查 HTTP 状态码
+            if ($httpCode >= 400) {
+                // 读取错误响应（文件内容是错误信息）
+                $errorBody = file_get_contents($savePath);
+                @unlink($savePath);
+                
+                // 尝试解析 JSON 错误
+                $json = json_decode($errorBody, true);
+                if (isset($json['error'])) {
+                    throw new RuntimeException($json['error']);
+                }
+                throw new RuntimeException("HTTP $httpCode: $errorBody");
+            }
+            
+            // 检查是否写入成功
+            if (!file_exists($savePath) || filesize($savePath) === 0) {
+                @unlink($savePath);
+                throw new RuntimeException('转换失败：输出文件为空');
+            }
+            
+        } catch (\Exception $e) {
+            if (is_resource($fp)) {
+                fclose($fp);
+            }
+            @unlink($savePath);
+            throw $e;
         }
     }
     

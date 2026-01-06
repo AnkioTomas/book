@@ -2,6 +2,11 @@
 
 namespace app\utils\BookOrganizer;
 
+use app\database\model\BookModel;
+use app\utils\EbookServiceClient;
+use nova\framework\core\File;
+use function nova\framework\config;
+
 class Parser
 {
     static function filename(string $filename): array
@@ -96,5 +101,21 @@ class Parser
         }
 
         return [$author, $title, $year, $ext];
+    }
+
+    static function cover(string $bookPath,BookModel $model): string
+    {
+        $key = md5($model->filename);
+        $path = RUNTIME_PATH . DS. "images" . DS ;
+        File::mkdir($path);
+        $file = $path . $key . ".png";
+        if (file_exists($file)) return $file;
+        $client = new EbookServiceClient(config('calibre'));
+        try {
+            $client->extractCoverToFile($bookPath,$file);
+            return $file;
+        }catch (\RuntimeException $exception){
+            return '';
+        }
     }
 }
