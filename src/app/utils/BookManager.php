@@ -112,6 +112,12 @@ class BookManager
     {
         return $this->client->upload($file, $this->path . DS . $filename);
     }
+    
+    public function downloadBook(string $filename, string $localPath): bool
+    {
+        File::mkDir(dirname($localPath));
+        return $this->client->download($this->path . DS . $filename, $localPath);
+    }
 
     public static function proxy($uri):string
     {

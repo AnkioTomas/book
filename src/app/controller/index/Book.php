@@ -5,10 +5,9 @@ namespace app\controller\index;
 use app\database\dao\BookDao;
 use app\database\model\BookModel;
 use app\utils\BookManager;
-use nova\framework\cache\Cache;
+use app\utils\BookOrganizer\Parser;
 use nova\framework\core\Context;
 use nova\framework\http\Response;
-use function nova\framework\dump;
 
 class Book extends BaseController
 {
@@ -199,6 +198,40 @@ class Book extends BaseController
                 'deletedBooks' => $deletedBooks
             ]
         ]);
+    }
+    
+    /**
+     * 刮削封面
+     */
+    public function scrapeCover(): Response
+    {
+        $id = intval($this->request->post('id', 0));
+        if ($id <= 0) return Response::asJson(['code' => 400, 'msg' => '参数错误']);
+        
+        $book = BookDao::getInstance()->getById($id);
+        if (!$book) return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
+        
+        $bookManager = BookManager::instance();
+        
+        // 下载书籍到临时目录
+        $tempPath = RUNTIME_PATH . DS . 'temp' . DS . $book->filename;
+        if (!$bookManager->downloadBook($book->filename, $tempPath)) {
+            return Response::asJson(['code' => 500, 'msg' => '下载书籍失败']);
+        }
+        
+        // 提取封面
+        $coverPath = Parser::cover($tempPath, $book);
+
+        if (empty($coverPath)) {
+            return Response::asJson(['code' => 500, 'msg' => '提取封面失败']);
+        }
+        
+        // 上传封面
+        if (!$bookManager->uploadCover($coverPath, $book->filename)) {
+            return Response::asJson(['code' => 500, 'msg' => '上传封面失败']);
+        }
+        
+        return Response::asJson(['code' => 200, 'msg' => '刮削成功']);
     }
 
 }

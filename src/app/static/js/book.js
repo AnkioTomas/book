@@ -277,6 +277,16 @@ window.pageOnLoad = function (loading) {
                 });
             });
 
+            // 批量刮削封面
+            $('#btnBatchScrape').on('click', () => {
+                const selected = that.dataTable.getSelectedRows();
+                if (!selected || selected.length === 0) {
+                    $.toaster.warning('请先选择要刮削的书籍');
+                    return;
+                }
+                that.batchScrape(selected);
+            });
+
             // 拖拽上传
             this.initDragUpload();
 
@@ -551,7 +561,6 @@ window.pageOnLoad = function (loading) {
 
         /**
          * 批量删除书籍
-         * @param {Array} books - 选中的书籍数组
          */
         batchDelete(books) {
             const that = this;
@@ -564,11 +573,7 @@ window.pageOnLoad = function (loading) {
             const deleteNext = (index) => {
                 if (index >= total) {
                     $("body").closeLoading();
-                    if (failCount === 0) {
-                        $.toaster.success(`批量删除完成：${successCount} 本成功`);
-                    } else {
-                        $.toaster.warn(`批量删除完成：${successCount} 本成功，${failCount} 本失败`);
-                    }
+                    $.toaster[failCount === 0 ? 'success' : 'warn'](`删除完成：${successCount} 成功，${failCount} 失败`);
                     that.dataTable.reload($.form.val("#searchForm"), true);
                     return;
                 }
@@ -583,6 +588,39 @@ window.pageOnLoad = function (loading) {
             };
 
             deleteNext(0);
+        }
+
+        /**
+         * 批量刮削封面
+         */
+        batchScrape(books) {
+            const that = this;
+            const total = books.length;
+            let successCount = 0;
+            let failCount = 0;
+
+            $("body").showLoading(`正在刮削封面 (0/${total})...`);
+
+            const scrapeNext = (index) => {
+                if (index >= total) {
+                    $("body").closeLoading();
+                    $.toaster[failCount === 0 ? 'success' : 'warn'](`刮削完成：${successCount} 成功，${failCount} 失败`);
+                    that.dataTable.reload($.form.val("#searchForm"), true);
+                    return;
+                }
+
+                $("body").showLoading(`正在刮削封面 (${index + 1}/${total})...`);
+
+                $.request.postForm('/admin/api/book/scrapeCover', { id: books[index].id }, (res) => {
+                    res.code === 200 ? successCount++ : failCount++;
+                    scrapeNext(index + 1);
+                }, () => {
+                    failCount++;
+                    scrapeNext(index + 1);
+                });
+            };
+
+            scrapeNext(0);
         }
 
         /**

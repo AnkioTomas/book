@@ -5,6 +5,7 @@ namespace app\utils\BookOrganizer;
 use app\database\model\BookModel;
 use app\utils\EbookServiceClient;
 use nova\framework\core\File;
+use nova\framework\core\Logger;
 use function nova\framework\config;
 
 class Parser
@@ -115,6 +116,7 @@ class Parser
             $client->extractCoverToFile($bookPath,$file);
             return $file;
         }catch (\RuntimeException $exception){
+            Logger::debug($exception->getMessage());
             return '';
         }
     }

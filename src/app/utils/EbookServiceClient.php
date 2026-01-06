@@ -75,6 +75,7 @@ class EbookServiceClient
     public function extractCoverToFile(string $bookPath, string $savePath): void
     {
         $coverData = $this->extractCover($bookPath);
+        if (str_contains($coverData,"Not Found")) return;
         if (file_put_contents($savePath, $coverData) === false) {
             throw new RuntimeException("无法写入文件: $savePath");
         }

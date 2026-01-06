@@ -101,6 +101,7 @@
                 <mdui-menu>
                     <mdui-menu-item id="btnBatchEdit" icon="edit_note">批量编辑</mdui-menu-item>
                     <mdui-menu-item id="btnBatchDelete" icon="delete_sweep">批量删除</mdui-menu-item>
+                    <mdui-menu-item id="btnBatchScrape" icon="image">批量刮削封面</mdui-menu-item>
                     <mdui-divider></mdui-divider>
                     <mdui-menu-item id="btnRemoveDuplicates" icon="content_copy">删除重复</mdui-menu-item>
                 </mdui-menu>
