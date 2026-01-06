@@ -110,7 +110,6 @@ class Parser
         $path = RUNTIME_PATH . DS. "images" . DS ;
         File::mkdir($path);
         $file = $path . $key . ".png";
-        if (file_exists($file)) return $file;
         $client = new EbookServiceClient(config('calibre'));
         try {
             $client->extractCoverToFile($bookPath,$file);

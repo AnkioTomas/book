@@ -12,7 +12,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 from werkzeug.utils import secure_filename
 
-from core.calibre import Calibre
+from core.calibre import Calibre, CalibreError
 from core.epub import EpubHandler
 from core.detect import detect_format
 
@@ -59,12 +59,7 @@ def health():
 
 @app.route('/cover', methods=['POST'])
 def extract_cover():
-    """
-    提取封面
-    
-    请求：multipart/form-data, file=@book.epub
-    响应：image/jpeg 或 error json
-    """
+    """提取封面"""
     if 'file' not in request.files:
         return error_response('缺少 file 参数')
     
@@ -75,38 +70,31 @@ def extract_cover():
     with Sandbox() as sandbox:
         book_path = sandbox.save_upload(file)
         cover_path = sandbox.temp_path('cover.jpg')
-        
         fmt = detect_format(book_path)
         
-        # EPUB 优先用原生解析（更快）
-        if fmt == 'epub':
-            result = epub_handler.extract_cover(book_path, cover_path)
-        else:
-            result = calibre.extract_cover(book_path, cover_path)
+        try:
+            if fmt == 'epub':
+                epub_handler.extract_cover(book_path, cover_path)
+            else:
+                calibre.extract_cover(book_path, cover_path)
+        except CalibreError as e:
+            return error_response(str(e), 500)
+        except Exception as e:
+            return error_response(f'提取封面失败: {e}', 500)
         
-        if not result or not os.path.exists(cover_path):
-            return error_response('无法提取封面', 404)
+        if not os.path.exists(cover_path):
+            return error_response('封面提取失败：文件未生成', 500)
         
-        # 读取到内存后返回（沙箱会被销毁）
         with open(cover_path, 'rb') as f:
             cover_data = f.read()
     
     from io import BytesIO
-    return send_file(
-        BytesIO(cover_data),
-        mimetype='image/jpeg',
-        download_name='cover.jpg'
-    )
+    return send_file(BytesIO(cover_data), mimetype='image/jpeg', download_name='cover.jpg')
 
 
 @app.route('/meta', methods=['POST'])
 def read_meta():
-    """
-    读取元数据
-    
-    请求：multipart/form-data, file=@book.epub
-    响应：JSON
-    """
+    """读取元数据"""
     if 'file' not in request.files:
         return error_response('缺少 file 参数')
     
@@ -118,14 +106,15 @@ def read_meta():
         book_path = sandbox.save_upload(file)
         fmt = detect_format(book_path)
         
-        # EPUB 优先用原生解析
-        if fmt == 'epub':
-            meta = epub_handler.read_meta(book_path)
-        else:
-            meta = calibre.read_meta(book_path)
-        
-        if meta is None:
-            return error_response('无法读取元数据', 500)
+        try:
+            if fmt == 'epub':
+                meta = epub_handler.read_meta(book_path)
+            else:
+                meta = calibre.read_meta(book_path)
+        except CalibreError as e:
+            return error_response(str(e), 500)
+        except Exception as e:
+            return error_response(f'读取元数据失败: {e}', 500)
         
         meta['format'] = fmt
     
@@ -134,16 +123,7 @@ def read_meta():
 
 @app.route('/convert', methods=['POST'])
 def convert():
-    """
-    格式转换
-    
-    请求：multipart/form-data
-      - file=@book.mobi
-      - target=epub (目标格式)
-    响应：转换后的文件
-    
-    注意：同步接口，大文件会慢，超时 60s
-    """
+    """格式转换"""
     if 'file' not in request.files:
         return error_response('缺少 file 参数')
     
@@ -159,24 +139,21 @@ def convert():
     
     with Sandbox() as sandbox:
         book_path = sandbox.save_upload(file)
-        
-        # 输出文件名
         stem = Path(file.filename).stem
         output_name = f'{stem}.{target}'
         output_path = sandbox.temp_path(output_name)
         
-        success = calibre.convert(book_path, output_path)
+        try:
+            calibre.convert(book_path, output_path)
+        except CalibreError as e:
+            return error_response(str(e), 500)
+        except Exception as e:
+            return error_response(f'转换失败: {e}', 500)
         
-        if not success or not os.path.exists(output_path):
-            return error_response('转换失败', 500)
-        
-        # 读取到内存
         with open(output_path, 'rb') as f:
             output_data = f.read()
     
     from io import BytesIO
-    
-    # MIME 类型映射
     mime_types = {
         'epub': 'application/epub+zip',
         'mobi': 'application/x-mobipocket-ebook',

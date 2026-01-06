@@ -1,30 +1,41 @@
 """
 Calibre CLI 封装层
-
-原则：
-1. 所有 Calibre 调用只在这里
-2. 统一错误处理
-3. 未来换工具，只改这一个文件
 """
 
 import subprocess
 import re
 import shutil
-from typing import Optional, Dict, Any
+import os
+from typing import Dict, Any
 
 
 class CalibreError(Exception):
-    """Calibre 调用错误"""
-    pass
+    """Calibre 调用错误，包含详细信息"""
+    
+    def __init__(self, message: str, cmd: list = None, returncode: int = None, 
+                 stdout: str = None, stderr: str = None):
+        self.message = message
+        self.cmd = cmd
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+        super().__init__(self._format())
+    
+    def _format(self) -> str:
+        parts = [self.message]
+        if self.returncode is not None:
+            parts.append(f"退出码: {self.returncode}")
+        if self.stderr:
+            parts.append(f"错误: {self.stderr[:200]}")  # 截断避免太长
+        return " | ".join(parts)
 
 
 class Calibre:
     """Calibre CLI 统一封装"""
     
-    TIMEOUT = 60  # 秒
+    TIMEOUT = 60
     
     def __init__(self):
-        # 检查 Calibre 是否可用
         self._ebook_meta = shutil.which('ebook-meta')
         self._ebook_convert = shutil.which('ebook-convert')
         
@@ -32,93 +43,46 @@ class Calibre:
             raise RuntimeError('ebook-meta 未找到，请安装 Calibre')
     
     def version(self) -> str:
-        """获取 Calibre 版本"""
         try:
             result = self._run([self._ebook_meta, '--version'])
             return result.stdout.strip()
         except Exception:
             return 'unknown'
     
-    def extract_cover(self, book_path: str, cover_path: str) -> bool:
-        """
-        提取封面
+    def extract_cover(self, book_path: str, cover_path: str) -> None:
+        """提取封面，失败抛异常"""
+        if not os.path.exists(book_path):
+            raise CalibreError(f"文件不存在: {book_path}")
         
-        Args:
-            book_path: 电子书路径
-            cover_path: 封面输出路径
+        self._run([self._ebook_meta, book_path, '--get-cover', cover_path])
         
-        Returns:
-            是否成功
-        """
-        try:
-            self._run([
-                self._ebook_meta,
-                book_path,
-                '--get-cover', cover_path
-            ])
-            return True
-        except CalibreError:
-            return False
+        if not os.path.exists(cover_path):
+            raise CalibreError("封面提取失败：电子书可能没有内嵌封面")
     
-    def read_meta(self, book_path: str) -> Optional[Dict[str, Any]]:
-        """
-        读取元数据
+    def read_meta(self, book_path: str) -> Dict[str, Any]:
+        """读取元数据，失败抛异常"""
+        if not os.path.exists(book_path):
+            raise CalibreError(f"文件不存在: {book_path}")
         
-        Args:
-            book_path: 电子书路径
-        
-        Returns:
-            元数据字典，失败返回 None
-        """
-        try:
-            result = self._run([self._ebook_meta, book_path])
-            return self._parse_meta_output(result.stdout)
-        except CalibreError:
-            return None
+        result = self._run([self._ebook_meta, book_path])
+        return self._parse_meta_output(result.stdout)
     
-    def write_meta(
-        self,
-        book_path: str,
-        title: str = None,
-        authors: list = None,
-        cover: str = None,
-        **kwargs
-    ) -> bool:
-        """
-        写入元数据
-        
-        Args:
-            book_path: 电子书路径
-            title: 标题
-            authors: 作者列表
-            cover: 封面图片路径
-            **kwargs: 其他元数据
-        
-        Returns:
-            是否成功
-        """
+    def write_meta(self, book_path: str, title: str = None, authors: list = None,
+                   cover: str = None, **kwargs) -> None:
+        """写入元数据，失败抛异常"""
         cmd = [self._ebook_meta, book_path]
         
         if title:
             cmd.extend(['--title', title])
-        
         if authors:
-            # Calibre 用 & 分隔多作者
             cmd.extend(['--authors', ' & '.join(authors)])
-        
         if cover:
             cmd.extend(['--cover', cover])
         
-        # 其他常见字段
         field_map = {
-            'publisher': '--publisher',
-            'language': '--language',
-            'isbn': '--isbn',
-            'tags': '--tags',
-            'series': '--series',
-            'series_index': '--index',
-            'comments': '--comments',
-            'pubdate': '--date',
+            'publisher': '--publisher', 'language': '--language',
+            'isbn': '--isbn', 'tags': '--tags', 'series': '--series',
+            'series_index': '--index', 'comments': '--comments', 'pubdate': '--date',
         }
         
         for key, flag in field_map.items():
@@ -128,79 +92,47 @@ class Calibre:
                     value = ', '.join(value)
                 cmd.extend([flag, str(value)])
         
-        try:
-            self._run(cmd)
-            return True
-        except CalibreError:
-            return False
+        self._run(cmd)
     
-    def convert(
-        self,
-        input_path: str,
-        output_path: str,
-        options: list = None
-    ) -> bool:
-        """
-        格式转换
-        
-        Args:
-            input_path: 输入文件
-            output_path: 输出文件（扩展名决定目标格式）
-            options: 额外选项列表
-        
-        Returns:
-            是否成功
-        """
+    def convert(self, input_path: str, output_path: str, options: list = None) -> None:
+        """格式转换，失败抛异常"""
         if not self._ebook_convert:
             raise CalibreError('ebook-convert 未找到')
         
-        cmd = [self._ebook_convert, input_path, output_path]
+        if not os.path.exists(input_path):
+            raise CalibreError(f"输入文件不存在: {input_path}")
         
+        cmd = [self._ebook_convert, input_path, output_path]
         if options:
             cmd.extend(options)
         
-        try:
-            # 转换可能很慢，用更长的超时
-            self._run(cmd, timeout=600)
-            return True
-        except CalibreError:
-            return False
-    
-    def _run(
-        self,
-        cmd: list,
-        timeout: int = None
-    ) -> subprocess.CompletedProcess:
-        """
-        执行命令
+        self._run(cmd, timeout=600)
         
-        统一处理：超时、错误、编码
-        """
+        if not os.path.exists(output_path):
+            raise CalibreError("转换失败：输出文件未生成")
+    
+    def _run(self, cmd: list, timeout: int = None) -> subprocess.CompletedProcess:
+        """执行命令，失败抛带详情的异常"""
         timeout = timeout or self.TIMEOUT
         
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             
-            # ebook-meta 有时返回非零但实际成功，检查 stderr
             if result.returncode != 0:
-                # 忽略某些"警告"类错误
-                if 'cover' in ' '.join(cmd) and 'No cover' in result.stderr:
-                    raise CalibreError('No cover found')
+                # 特殊处理：无封面
+                if '--get-cover' in cmd and 'No cover' in (result.stderr or ''):
+                    raise CalibreError("电子书没有内嵌封面", cmd, result.returncode, 
+                                       result.stdout, result.stderr)
                 # 其他错误
-                if result.stderr.strip():
-                    raise CalibreError(result.stderr.strip())
+                raise CalibreError("命令执行失败", cmd, result.returncode,
+                                   result.stdout, result.stderr)
             
             return result
             
         except subprocess.TimeoutExpired:
-            raise CalibreError(f'命令超时 ({timeout}s)')
+            raise CalibreError(f"命令超时 ({timeout}秒)，文件可能过大", cmd)
         except FileNotFoundError:
-            raise CalibreError(f'命令未找到: {cmd[0]}')
+            raise CalibreError(f"命令未找到: {cmd[0]}", cmd)
     
     def _parse_meta_output(self, output: str) -> Dict[str, Any]:
         """

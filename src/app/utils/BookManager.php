@@ -100,7 +100,13 @@ class BookManager
         File::mkdir($path);
         $file = $path . $key . ".png";
 
-        if ($this->client->download($remotePath,$file)){
+        if ($this->client->download($remotePath, $file)) {
+            // 检查是否是错误响应而非真实图片
+            $content = file_get_contents($file, false, null, 0, 20);
+            if (str_contains($content, 'Not Found')) {
+                File::del($file);
+                return '';
+            }
             return $file;
         }
         return '';
@@ -127,7 +133,9 @@ class BookManager
         $path = RUNTIME_PATH . DS. "images" . DS ;
         File::mkdir($path);
         $file = $path . $key . ".png";
-        if (file_exists($file)) return $file;
+        if (file_exists($file)) {
+            return $file;
+        }
         $client = HttpClient::init()
             ->timeout(300)
             ->setHeader('User-Agent', self::getRandomUserAgent())
@@ -135,7 +143,11 @@ class BookManager
             ->setHeader("Referer", $uri)
             ->send($uri);
 
-        File::write($file, $client->getBody());
+        if($client->getHttpCode() === 200){
+            File::write($file, $client->getBody());
+        }
+
+
         return $file;
     }
 

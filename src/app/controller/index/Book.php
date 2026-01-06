@@ -7,6 +7,7 @@ use app\database\model\BookModel;
 use app\utils\BookManager;
 use app\utils\BookOrganizer\Parser;
 use nova\framework\core\Context;
+use nova\framework\core\File;
 use nova\framework\http\Response;
 
 class Book extends BaseController
@@ -223,14 +224,16 @@ class Book extends BaseController
         $coverPath = Parser::cover($tempPath, $book);
 
         if (empty($coverPath)) {
+            File::del($tempPath);
             return Response::asJson(['code' => 500, 'msg' => '提取封面失败']);
         }
         
         // 上传封面
         if (!$bookManager->uploadCover($coverPath, $book->filename)) {
+            File::del($tempPath);
             return Response::asJson(['code' => 500, 'msg' => '上传封面失败']);
         }
-        
+        File::del($tempPath);
         return Response::asJson(['code' => 200, 'msg' => '刮削成功']);
     }
 
