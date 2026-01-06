@@ -106,9 +106,16 @@ class QingTasker extends TaskerAbstract
 
     public function onAbort(Throwable $e): void
     {
+        Context::instance()->cache->delete(QingTasker::class);
         Logger::error("青年文摘下载任务异常终止: " . $e->getMessage(), $e->getTrace());
     }
 
+    private function dns():array
+    {
+        return [
+
+        ];
+    }
     /**
      * 获取电子书列表
      */
@@ -118,6 +125,7 @@ class QingTasker extends TaskerAbstract
             ->setHeader('Referer', 'https://weixin65732.raysclab.com/')
             ->setOption(CURLOPT_COOKIE, $this->cookie)
             ->timeout(300)
+            ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
             ->get();
 
         $response = $client->send(self::API_URL);
@@ -171,6 +179,7 @@ class QingTasker extends TaskerAbstract
             Logger::info("开始下载: {$filename}");
             $client = HttpClient::init()
                 ->timeout(300)
+                ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
                 ->get();
             $download = new HttpDownloadManager($client);
 

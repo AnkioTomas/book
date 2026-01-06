@@ -120,6 +120,7 @@ class DuzhegeTasker extends TaskerAbstract
             $response = HttpClient::init()
                 ->setHeader('Referer', 'https://yun.duzhege.cn')
                 ->timeout(300)
+                ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
                 ->post([
                     'path' => $link,
                     'password' => '',
@@ -172,6 +173,7 @@ class DuzhegeTasker extends TaskerAbstract
             Logger::info("开始下载: {$filename}");
             $client = HttpClient::init()
                 ->timeout(300)
+                ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
                 ->get();
             $download = new HttpDownloadManager($client);
 
