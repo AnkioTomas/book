@@ -84,6 +84,12 @@
         color: rgba(var(--mdui-color-on-surface-variant));
         font-size: .875rem;
     }
+
+   #searchForm mdui-select::part(menu){
+       max-height: 50vh;
+       width: fit-content;
+       overflow-y: scroll;
+   }
 </style>
 
 <div id="container" class="container py-4">
@@ -124,7 +130,7 @@
             
             <!-- 系列筛选 -->
             <div class="col-xs6 col-sm3 col-md2">
-                <mdui-select name="series" clearable label="系列">
+                <mdui-select style="max-height: 50vh;min-width: fit-content" name="series" clearable label="系列">
                     <mdui-menu-item value="">全部</mdui-menu-item>
                     <!-- 动态填充 -->
                 </mdui-select>
