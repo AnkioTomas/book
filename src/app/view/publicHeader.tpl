@@ -1,3 +1,8 @@
+<style id="hiddenBody">
+    body{
+        display: none!important;
+    }
+</style>
 <!-- 预连接到 Google Fonts,减少 DNS 查询延迟 -->
 <link rel="preconnect" href="https://fonts.loli.net">
 <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
