@@ -17,9 +17,6 @@ class BaseController extends Controller
      */
     public function init(): ?Response
     {
-        // 检查用户是否已登录，未登录则跳转到登录页
-        $this->userModel = LoginManager::getInstance()->checkLogin();
-
         $this->userModel = LoginManager::getInstance()->checkLogin();
 
         if (empty($this->userModel)) {

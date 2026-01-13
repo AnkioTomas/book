@@ -299,7 +299,7 @@ window.pageOnLoad = function (loading) {
             this.batchDialog.submit(null, (formData) => {
                 const selected = that.dataTable.getSelectedRows();
                 if (!selected || selected.length === 0) {
-                    $.toaster.warning('没有选中的书籍');
+                    $.toaster.warn('没有选中的书籍');
                     return;
                 }
 
@@ -311,7 +311,7 @@ window.pageOnLoad = function (loading) {
                 if (formData.series) batchData.series = formData.series;
 
                 if (Object.keys(batchData).length === 0) {
-                    $.toaster.warning('请至少填写一个要批量设置的字段');
+                    $.toaster.warn('请至少填写一个要批量设置的字段');
                     return;
                 }
 
