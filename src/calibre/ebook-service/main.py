@@ -73,9 +73,9 @@ def extract_cover():
         fmt = detect_format(book_path)
         
         try:
-            if fmt == 'epub':
+        if fmt == 'epub':
                 epub_handler.extract_cover(book_path, cover_path)
-            else:
+        else:
                 calibre.extract_cover(book_path, cover_path)
         except CalibreError as e:
             return error_response(str(e), 500)
@@ -107,10 +107,10 @@ def read_meta():
         fmt = detect_format(book_path)
         
         try:
-            if fmt == 'epub':
-                meta = epub_handler.read_meta(book_path)
-            else:
-                meta = calibre.read_meta(book_path)
+        if fmt == 'epub':
+            meta = epub_handler.read_meta(book_path)
+        else:
+            meta = calibre.read_meta(book_path)
         except CalibreError as e:
             return error_response(str(e), 500)
         except Exception as e:

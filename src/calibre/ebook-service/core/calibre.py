@@ -64,8 +64,8 @@ class Calibre:
         if not os.path.exists(book_path):
             raise CalibreError(f"文件不存在: {book_path}")
         
-        result = self._run([self._ebook_meta, book_path])
-        return self._parse_meta_output(result.stdout)
+            result = self._run([self._ebook_meta, book_path])
+            return self._parse_meta_output(result.stdout)
     
     def write_meta(self, book_path: str, title: str = None, authors: list = None,
                    cover: str = None, **kwargs) -> None:
@@ -92,7 +92,7 @@ class Calibre:
                     value = ', '.join(value)
                 cmd.extend([flag, str(value)])
         
-        self._run(cmd)
+            self._run(cmd)
     
     def convert(self, input_path: str, output_path: str, options: list = None) -> None:
         """格式转换，失败抛异常"""
@@ -106,7 +106,7 @@ class Calibre:
         if options:
             cmd.extend(options)
         
-        self._run(cmd, timeout=600)
+            self._run(cmd, timeout=600)
         
         if not os.path.exists(output_path):
             raise CalibreError("转换失败：输出文件未生成")
