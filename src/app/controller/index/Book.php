@@ -3,6 +3,7 @@
 namespace app\controller\index;
 
 use app\database\dao\BookDao;
+use app\database\dao\ReadingProgressDao;
 use app\database\model\BookModel;
 use app\utils\BookManager;
 use app\utils\BookOrganizer\Parser;
@@ -30,13 +31,44 @@ class Book extends BaseController
         $series = trim($this->request->get('series', ''));
         $category = trim($this->request->get('category', ''));
         $favorite = trim($this->request->get('favorite', ''));
+        $finished = trim($this->request->get('finished', ''));
         
-        $result = BookDao::getInstance()->getList($page, $limit, $search, $series, $category, $favorite);
+        $result = BookDao::getInstance()->getList($page, $limit, $search, $series, $category, $favorite, $finished);
+        $books = $result['list'];
+        $filenames = [];
+        foreach ($books as $book) {
+            if (!empty($book->filename)) {
+                $filenames[] = $book->filename;
+            }
+        }
+        
+        $progressMap = [];
+        if (!empty($filenames)) {
+            $progressList = ReadingProgressDao::getInstance()->getByFilenames($filenames);
+            foreach ($progressList as $progress) {
+                $progressMap[$progress->filename] = $progress;
+            }
+        }
+        
+        $rows = [];
+        foreach ($books as $book) {
+            $row = $book->toArray();
+            $row['progressRaw'] = '';
+            $row['progressText'] = '';
+            $row['progressPercent'] = 0.0;
+            $progress = $progressMap[$book->filename] ?? null;
+            if ($progress) {
+                $row['progressRaw'] = $progress->raw;
+                $row['progressText'] = $progress->percentText . '%';
+                $row['progressPercent'] = $progress->percent;
+            }
+            $rows[] = $row;
+        }
         
         return Response::asJson([
             'code' => 200,
             'msg' => 'success',
-            'data' => $result['list'],
+            'data' => $rows,
             'count' => $result['total']
         ]);
     }

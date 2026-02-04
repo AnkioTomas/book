@@ -23,6 +23,7 @@ class BookModel extends Model
     public string $rate = "0";           // 评分: 0-5
     public string $favorite = "";      // 收藏夹标签: 动物
     public string $deviceId = "";         // 设备ID
+    public int $isFinished = 0;        // 是否已读完: 0/1
 
     // 关联数据 (如果groupBooks是字符串存储,否则应该用关联表)
     public array $groupBooks = [];    // 分组书籍JSON: []
@@ -64,7 +65,7 @@ class BookModel extends Model
 
     public function getSchemaVersion(): int
     {
-        return 2;
+        return 3;
     }
 
     public function getUpgradeSql(): array
@@ -73,6 +74,9 @@ class BookModel extends Model
             "1_2" => [
                 "ALTER TABLE `book` ADD COLUMN `series` VARCHAR(50) NOT NULL DEFAULT ''",
                 "ALTER TABLE `book` ADD COLUMN `seriesNum` INT NOT NULL DEFAULT 0",
+            ],
+            "2_3" => [
+                "ALTER TABLE `book` ADD COLUMN `isFinished` TINYINT(1) NOT NULL DEFAULT 0",
             ],
         ];
     }

@@ -20,9 +20,10 @@ class BookDao extends Dao
      * @param string $series 系列筛选
      * @param string $category 分类筛选
      * @param string $favorite 收藏筛选
+     * @param string $finished 已读完筛选
      * @return array ['total' => int, 'list' => BookModel[]]
      */
-    public function getList(int $page = 1, int $limit = 20, string $search = '', string $series = '', string $category = '', string $favorite = ''): array
+    public function getList(int $page = 1, int $limit = 20, string $search = '', string $series = '', string $category = '', string $favorite = '', string $finished = ''): array
     {
         $where = [];
 
@@ -48,6 +49,11 @@ class BookDao extends Dao
         // 筛选：收藏
         if (!empty($favorite)) {
             $where['favorite'] = $favorite;
+        }
+
+        // 筛选：是否已读完
+        if ($finished !== '') {
+            $where['isFinished'] = ((int)$finished) > 0 ? 1 : 0;
         }
         
         $result = $this->getAll([], $where, $page, $limit, true, $orderBy);

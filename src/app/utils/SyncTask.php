@@ -3,7 +3,9 @@
 namespace app\utils;
 
 use app\database\dao\BookDao;
+use app\database\dao\ReadingProgressDao;
 use app\database\model\BookModel;
+use app\database\model\ReadingProgressModel;
 use nova\framework\core\Context;
 use nova\plugin\corn\schedule\TaskerAbstract;
 use Throwable;
@@ -44,11 +46,21 @@ class SyncTask extends TaskerAbstract
                     }
                 }
 
+                $progress = $this->syncProgress($dbBook->filename);
+                if ($progress && $progress->percent >= 100 && $dbBook->isFinished === 0) {
+                    $dbBook->isFinished = 1;
+                    $needUpdate = true;
+                }
+
                 if ($needUpdate) {
                     BookDao::getInstance()->updateModel($dbBook);
                 }
             }else{
                 $book->splitCategory2Series();
+                $progress = $this->syncProgress($book->filename);
+                if ($progress && $progress->percent >= 100) {
+                    $book->isFinished = 1;
+                }
                 try{
                     $filename = $book->filename;
                     if (BookManager::instance()->bookExists($filename)) {
@@ -73,6 +85,27 @@ class SyncTask extends TaskerAbstract
 
 
         BookManager::instance()->push($books);
+    }
+
+    private function syncProgress(string $filename): ?ReadingProgressModel
+    {
+        $progressRaw = BookManager::instance()->getProgressText($filename);
+        if ($progressRaw === '') {
+            return null;
+        }
+
+        $progress = null;
+
+        try {
+            $progress = ReadingProgressModel::fromString($progressRaw);
+            $progress->filename = $filename;
+        } catch (\Throwable $e) {
+            // ignore invalid progress format
+            return null;
+        }
+
+        ReadingProgressDao::getInstance()->insertModel($progress, true);
+        return $progress;
     }
 
     /**

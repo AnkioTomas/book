@@ -70,10 +70,6 @@
         aspect-ratio: 3/4;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
-    .book-desc {
-        line-height: 1.4;
-        min-height: 2.8em;
-    }
 
    #searchForm mdui-select::part(menu){
        max-height: 50vh;
@@ -142,6 +138,15 @@
                 <mdui-select name="favorite" clearable label="收藏">
                     <mdui-menu-item value="">全部</mdui-menu-item>
                     <!-- 动态填充 -->
+                </mdui-select>
+            </div>
+
+            <!-- 已读完筛选 -->
+            <div class="col-xs6 col-sm4 col-md2">
+                <mdui-select name="finished" clearable label="已读完">
+                    <mdui-menu-item value="">全部</mdui-menu-item>
+                    <mdui-menu-item value="1">已读完</mdui-menu-item>
+                    <mdui-menu-item value="0">未读完</mdui-menu-item>
                 </mdui-select>
             </div>
             

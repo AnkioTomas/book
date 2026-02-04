@@ -112,6 +112,36 @@ class BookManager
         return '';
     }
 
+    public function getProgressText(string $filename): string
+    {
+        $filename = trim($filename);
+        if ($filename === '') {
+            return '';
+        }
+
+        $cacheKey = "progress/{$filename}";
+        $cached = Context::instance()->cache->get($cacheKey);
+        if (is_string($cached)) {
+            return $cached;
+        }
+
+        $remotePath = $this->moon . DS . "Cache" . DS . $filename . ".po";
+        $dir = $this->runtime . "progress" . DS;
+        File::mkDir($dir);
+        $localPath = $dir . md5($filename) . ".po";
+
+        if ($this->client->download($remotePath, $localPath)) {
+            $content = trim((string)file_get_contents($localPath));
+            if ($content !== '') {
+                Context::instance()->cache->set($cacheKey, $content, 300);
+                return $content;
+            }
+        }
+
+        Context::instance()->cache->set($cacheKey, '', 120);
+        return '';
+    }
+
 
 
     public function uploadBook(string $file, string $filename): bool

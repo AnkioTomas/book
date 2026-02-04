@@ -42,14 +42,21 @@ window.pageOnLoad = function (loading) {
                 template: `
                     <div class="d-flex flex-col h-full">
                         <div class="book-cover w-full rounded-lg overflow-hidden">{{cover}}</div>
-                        <div class="p-2 flex-1">
-                            <div class="font-semibold line-clamp-2 mb-1" title="{{bookName}}">{{bookName}}</div>
-                            <div class="body-small text-on-surface-variant text-ellipsis">{{author}}</div>
-                            <div class="label-small text-on-surface-variant mt-1">{{category}}</div>
-                            <div class="book-desc body-small text-on-surface-variant line-clamp-2 mt-1">{{description}}</div>
-                            <div class="label-small mt-1">{{rate}}</div>
+                        <div class="p-2 d-flex flex-col flex-1">
+                            <div class="font-semibold text-ellipsis" title="{{bookName}}">{{bookName}}</div>
+                            <div class="body-small text-on-surface-variant text-ellipsis mt-1">{{author}}</div>
+                            <div class="label-small text-on-surface-variant text-ellipsis mt-1">{{category}}</div>
+                            <div class="body-small text-on-surface-variant line-clamp-3 mt-1">
+                                {{description}}<span class="opacity-0">占位<br>占位<br>占位</span>
+                            </div>
+                            <div class="mt-auto d-flex flex-col">
+                                <div class=" d-flex justify-between items-center py-1">
+                                    <span class="text-ellipsis">{{rate}}</span>
+                                    <span class="label-small text-ellipsis" style="line-height: 1">{{progress}}</span>
+                                </div>
+                                <div class="book-actions d-flex justify-center items-center py-1">{{actions}}</div>
+                            </div>
                         </div>
-                        <div class="book-actions d-flex justify-center gap-1 py-1">{{actions}}</div>
                     </div>
                 `,
                 columns: [
@@ -76,6 +83,18 @@ window.pageOnLoad = function (loading) {
                         formatter: (value) => {
                             const rating = parseInt(value) || 0;
                             return rating > 0 ? '⭐'.repeat(rating) : '';
+                        }
+                    },
+                    {
+                        field: "progress",
+                        formatter: (value, row) => {
+                            if (parseInt(row.isFinished) === 1) {
+                                return '进度：已读完';
+                            }
+                            if (row.progressText) {
+                                return `进度：${row.progressText}`;
+                            }
+                            return '';
                         }
                     },
                     {
