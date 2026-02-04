@@ -5,7 +5,7 @@
 
 window.pageLoadFiles = [
     'Toaster',
-    'DataTable',
+    'CardView',
     'Form',
     "FileUploader",
     "DialogForm",
@@ -19,7 +19,7 @@ window.pageOnLoad = function (loading) {
      */
     class BookPage {
         constructor() {
-            this.dataTable = null;
+            this.cardView = null;
             this.filterOptions = {};
             this.editDialog = document.querySelector("#bookEditDialog");
             this.batchDialog = document.querySelector("#batchEditDialog");
@@ -31,142 +31,103 @@ window.pageOnLoad = function (loading) {
         }
 
         /**
-         * 初始化 DataTable
+         * 初始化 CardView
          */
-        initDataTable() {
-            this.dataTable = new DataTable("#bookTable");
-            this.dataTable.load({
+        initCardView() {
+            const that = this;
+            this.cardView = new CardView("#bookTable");
+            this.cardView.load({
                 uri: "/admin/api/book/list",
+                cardWidth: "180px",
+                template: `
+                    <div class="d-flex flex-col h-full">
+                        <div class="book-cover w-full rounded-lg overflow-hidden">{{cover}}</div>
+                        <div class="p-2 flex-1">
+                            <div class="font-semibold line-clamp-2 mb-1" title="{{bookName}}">{{bookName}}</div>
+                            <div class="body-small text-on-surface-variant text-ellipsis">{{author}}</div>
+                            <div class="label-small text-on-surface-variant mt-1">{{category}}</div>
+                            <div class="book-desc body-small text-on-surface-variant line-clamp-2 mt-1">{{description}}</div>
+                            <div class="label-small mt-1">{{rate}}</div>
+                        </div>
+                        <div class="book-actions d-flex justify-center gap-1 py-1">{{actions}}</div>
+                    </div>
+                `,
                 columns: [
                     {
-                        field: "coverUrl",
-                        name: "封面",
-                        align: "center",
-                        width: 80,
-                        formatter: (value, row, index) => {
-                            return `<image-loader src="/webdav/${encodeURIComponent(row.filename)}" class="book-cover-thumb" style="height: 56px;"></image-loader>`;
-                        }
-                    },
-                    {
-                        field: "bookName",
-                        name: "书名",
-                        align: "left",
-                        width: 180,
-                        formatter: (value, row, index) => {
-                            return `<span class="book-title">${value}</span>`;
+                        field: "cover",
+                        formatter: (value, row) => {
+                            return `<image-loader src="/webdav/${encodeURIComponent(row.filename)}" class="w-full h-full" style="object-fit:cover;"></image-loader>`;
                         }
                     },
                     {
                         field: "author",
-                        name: "作者",
-                        align: "left",
-                        width: 150,
-                        formatter: (value, row, index) => {
-                            return value || '未知作者';
-                        }
-                    },
-                    {
-                        field: "description",
-                        name: "简介",
-                        align: "left",
-                        width: "auto",
-                        formatter: (value, row, index) => {
-                            if (!value) return '-';
-                            return `<span class="book-description" title="${value}">${value}</span>`;
-                        }
-                    },
-                    {
-                        field: "rate",
-                        name: "评分",
-                        align: "center",
-                        width: 120,
-                        formatter: (value, row, index) => {
-                            const rating = parseInt(value) || 0;
-                            return rating > 0 ? '⭐'.repeat(rating) : '-';
-                        }
-                    },
-                    {
-                        field: "series",
-                        name: "系列",
-                        align: "left",
-                        width: 150,
-                        formatter: (value, row, index) => {
-                            return value || '-';
-                        }
-                    },
-                    {
-                        field: "seriesNum",
-                        name: "版本",
-                        align: "left",
-                        width: 50,
-                        formatter: (value, row, index) => {
-                            return value || '-';
-                        }
+                        formatter: (value) => value || '未知作者'
                     },
                     {
                         field: "category",
-                        name: "分类",
-                        align: "center",
-                        width: 120,
-                        formatter: (value, row, index) => {
-                            return value || '-';
+                        formatter: (value) => value || ''
+                    },
+                    {
+                        field: "description",
+                        formatter: (value) => value || ''
+                    },
+                    {
+                        field: "rate",
+                        formatter: (value) => {
+                            const rating = parseInt(value) || 0;
+                            return rating > 0 ? '⭐'.repeat(rating) : '';
                         }
                     },
                     {
-                        field: "favorite",
-                        name: "收藏",
-                        align: "center",
-                        fixed: "right",
-                        width: 120,
+                        field: "actions",
                         formatter: (value, row, index) => {
-                            return value || '-';
-                        }
-                    },
-
-                    {
-                        field: "_op",
-                        name: "操作",
-                        align: "center",
-                        fixed: "right",
-                        width: 120,
-                        formatter: (value, row, index) => {
+                            const filename = row.filename || '';
+                            const ext = '.' + (filename.split('.').pop() || '').toLowerCase();
+                            const supported = ['.epub', '.mobi', '.azw', '.azw3', '.pdf'];
+                            const canRead = supported.includes(ext);
+                            const encodedFile = encodeURIComponent(filename);
+                            const encodedTitle = encodeURIComponent(row.bookName || filename);
+                            const readButton = canRead
+                                ? `<mdui-button-icon class="btn-read" icon="menu_book" data-file="${encodedFile}" data-title="${encodedTitle}"></mdui-button-icon>`
+                                : `<mdui-button-icon icon="menu_book" disabled></mdui-button-icon>`;
                             return `
-                                <mdui-button-icon class="btn-edit" icon="edit" data-id="${row.id}" data-index="${index}" title="编辑"></mdui-button-icon>
-                                <mdui-button-icon class="btn-delete" icon="delete" data-id="${row.id}" data-index="${index}"  title="删除"></mdui-button-icon>
+                                ${readButton}
+                                <mdui-button-icon class="btn-edit" icon="edit" data-id="${row.id}" data-index="${index}"></mdui-button-icon>
+                                <mdui-button-icon class="btn-delete" icon="delete" data-id="${row.id}" data-index="${index}"></mdui-button-icon>
                             `;
                         }
                     }
                 ],
-                mobile: true,
-                lineHeight: "auto",
-                height: "auto",
                 events: {
-                    onRowClick: (row, rowIndex) => {
-                        // 可选：点击行编辑
-                    },
-                    onCellClick: (row, rowIndex, colIndex, colName) => {
-                        // 单元格点击事件
-                    },
-                    onPaged: (page, pageSize) => {
-                        // 分页切换事件
+                    onCardClick: (row, index) => {
+
                     }
                 },
                 empty_msg: "暂无书籍数据",
                 page: true,
-                pageSizes: [ 20, 50, 100],  // 默认每页 50 条，别太短浪费时间
-                selectable: true  // 启用多选，批量操作的基础
+                pageSizes: [24, 48, 96],
+                selectable: true
             });
 
-            let that = this;
-            // 绑定表格内的操作按钮事件
-            $('#bookTable').on('click', '.btn-edit', function (e) {
-
+            // 绑定操作按钮事件
+            $('#bookTable').on('click', '.btn-read', function (e) {
+                e.stopPropagation();
+                const file = decodeURIComponent($(this).data('file') || '');
+                if (!file) {
+                    $.toaster.warning('文件名缺失，无法打开阅读器');
+                    return;
+                }
+                const title = decodeURIComponent($(this).data('title') || file);
+                const readerUrl = `/admin/reader?file=${encodeURIComponent(file)}&title=${encodeURIComponent(title)}`;
+                window.open(readerUrl, '_blank', 'noopener');
+            }).on('click', '.btn-edit', function (e) {
+                e.stopPropagation();
                 const index = $(this).data('index');
-
-                let book = that.dataTable.getRow(index);
+                const book = that.cardView.getRow(index);
                 that.editDialog.open();
                 that.editDialog.setValue(book);
             }).on('click', '.btn-delete', function (e) {
+                e.stopPropagation();
                 const bookId = $(this).data('id');
                 $.layer.confirm({
                     msg: '确定要删除这本书籍吗？',
@@ -174,7 +135,7 @@ window.pageOnLoad = function (loading) {
                         $.request.postForm('/admin/api/book/delete', {id: bookId}, (res) => {
                             if (res.code === 200) {
                                 $.toaster.success(res.msg || '删除成功');
-                                that.dataTable.reload($.form.val("#searchForm"), true);
+                                that.cardView.reload($.form.val("#searchForm"), true);
                             } else {
                                 $.toaster.error(res.msg || '删除失败');
                             }
@@ -195,7 +156,7 @@ window.pageOnLoad = function (loading) {
             // 搜索表单提交
             $.form.submit("#searchForm", {
                 callback: function (data) {
-                    that.dataTable.reload(data, true);
+                    that.cardView.reload(data, true);
                 }
             });
 
@@ -223,7 +184,7 @@ window.pageOnLoad = function (loading) {
                     $("body").closeLoading();
                     if (res.code === 200) {
                         $.toaster.success(res.msg);
-                        that.dataTable.reload($.form.val("#searchForm"), true);
+                        that.cardView.reload($.form.val("#searchForm"), true);
                     } else {
                         $.toaster.error(res.msg);
                     }
@@ -240,7 +201,7 @@ window.pageOnLoad = function (loading) {
                             $("body").closeLoading();
                             if (res.code === 200) {
                                 $.toaster.success(res.msg);
-                                that.dataTable.reload($.form.val("#searchForm"), true);
+                                that.cardView.reload($.form.val("#searchForm"), true);
                             } else {
                                 $.toaster.error(res.msg);
                             }
@@ -253,7 +214,7 @@ window.pageOnLoad = function (loading) {
 
             // 批量编辑按钮
             $('#btnBatchEdit').on('click', () => {
-                const selected = that.dataTable.getSelectedRows();
+                const selected = that.cardView.getSelectedRows();
                 if (!selected || selected.length === 0) {
                     $.toaster.warning('请先选择要操作的书籍');
                     return;
@@ -263,7 +224,7 @@ window.pageOnLoad = function (loading) {
 
             // 批量删除按钮
             $('#btnBatchDelete').on('click', () => {
-                const selected = that.dataTable.getSelectedRows();
+                const selected = that.cardView.getSelectedRows();
                 if (!selected || selected.length === 0) {
                     $.toaster.warning('请先选择要删除的书籍');
                     return;
@@ -279,7 +240,7 @@ window.pageOnLoad = function (loading) {
 
             // 批量刮削封面
             $('#btnBatchScrape').on('click', () => {
-                const selected = that.dataTable.getSelectedRows();
+                const selected = that.cardView.getSelectedRows();
                 if (!selected || selected.length === 0) {
                     $.toaster.warning('请先选择要刮削的书籍');
                     return;
@@ -292,12 +253,12 @@ window.pageOnLoad = function (loading) {
 
             // 编辑书籍提交
             this.editDialog.submit('/admin/api/book/update', () => {
-                that.dataTable.reload($.form.val("#searchForm"), true);
+                that.cardView.reload($.form.val("#searchForm"), true);
             });
 
             // 批量编辑提交 - 传入 null 作为 URL，直接处理数据
             this.batchDialog.submit(null, (formData) => {
-                const selected = that.dataTable.getSelectedRows();
+                const selected = that.cardView.getSelectedRows();
                 if (!selected || selected.length === 0) {
                     $.toaster.warn('没有选中的书籍');
                     return;
@@ -331,7 +292,7 @@ window.pageOnLoad = function (loading) {
                         } else {
                             $.toaster.warn(`批量更新完成：${successCount} 本成功，${failCount} 本失败`);
                         }
-                        that.dataTable.reload($.form.val("#searchForm"), true);
+                        that.cardView.reload($.form.val("#searchForm"), true);
                         return;
                     }
 
@@ -470,8 +431,8 @@ window.pageOnLoad = function (loading) {
                 if (res.code === 200) {
                     this.filterOptions = res.data;
                     this.populateFilterDropdowns();
-                    // 筛选选项加载完成后初始化表格和事件
-                    this.initDataTable();
+                    // 筛选选项加载完成后初始化卡片视图和事件
+                    this.initCardView();
                     this.bindEvents();
                     // 初始化自动完成（只执行一次）
                     this.initAutocomplete();
@@ -574,7 +535,7 @@ window.pageOnLoad = function (loading) {
                 if (index >= total) {
                     $("body").closeLoading();
                     $.toaster[failCount === 0 ? 'success' : 'warn'](`删除完成：${successCount} 成功，${failCount} 失败`);
-                    that.dataTable.reload($.form.val("#searchForm"), true);
+                    that.cardView.reload($.form.val("#searchForm"), true);
                     return;
                 }
 
@@ -605,7 +566,7 @@ window.pageOnLoad = function (loading) {
                 if (index >= total) {
                     $("body").closeLoading();
                     $.toaster[failCount === 0 ? 'success' : 'warn'](`刮削完成：${successCount} 成功，${failCount} 失败`);
-                    that.dataTable.reload($.form.val("#searchForm"), true);
+                    that.cardView.reload($.form.val("#searchForm"), true);
                     return;
                 }
 
@@ -635,7 +596,7 @@ window.pageOnLoad = function (loading) {
                 this.uploadFile(file, () => {
                     if (++count === total) {
                         $.toaster.success(`${total} 个文件上传完成`);
-                        that.dataTable.reload($.form.val("#searchForm"), true);
+                        that.cardView.reload($.form.val("#searchForm"), true);
                     }
                 });
             });
@@ -757,7 +718,7 @@ window.pageOnLoad = function (loading) {
          * 销毁
          */
         destroy() {
-            if (this.dataTable) this.dataTable.destroy();
+            if (this.cardView) this.cardView.destroy();
             $('#searchForm, #btnAdd, #btnSync, #btnRemoveDuplicates, #btnBatchDelete').off();
             $(this.editDialog).off();
             $(document).off('dragover drop dragenter dragleave');

@@ -58,6 +58,41 @@ class Book extends BaseController
         ]);
     }
 
+    /**
+     * 获取 EPUB 文件用于在线阅读
+     * GET /book/file?filename=xxx.epub
+     */
+    public function file(): Response
+    {
+        $filename = rawurldecode($this->request->get('filename', ''));
+        if (empty($filename)) {
+            return Response::asText('参数错误');
+        }
+
+        $book = BookDao::getInstance()->getByFileName($filename);
+        if (!$book) {
+            return Response::asText('404 not found');
+        }
+
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $allowed = ['epub', 'mobi', 'azw', 'azw3', 'pdf'];
+        if (!in_array($ext, $allowed, true)) {
+            return Response::asText('不支持的文件格式');
+        }
+
+        $cacheDir = RUNTIME_PATH . DS . 'reader';
+        File::mkDir($cacheDir);
+        $localPath = $cacheDir . DS . basename($filename);
+
+        if (!file_exists($localPath) || filesize($localPath) === 0) {
+            if (!BookManager::instance()->downloadBook($filename, $localPath)) {
+                return Response::asText('下载失败');
+            }
+        }
+        
+        return Response::asStatic($localPath);
+    }
+
     
     /**
      * 更新书籍

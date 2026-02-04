@@ -65,30 +65,23 @@
         box-shadow: var(--mdui-elevation-level3);
     }
     
-    /* DataTable 样式优化 */
-    .book-title {
-        font-weight: 500;
-        color: rgba(var(--mdui-color-on-surface));
+    /* 书籍卡片 - 仅保留必要样式 */
+    .book-cover {
+        aspect-ratio: 3/4;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
-    
-    .book-description {
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 3;
-        overflow: hidden;
-        word-break: break-word;
-        white-space: normal;
-        line-height: 1.5;
-        max-width: 300px;
-        max-height: 4.5em;
-        color: rgba(var(--mdui-color-on-surface-variant));
-        font-size: .875rem;
+    .book-desc {
+        line-height: 1.4;
+        min-height: 2.8em;
     }
 
    #searchForm mdui-select::part(menu){
        max-height: 50vh;
        width: fit-content;
        overflow-y: scroll;
+   }
+   .card-view-item{
+       padding: 0!important;
    }
 </style>
 

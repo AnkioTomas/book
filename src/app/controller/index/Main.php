@@ -167,6 +167,25 @@ class Main extends BaseController
         return $this->viewResponse->asTpl();
     }
 
+    public function reader():Response
+    {
+        $filename = rawurldecode($this->request->get('file', ''));
+        $filename = trim($filename);
+        if ($filename === '') {
+            return $this->viewResponse->asTpl();
+        }
+
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $supported = ['epub', 'pdf', 'mobi', 'azw', 'azw3'];
+        if (!in_array($ext, $supported, true)) {
+            return $this->viewResponse->asTpl();
+        }
+
+        $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
+        $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl);
+        return $this->redirectTo($readerUrl);
+    }
+
     public function qing():Response
     {
         return $this->viewResponse->asTpl();
