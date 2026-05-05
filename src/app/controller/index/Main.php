@@ -12,6 +12,7 @@ use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
 use nova\plugin\task\Task;
 use nova\plugin\tpl\ViewResponse;
+use function nova\framework\dump;
 
 class Main extends BaseController
 {
@@ -100,75 +101,40 @@ class Main extends BaseController
 
     public function dashboard():Response
     {
-        $bookDao = new BookDao();
-        $progressDao = ReadingProgressDao::getInstance();
-        
-        // 1. 全局统计
-        $totalBooks = $bookDao->getCount();
-        $seriesNames = $bookDao->getSeriesNames();
-        $categories = $bookDao->getCategories();
-        $favorites = $bookDao->getFavorites();
-        
-        $globalStats = [
-            'totalBooks' => $totalBooks,
-            'seriesCount' => count($seriesNames),
-            'categoryCount' => count($categories),
-            'favoriteCount' => count($favorites),
-        ];
-        
         // 2. 最近添加 10本
-        $recentBooks = $bookDao->getList(1, 10)['list'];
-        $recentBooks = $this->processBookData($recentBooks);
-
-        $filenames = [];
-        foreach ($recentBooks as $book) {
-            if (!empty($book['filename'])) {
-                $filenames[] = $book['filename'];
-            }
-        }
-        $progressMap = [];
-        if (!empty($filenames)) {
-            $progressList = $progressDao->getByFilenames($filenames);
-            foreach ($progressList as $progress) {
-                $progressMap[$progress->filename] = $progress;
-            }
-        }
-
+        $recentBooks = BookDao::getInstance()->getAll([], [], 1, 20, 'id',false)['data'];
         foreach ($recentBooks as &$book) {
-            $book['progressPercent'] = 0.0;
-            $book['progressText'] = '0';
-            $progress = $progressMap[$book['filename']] ?? null;
-            if ($progress) {
-                $book['progressPercent'] = (float)$progress->percent;
-                $book['progressText'] = $progress->percentText;
-            }
-            if ((int)$book['isFinished'] === 1) {
-                $book['progressPercent'] = 100.0;
-                $book['progressText'] = '100';
-            }
+            // 格式化日期
+            $book['formattedDate'] = date('Y-m-d', (int)($book['addTime'] / 1000));
+            $book['coverUrl'] = "/webdav/".rawurlencode($book['filename']);
         }
-        unset($book);
 
-        // 3. 最近阅读：从最近添加中筛选有进度的书籍
-        $recentlyReadBooks = array_values(array_filter($recentBooks, static function ($book) {
-            return ((float)$book['progressPercent']) > 0;
-        }));
+
+        $_recentlyReadBooks = ReadingProgressDao::getInstance()->getAll([], [], 1, 20, 'timestamp',false)['data'];
+
+        $recentlyReadBooks =[];
+
+
+        foreach ($_recentlyReadBooks as $bookItem) {
+            $readingBook = BookDao::getInstance()->getByFileName($bookItem['filename']);
+            if (empty($readingBook)){
+                continue;
+            }
+            $bookItem += (array)$readingBook;
+            $bookItem['formattedDate'] = date('Y-m-d', (int)($bookItem['addTime'] / 1000));
+            $bookItem['coverUrl'] = "/webdav/".rawurlencode($bookItem['filename']);
+            $recentlyReadBooks[] = $bookItem;
+        }
 
         // 4. 继续阅读：优先取最近阅读第一本
-        $currentReading = $recentlyReadBooks[0] ?? ($recentBooks[0] ?? null);
+        $currentReading = $recentlyReadBooks[0] ?? null;
 
-        $dashboardMeta = [
-            'updatedAt' => date('Y-m-d H:i'),
-            'recentCount' => count($recentBooks),
-            'recentlyReadCount' => count($recentlyReadBooks),
-        ];
+
 
         return $this->viewResponse->asTpl('dashboard',[
-            'globalStats' => $globalStats,
             'currentReading' => $currentReading,
             'recentBooks' => $recentBooks,
             'recentlyReadBooks' => $recentlyReadBooks,
-            'dashboardMeta' => $dashboardMeta,
         ]);
     }
 
@@ -199,11 +165,6 @@ class Main extends BaseController
         $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
         $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl) . '&filename=' . rawurlencode($filename);
         return $this->redirectTo($readerUrl);
-    }
-
-    public function qing():Response
-    {
-        return $this->viewResponse->asTpl();
     }
 
     /**

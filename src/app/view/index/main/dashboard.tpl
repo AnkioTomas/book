@@ -83,9 +83,9 @@
                 <div class="title-large text-ellipsis" title="{$currentReading.bookName}">{$currentReading.bookName}</div>
                 <div class="body-medium text-on-surface-variant text-ellipsis mt-1">{$currentReading.author}</div>
                 <div class="body-small text-on-surface-variant mt-2">阅读进度</div>
-                <div class="body-small mt-1">{$currentReading.progressText}%</div>
+                <div class="body-small mt-1">{$currentReading.percent}%</div>
                 <div class="progress-track mt-1">
-                    <div class="progress-bar" style="width:{$currentReading.progressPercent}%;"></div>
+                    <div class="progress-bar" style="width:{$currentReading.percent}%;"></div>
                 </div>
                 <div class="mt-auto pt-3">
                     <mdui-button class="js-resume-reading rounded-full" data-file="{$currentReading.filename}" data-title="{$currentReading.bookName}" variant="filled" icon="menu_book">
@@ -109,7 +109,7 @@
                 <div class="d-flex flex-col flex-1 min-w-0">
                     <div class="title-small text-ellipsis" title="{$book.bookName}">{$book.bookName}</div>
                     <div class="body-small text-on-surface-variant text-ellipsis mt-1">{$book.author}</div>
-                    <div class="progress-track mt-2"><div class="progress-bar" style="width:{$book.progressPercent}%;"></div></div>
+                    <div class="progress-track mt-2"><div class="progress-bar" style="width:{$book.percent}%;"></div></div>
                     <div class="mt-auto pt-2 d-flex items-center">
                         <mdui-button-icon class="js-resume-reading" data-file="{$book.filename}" data-title="{$book.bookName}" icon="arrow_forward"></mdui-button-icon>
                     </div>

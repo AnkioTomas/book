@@ -59,7 +59,7 @@ class BookDao extends Dao
             $where['isFinished'] = ((int)$finished) > 0 ? 1 : 0;
         }
         
-        $result = $this->getAll([], $where, $page, $limit, true, $orderBy);
+        $result = $this->getAll([], $where, $page, $limit, $orderBy);
         
         return [
             'total' => $result['total'],
