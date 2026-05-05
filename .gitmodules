@@ -1,6 +1,6 @@
 [submodule "src/app/static/framework"]
     path = src/app/static/framework
-    url = https://git.ankio.icu/nova-ui/framework
+    url = https://github.com/NovaPHPOrgUI/framework.git
 [submodule "src/nova/framework"]
     path = src/nova/framework
     url = https://github.com/NovaPHPOrg/nova-framework
@@ -20,8 +20,8 @@
     path = src/nova/plugin/avatar
     url = https://github.com/NovaPHPOrg/nova-avatar
 [submodule "src/nova/plugin/http"]
-	path = src/nova/plugin/http
-	url = https://github.com/NovaPHPOrg/nova-http
+    path = src/nova/plugin/http
+    url = https://github.com/NovaPHPOrg/nova-http
 [submodule "src/nova/plugin/device"]
     path = src/nova/plugin/device
     url = https://github.com/NovaPHPOrg/nova-device
@@ -33,37 +33,28 @@
     url = https://github.com/NovaPHPOrg/nova-orm
 [submodule "src/app/static/components/captcha"]
     path = src/app/static/components/captcha
-    url = https://git.ankio.icu/nova-ui/nova-captcha
-[submodule "src/app/static/components/language"]
-    path = src/app/static/components/language
-    url = https://git.ankio.icu/nova-ui/nova-language
-[submodule "src/app/static/components/theme"]
-    path = src/app/static/components/theme
-    url = https://git.ankio.icu/nova-ui/nova-theme
-[submodule "src/app/static/components/pjax"]
-    path = src/app/static/components/pjax
-    url = https://git.ankio.icu/nova-ui/nova-pjax
+    url = https://github.com/NovaPHPOrgUI/captcha.git
 [submodule "src/nova/plugin/webdav"]
     path = src/nova/plugin/webdav
     url = https://github.com/NovaPHPOrg/nova-webdav
 [submodule "src/app/static/components/dataTable"]
-	path = src/app/static/components/dataTable
-	url = https://git.ankio.icu/nova-ui/nova-dataTable
+    path = src/app/static/components/dataTable
+    url = https://github.com/NovaPHPOrgUI/dataTable.git
 [submodule "src/app/static/components/fileUpload"]
-	path = src/app/static/components/fileUpload
-	url = https://git.ankio.icu/nova-ui/nova-fileUpload
+    path = src/app/static/components/fileUpload
+    url = https://github.com/NovaPHPOrgUI/fileUpload.git
 [submodule "src/nova/plugin/upload"]
-	path = src/nova/plugin/upload
-	url = https://github.com/NovaPHPOrg/nova-upload
+    path = src/nova/plugin/upload
+    url = https://github.com/NovaPHPOrg/nova-upload
 [submodule "src/nova/plugin/task"]
-	path = src/nova/plugin/task
-	url = https://github.com/NovaPHPOrg/nova-task
+    path = src/nova/plugin/task
+    url = https://github.com/NovaPHPOrg/nova-task
 [submodule "src/app/static/components/formDialog"]
-	path = src/app/static/components/formDialog
-	url = https://git.ankio.icu/nova-ui/nova-formDialog
+    path = src/app/static/components/formDialog
+    url = https://github.com/NovaPHPOrgUI/formDialog.git
 [submodule "src/nova/plugin/corn"]
-	path = src/nova/plugin/corn
-	url = https://github.com/NovaPHPOrg/nova-corn
+    path = src/nova/plugin/corn
+    url = https://github.com/NovaPHPOrg/nova-corn
 [submodule "src/app/static/components/cron"]
-	path = src/app/static/components/cron
-	url = https://git.ankio.icu/nova-ui/nova-cron
+    path = src/app/static/components/cron
+    url = https://github.com/NovaPHPOrgUI/cron.git
