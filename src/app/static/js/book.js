@@ -9,7 +9,8 @@ window.pageLoadFiles = [
     'Form',
     "FileUploader",
     "DialogForm",
-    'Layer'
+    'Layer',
+    '/js/components/Book.js'
 ];
 
 window.pageOnLoad = function (loading) {
@@ -35,82 +36,58 @@ window.pageOnLoad = function (loading) {
          */
         initCardView() {
             const that = this;
+            const supportedReaderExt = ['.epub', '.mobi', '.azw', '.azw3', '.pdf'];
+            const openReader = (row) => {
+                const filename = row.filename || '';
+                const ext = '.' + (filename.split('.').pop() || '').toLowerCase();
+                if (!filename) {
+                    $.toaster.warning('文件名缺失，无法打开阅读器');
+                    return;
+                }
+                if (!supportedReaderExt.includes(ext)) {
+                    $.toaster.warning('该文件格式暂不支持阅读器打开');
+                    return;
+                }
+                const title = row.bookName || filename;
+                const readerUrl = `/admin/reader?file=${encodeURIComponent(filename)}&title=${encodeURIComponent(title)}`;
+                window.open(readerUrl, '_blank', 'noopener');
+            };
+            const renderBookBase = (row) => {
+                const cover = row.coverUrl
+                    ? '/proxy/'+encodeURIComponent(row.coverUrl)
+                    : `/webdav/${encodeURIComponent(row.filename || "")}`;
+                const title = row.bookName || "未命名书籍";
+                const author = row.author || "未知作者";
+
+                return `
+                    <book-card
+                        cover="${$.escapeHtml(cover)}"
+                        title="${$.escapeHtml(title)}"
+                        author="${$.escapeHtml(author)}"
+                    ></book-card>
+                `;
+            };
             this.cardView = new CardView("#bookTable");
             this.cardView.load({
                 uri: "/admin/api/book/list",
                 cardWidth: "180px",
                 template: `
-                    <div class="d-flex flex-col h-full">
-                        <div class="book-cover w-full rounded-lg overflow-hidden">{{cover}}</div>
-                        <div class="p-2 d-flex flex-col flex-1">
-                            <div class="font-semibold text-ellipsis" title="{{bookName}}">{{bookName}}</div>
-                            <div class="body-small text-on-surface-variant text-ellipsis mt-1">{{author}}</div>
-                            <div class="label-small text-on-surface-variant text-ellipsis mt-1">{{category}}</div>
-                            <div class="body-small text-on-surface-variant line-clamp-3 mt-1">
-                                {{description}}<span class="opacity-0">占位<br>占位<br>占位</span>
-                            </div>
-                            <div class="mt-auto d-flex flex-col">
-                                <div class=" d-flex justify-between items-center py-1">
-                                    <span class="text-ellipsis">{{rate}}</span>
-                                    <span class="label-small text-ellipsis" style="line-height: 1">{{progress}}</span>
-                                </div>
-                                <div class="book-actions d-flex justify-center items-center py-1">{{actions}}</div>
-                            </div>
-                        </div>
+                    <div class="book-card-shell d-flex flex-col h-full p-2">
+                        {{bookCard}}
+                        <div class="book-actions d-flex items-center gap-1">{{actions}}</div>
                     </div>
                 `,
                 columns: [
                     {
-                        field: "cover",
+                        field: "bookCard",
                         formatter: (value, row) => {
-                            return `<image-loader src="/webdav/${encodeURIComponent(row.filename)}" class="w-full h-full" style="object-fit:cover;"></image-loader>`;
-                        }
-                    },
-                    {
-                        field: "author",
-                        formatter: (value) => value || '未知作者'
-                    },
-                    {
-                        field: "category",
-                        formatter: (value) => value || ''
-                    },
-                    {
-                        field: "description",
-                        formatter: (value) => value || ''
-                    },
-                    {
-                        field: "rate",
-                        formatter: (value) => {
-                            const rating = parseInt(value) || 0;
-                            return rating > 0 ? '⭐'.repeat(rating) : '';
-                        }
-                    },
-                    {
-                        field: "progress",
-                        formatter: (value, row) => {
-                            if (parseInt(row.isFinished) === 1) {
-                                return '进度：已读完';
-                            }
-                            if (row.progressText) {
-                                return `进度：${row.progressText}`;
-                            }
-                            return '';
+                            return renderBookBase(row);
                         }
                     },
                     {
                         field: "actions",
                         formatter: (value, row, index) => {
-                            const filename = row.filename || '';
-                            const ext = '.' + (filename.split('.').pop() || '').toLowerCase();
-                            const supported = ['.epub', '.mobi', '.azw', '.azw3', '.pdf'];
-                            const canRead = supported.includes(ext);
-                            const encodedFile = encodeURIComponent(filename);
-                            const encodedTitle = encodeURIComponent(row.bookName || filename);
-                            const readButton = canRead
-                                ? `<mdui-button-icon class="btn-read" icon="menu_book" data-file="${encodedFile}" data-title="${encodedTitle}"></mdui-button-icon>`
-                                : `<mdui-button-icon icon="menu_book" disabled></mdui-button-icon>`;
                             return `
-                                ${readButton}
                                 <mdui-button-icon class="btn-edit" icon="edit" data-id="${row.id}" data-index="${index}"></mdui-button-icon>
                                 <mdui-button-icon class="btn-delete" icon="delete" data-id="${row.id}" data-index="${index}"></mdui-button-icon>
                             `;
@@ -118,8 +95,8 @@ window.pageOnLoad = function (loading) {
                     }
                 ],
                 events: {
-                    onCardClick: (row, index) => {
-
+                    onCardClick: (row) => {
+                        openReader(row);
                     }
                 },
                 empty_msg: "暂无书籍数据",
@@ -129,17 +106,7 @@ window.pageOnLoad = function (loading) {
             });
 
             // 绑定操作按钮事件
-            $('#bookTable').on('click', '.btn-read', function (e) {
-                e.stopPropagation();
-                const file = decodeURIComponent($(this).data('file') || '');
-                if (!file) {
-                    $.toaster.warning('文件名缺失，无法打开阅读器');
-                    return;
-                }
-                const title = decodeURIComponent($(this).data('title') || file);
-                const readerUrl = `/admin/reader?file=${encodeURIComponent(file)}&title=${encodeURIComponent(title)}`;
-                window.open(readerUrl, '_blank', 'noopener');
-            }).on('click', '.btn-edit', function (e) {
+            $('#bookTable').on('click', '.btn-edit', function (e) {
                 e.stopPropagation();
                 const index = $(this).data('index');
                 const book = that.cardView.getRow(index);
