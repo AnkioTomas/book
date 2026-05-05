@@ -1,184 +1,139 @@
 <title id="title">仪表盘 - {$title}</title>
 <style id="style">
-    /* 统计卡片渐变背景 */
-    .stat-card-primary { background: linear-gradient(135deg, rgba(var(--mdui-color-primary), 0.08) 0%, rgba(var(--mdui-color-primary), 0.16) 100%); }
-    .stat-card-secondary { background: linear-gradient(135deg, rgba(var(--mdui-color-secondary), 0.08) 0%, rgba(var(--mdui-color-secondary), 0.16) 100%); }
-    .stat-card-tertiary { background: linear-gradient(135deg, rgba(var(--mdui-color-tertiary), 0.08) 0%, rgba(var(--mdui-color-tertiary), 0.16) 100%); }
-    .stat-card-error { background: linear-gradient(135deg, rgba(var(--mdui-color-error), 0.08) 0%, rgba(var(--mdui-color-error), 0.16) 100%); }
+    .dashboard-v3 {
+        padding: 20px;
+    }
 
-    .mdui-theme-dark .stat-card-primary { background: linear-gradient(135deg, rgba(var(--mdui-color-primary), 0.18) 0%, rgba(var(--mdui-color-primary), 0.26) 100%); }
-    .mdui-theme-dark .stat-card-secondary { background: linear-gradient(135deg, rgba(var(--mdui-color-secondary), 0.18) 0%, rgba(var(--mdui-color-secondary), 0.26) 100%); }
-    .mdui-theme-dark .stat-card-tertiary { background: linear-gradient(135deg, rgba(var(--mdui-color-tertiary), 0.18) 0%, rgba(var(--mdui-color-tertiary), 0.26) 100%); }
-    .mdui-theme-dark .stat-card-error { background: linear-gradient(135deg, rgba(var(--mdui-color-error), 0.18) 0%, rgba(var(--mdui-color-error), 0.26) 100%); }
+    .continue-cover {
+        width: 130px;
+        min-width: 130px;
+        aspect-ratio: 3 / 4;
+        border-radius: 10px;
+        overflow: hidden;
+    }
 
-    .stat-card-primary mdui-icon { color: rgba(var(--mdui-color-primary)); }
-    .stat-card-secondary mdui-icon { color: rgba(var(--mdui-color-secondary)); }
-    .stat-card-tertiary mdui-icon { color: rgba(var(--mdui-color-tertiary)); }
-    .stat-card-error mdui-icon { color: rgba(var(--mdui-color-error)); }
-    
-    .book-cover {
-        width: 48px;
-        height: 64px;
-        object-fit: cover;
-        border-radius: 4px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    .progress-track {
+        width: 100%;
+        height: 8px;
+        border-radius: 99px;
+        background: rgba(var(--mdui-color-outline), 0.25);
+        overflow: hidden;
     }
-    
-    .book-item {
-        padding: 12px 0;
-        border-bottom: 1px solid rgba(var(--mdui-color-outline), 0.12);
+
+    .progress-bar {
+        height: 100%;
+        border-radius: 99px;
+        background: rgb(var(--mdui-color-primary));
     }
-    
-    .book-item:last-child {
-        border-bottom: none;
+
+    .recently-read-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
     }
-    
-    .rating-stars {
-        color: #ffa726;
-        font-size: 16px;
+
+    .recently-read-cover {
+        width: 64px;
+        min-width: 64px;
+        height: 90px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .added-wall {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(136px, 136px));
+        justify-content: start;
+        gap: 14px;
+    }
+
+    .added-item,
+    .added-item book-card {
+        width: 136px;
+    }
+
+    @media (max-width: 768px) {
+        .continue-cover {
+            width: 100%;
+            min-width: 0;
+            max-height: 260px;
+        }
+
+        .added-wall {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 120px));
+            gap: 10px;
+        }
+
+        .added-item,
+        .added-item book-card {
+            width: 120px;
+        }
     }
 </style>
 
-<div id="container" class="container py-4 h-fit">
-    <!-- 全局统计卡片 -->
-    <div class="row col-space16 mb-4">
-        <div class="col-xs12 col-sm6 col-md3">
-            <mdui-card class="w-100 p-3 stat-card-primary">
-                <div class="label-medium d-flex items-center">
-                    <mdui-icon name="library_books" class="mr-2"></mdui-icon>
-                    总藏书
+<div id="container" class="container dashboard-v3 h-fit">
+    <h2 class="title-medium mb-2 " style="font-weight: bold">继续阅读</h2>
+    <mdui-card class="p-3 rounded-lg mb-3 w-full">
+
+        {if $currentReading}
+        <div class="d-flex items-stretch gap-4">
+            <image-loader src="{$currentReading.coverUrl}" class="continue-cover"></image-loader>
+            <div class="d-flex flex-col flex-1 min-w-0">
+                <div class="title-large text-ellipsis" title="{$currentReading.bookName}">{$currentReading.bookName}</div>
+                <div class="body-medium text-on-surface-variant text-ellipsis mt-1">{$currentReading.author}</div>
+                <div class="body-small text-on-surface-variant mt-2">阅读进度</div>
+                <div class="body-small mt-1">{$currentReading.progressText}%</div>
+                <div class="progress-track mt-1">
+                    <div class="progress-bar" style="width:{$currentReading.progressPercent}%;"></div>
                 </div>
-                <div class="display-small mt-2">
-                    <span class="animate-number" data-value="{$globalStats.totalBooks}">0</span>
+                <div class="mt-auto pt-3">
+                    <mdui-button class="js-resume-reading rounded-full" data-file="{$currentReading.filename}" data-title="{$currentReading.bookName}" variant="filled" icon="menu_book">
+                        继续阅读
+                    </mdui-button>
                 </div>
-            </mdui-card>
+            </div>
         </div>
-        <div class="col-xs12 col-sm6 col-md3">
-            <mdui-card class="w-100 p-3 stat-card-secondary">
-                <div class="label-medium d-flex items-center">
-                    <mdui-icon name="collections_bookmark" class="mr-2"></mdui-icon>
-                    系列数
+        {else}
+        <div class="body-medium text-on-surface-variant">暂无可展示书籍</div>
+        {/if}
+    </mdui-card>
+
+    <h2 class="title-medium mb-2"  style="font-weight: bold">最近阅读</h2>
+    <div class="recently-read-grid">
+        {if $recentlyReadBooks}
+        {foreach $recentlyReadBooks as $book}
+        <mdui-card class="p-2 rounded-lg bg-surface">
+            <div class="d-flex gap-2">
+                <image-loader src="{$book.coverUrl}" class="recently-read-cover"></image-loader>
+                <div class="d-flex flex-col flex-1 min-w-0">
+                    <div class="title-small text-ellipsis" title="{$book.bookName}">{$book.bookName}</div>
+                    <div class="body-small text-on-surface-variant text-ellipsis mt-1">{$book.author}</div>
+                    <div class="progress-track mt-2"><div class="progress-bar" style="width:{$book.progressPercent}%;"></div></div>
+                    <div class="mt-auto pt-2 d-flex items-center">
+                        <mdui-button-icon class="js-resume-reading" data-file="{$book.filename}" data-title="{$book.bookName}" icon="arrow_forward"></mdui-button-icon>
+                    </div>
                 </div>
-                <div class="display-small mt-2">
-                    <span class="animate-number" data-value="{$globalStats.seriesCount}">0</span>
-                </div>
-            </mdui-card>
-        </div>
-        <div class="col-xs12 col-sm6 col-md3">
-            <mdui-card class="w-100 p-3 stat-card-tertiary">
-                <div class="label-medium d-flex items-center">
-                    <mdui-icon name="category" class="mr-2"></mdui-icon>
-                    分类数
-                </div>
-                <div class="display-small mt-2">
-                    <span class="animate-number" data-value="{$globalStats.categoryCount}">0</span>
-                </div>
-            </mdui-card>
-        </div>
-        <div class="col-xs12 col-sm6 col-md3">
-            <mdui-card class="w-100 p-3 stat-card-error">
-                <div class="label-medium d-flex items-center">
-                    <mdui-icon name="favorite" class="mr-2"></mdui-icon>
-                    收藏夹
-                </div>
-                <div class="display-small mt-2">
-                    <span class="animate-number" data-value="{$globalStats.favoriteCount}">0</span>
-                </div>
-            </mdui-card>
-        </div>
+            </div>
+        </mdui-card>
+        {/foreach}
+        {else}
+        <div class="body-medium text-on-surface-variant">暂无数据</div>
+        {/if}
     </div>
 
-    <!-- 书籍列表 -->
-    <div class="row col-space16">
-        <!-- 最新添加 -->
-        <div class="col-xs12 col-md6">
-            <mdui-card class="p-3 w-100">
-                <div class="title-medium d-flex items-center mb-3">
-                    <mdui-icon name="schedule" class="mr-2"></mdui-icon>
-                    最新添加
-                </div>
-                <mdui-list>
-                    {foreach $recentBooks as $book}
-                    <mdui-list-item class="book-item">
-                        <div class="d-flex items-start w-100">
-                            {if $book.coverUrl}
-                            <image-loader src="{$book.coverUrl}" class="book-cover mr-3" style="height: 64px;"></image-loader>
-                            {else}
-                            <div class="book-cover mr-3 bg-surface-variant d-flex items-center justify-center">
-                                <mdui-icon name="book"></mdui-icon>
-                            </div>
-                            {/if}
-                            <div class="flex-1 min-w-0">
-                                <div class="title-small mb-1">{$book.bookName}</div>
-                                <div class="body-medium text-on-surface-variant mb-1 d-flex items-center mt-1" style="line-height: 1;">
-                                    <mdui-icon name="person" class="mr-1" style="font-size: 1.1rem; display: flex;"></mdui-icon>
-                                    <span class="text-ellipsis">{$book.author}</span>
-                                </div>
-                                {if $book.series}
-                                <div class="body-small mb-1">
-                                    <mdui-chip>{$book.series} #{$book.seriesNum}</mdui-chip>
-                                </div>
-                                {/if}
-                            </div>
-                            <div class="ml-3 text-right flex-shrink-0">
-                                <div class="rating-stars mb-1">
-                                    {$book.ratingStars nofilter}
-                                </div>
-                                <div class="body-small text-on-surface-variant">
-                                    {$book.formattedDate}
-                                </div>
-                            </div>
-                        </div>
-                    </mdui-list-item>
-                    {/foreach}
-                </mdui-list>
-            </mdui-card>
+    <h2 class="title-medium mb-2"  style="font-weight: bold">最近添加</h2>
+    <div class="added-wall">
+        {if $recentBooks}
+        {foreach $recentBooks as $book}
+        <div class="added-item">
+            <book-card cover="{$book.coverUrl}" title="{$book.bookName}" author="{$book.author}"></book-card>
+            <div class="label-small text-on-surface-variant mt-2">添加于 {$book.formattedDate}</div>
         </div>
-
-        <!-- 高分推荐 -->
-        <div class="col-xs12 col-md6">
-            <mdui-card class="p-3 w-100">
-                <div class="title-medium d-flex items-center mb-3">
-                    <mdui-icon name="star" class="mr-2"></mdui-icon>
-                    高分推荐
-                </div>
-                <mdui-list>
-                    {foreach $highRatedBooks as $book}
-                    <mdui-list-item class="book-item">
-                        <div class="d-flex items-start w-100">
-                            {if $book.coverUrl}
-                            <image-loader src="{$book.coverUrl}" class="book-cover mr-3" style="height: 64px;"></image-loader>
-                            {else}
-                            <div class="book-cover mr-3 bg-surface-variant d-flex items-center justify-center">
-                                <mdui-icon name="book"></mdui-icon>
-                            </div>
-                            {/if}
-                            <div class="flex-1 min-w-0">
-                                <div class="title-small mb-1">{$book.bookName}</div>
-                                <div class="body-medium text-on-surface-variant mb-1 d-flex items-center  mt-1" style="line-height: 1;">
-                                    <mdui-icon name="person" class="mr-1" style="font-size: 1.1rem; display: flex;"></mdui-icon>
-                                    <span class="text-ellipsis">{$book.author}</span>
-                                </div>
-                                {if $book.favorite}
-                                <div class="body-small">
-                                    <mdui-chip>
-                                        <mdui-icon slot="icon" name="bookmark"></mdui-icon>
-                                        {$book.favorite}
-                                    </mdui-chip>
-                                </div>
-                                {/if}
-                            </div>
-                            <div class="ml-3 flex-shrink-0">
-                                <div class="rating-stars">
-                                    {$book.ratingStars nofilter}
-                                </div>
-                            </div>
-                        </div>
-                    </mdui-list-item>
-                    {/foreach}
-                </mdui-list>
-            </mdui-card>
-        </div>
+        {/foreach}
+        {else}
+        <div class="body-medium text-on-surface-variant">暂无数据</div>
+        {/if}
     </div>
 </div>
 
