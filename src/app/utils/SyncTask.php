@@ -26,7 +26,7 @@ class SyncTask extends TaskerAbstract
      */
     public function onStart(): void
     {
-        $list = BookManager::instance()->list();
+        $list = MoonBookManager::instance()->list();
         /**
          * @var $book BookModel
          */
@@ -76,7 +76,7 @@ class SyncTask extends TaskerAbstract
         foreach ($books as &$book) {
             $book = $book->pushSeries2Category();
             if (!empty($book->coverUrl) && Context::instance()->cache->get("coverUrl/{$book->coverUrl}")){
-                $file = BookManager::proxy($book->coverUrl);
+                $file = MoonBookManager::proxy($book->coverUrl);
                 if(BookManager::instance()->uploadCover($file,$book->filename)){
                     Context::instance()->cache->delete("coverUrl/{$book->coverUrl}");
                 }
