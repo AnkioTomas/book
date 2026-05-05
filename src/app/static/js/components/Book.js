@@ -39,6 +39,7 @@ class BookCard extends HTMLElement {
                         aspect-ratio: 3 / 4;
                         border-radius: 8px;
                         overflow: hidden;
+                        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.18);
                     }
                     .title, .author {
                         overflow: hidden;
