@@ -3,6 +3,7 @@
 namespace app\controller\index;
 
 use app\database\dao\BookDao;
+use app\utils\BookManager\CoverManager;
 use app\utils\MoonBookManager;
 use DOMDocument;
 use DOMXPath;
@@ -449,8 +450,9 @@ class Douban extends BaseController
            return Response::asText('404 not found');
        }
        if (empty($book->coverUrl)){
-           return Response::asStatic(MoonBookManager::instance()->getCover($filename));
+           return Response::asStatic(CoverManager::getInstance()->getCover($filename));
        }
-        return Response::asStatic(MoonBookManager::proxy($book->coverUrl));
+        $file = \app\utils\Douban::download($book->coverUrl);
+        return Response::asStatic($file);
     }
 }

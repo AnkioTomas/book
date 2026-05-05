@@ -6,6 +6,7 @@ namespace app\controller\index;
 
 use app\Application;
 use app\database\dao\BookDao;
+use app\database\dao\ReadingProgressDao;
 use nova\framework\http\Response;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
@@ -100,6 +101,7 @@ class Main extends BaseController
     public function dashboard():Response
     {
         $bookDao = new BookDao();
+        $progressDao = ReadingProgressDao::getInstance();
         
         // 1. 全局统计
         $totalBooks = $bookDao->getCount();
@@ -114,36 +116,58 @@ class Main extends BaseController
             'favoriteCount' => count($favorites),
         ];
         
-        // 2. 最新添加 10本
+        // 2. 最近添加 10本
         $recentBooks = $bookDao->getList(1, 10)['list'];
-        // 预处理书籍数据
         $recentBooks = $this->processBookData($recentBooks);
-        $currentReading = $recentBooks[0] ?? null;
 
-        // 3. 高分推荐 (评分>=4)
-        $highRatedBooks = $bookDao->getAll(
-            null,
-            ["rate >= '4'"],
-            1,
-            10,
-            false,
-            'rate',
-            'DESC'
-        )['data'];
-        // 预处理书籍数据
-        $highRatedBooks = $this->processBookData($highRatedBooks);
+        $filenames = [];
+        foreach ($recentBooks as $book) {
+            if (!empty($book['filename'])) {
+                $filenames[] = $book['filename'];
+            }
+        }
+        $progressMap = [];
+        if (!empty($filenames)) {
+            $progressList = $progressDao->getByFilenames($filenames);
+            foreach ($progressList as $progress) {
+                $progressMap[$progress->filename] = $progress;
+            }
+        }
+
+        foreach ($recentBooks as &$book) {
+            $book['progressPercent'] = 0.0;
+            $book['progressText'] = '0';
+            $progress = $progressMap[$book['filename']] ?? null;
+            if ($progress) {
+                $book['progressPercent'] = (float)$progress->percent;
+                $book['progressText'] = $progress->percentText;
+            }
+            if ((int)$book['isFinished'] === 1) {
+                $book['progressPercent'] = 100.0;
+                $book['progressText'] = '100';
+            }
+        }
+        unset($book);
+
+        // 3. 最近阅读：从最近添加中筛选有进度的书籍
+        $recentlyReadBooks = array_values(array_filter($recentBooks, static function ($book) {
+            return ((float)$book['progressPercent']) > 0;
+        }));
+
+        // 4. 继续阅读：优先取最近阅读第一本
+        $currentReading = $recentlyReadBooks[0] ?? ($recentBooks[0] ?? null);
 
         $dashboardMeta = [
             'updatedAt' => date('Y-m-d H:i'),
             'recentCount' => count($recentBooks),
-            'highRatedCount' => count($highRatedBooks),
+            'recentlyReadCount' => count($recentlyReadBooks),
         ];
 
         return $this->viewResponse->asTpl('dashboard',[
             'globalStats' => $globalStats,
             'currentReading' => $currentReading,
             'recentBooks' => $recentBooks,
-            'highRatedBooks' => $highRatedBooks,
+            'recentlyReadBooks' => $recentlyReadBooks,
             'dashboardMeta' => $dashboardMeta,
         ]);
     }
