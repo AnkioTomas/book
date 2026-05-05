@@ -1,25 +1,41 @@
 <title id="title">书籍列表 - {$title}</title>
 <style id="style">
-    /* 书籍封面缩略图 */
-    .book-cover-thumb {
-        width: 40px;
-        height: 56px;
-        object-fit: cover;
-        border-radius: 4px;
-        display: block;
+    .book-page {
+        padding: 16px;
     }
-    
-    .book-cover-placeholder {
-        width: 40px;
-        height: 56px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+    .book-toolbar {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 4px;
+        gap: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .book-toolbar-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .book-filter-panel {
+        padding: 0;
+        margin-bottom: 14px;
+    }
+
+    .book-list-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .book-list-tip {
+        color: rgba(var(--mdui-color-on-surface), 0.7);
+        font-size: 12px;
     }
     
     /* 自动完成下拉列表 */
@@ -65,30 +81,52 @@
         box-shadow: var(--mdui-elevation-level3);
     }
     
-    /* 书籍卡片 - 仅保留必要样式 */
-    .book-cover {
-        aspect-ratio: 3/4;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
    #searchForm mdui-select::part(menu){
        max-height: 50vh;
        width: fit-content;
        overflow-y: scroll;
    }
-   .card-view-item{
-       padding: 0!important;
-   }
+
+    #bookTable book-card {
+        display: block;
+        width: 100%;
+    }
+
+    #bookTable .book-card-shell {
+        position: relative;
+    }
+
+    #bookTable .book-actions {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease;
+        z-index: 21;
+    }
+
+    #bookTable .card-view-item:hover .book-actions,
+    #bookTable .card-view-item.selected .book-actions {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    @media (hover: none), (pointer: coarse) {
+        #bookTable .book-actions {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    }
 </style>
 
-<div id="container" class="container py-4">
-    <!-- 头部：标题和操作按钮 -->
-    <div class="d-flex justify-between items-center mb-4 flex-wrap gap-3">
+<div id="container" class="container book-page">
+    <div class="book-toolbar">
         <div class="title-large d-flex items-center">
             <mdui-icon name="book" class="mr-2"></mdui-icon>
             <span>书籍列表</span>
         </div>
-        <div class="d-flex gap-2">
+        <div class="book-toolbar-actions">
             <mdui-button id="btnAdd" icon="add" variant="filled">导入</mdui-button>
             <mdui-button id="btnSync" icon="sync" variant="tonal">同步</mdui-button>
             <mdui-dropdown>
@@ -103,63 +141,56 @@
             </mdui-dropdown>
         </div>
     </div>
-    
-    <!-- 搜索筛选表单 -->
-    <form id="searchForm" class="mb-4">
-        <div class="row col-space12">
-            <!-- 搜索 -->
-            <div class="col-xs12 col-sm6 col-md3">
-                <mdui-text-field
-                    name="search"
-                    label="搜索书名或作者"
-                    icon="search"
-                    clearable
-                ></mdui-text-field>
-            </div>
-            
-            <!-- 系列筛选 -->
-            <div class="col-xs6 col-sm3 col-md2">
-                <mdui-select style="max-height: 50vh;min-width: fit-content" name="series" clearable label="系列">
-                    <mdui-menu-item value="">全部</mdui-menu-item>
-                    <!-- 动态填充 -->
-                </mdui-select>
-            </div>
-            
-            <!-- 分类筛选 -->
-            <div class="col-xs6 col-sm3 col-md2">
-                <mdui-select name="category" clearable label="分类">
-                    <mdui-menu-item value="">全部</mdui-menu-item>
-                    <!-- 动态填充 -->
-                </mdui-select>
-            </div>
-            
-            <!-- 收藏筛选 -->
-            <div class="col-xs6 col-sm4 col-md2">
-                <mdui-select name="favorite" clearable label="收藏">
-                    <mdui-menu-item value="">全部</mdui-menu-item>
-                    <!-- 动态填充 -->
-                </mdui-select>
-            </div>
 
-            <!-- 已读完筛选 -->
-            <div class="col-xs6 col-sm4 col-md2">
-                <mdui-select name="finished" clearable label="已读完">
-                    <mdui-menu-item value="">全部</mdui-menu-item>
-                    <mdui-menu-item value="1">已读完</mdui-menu-item>
-                    <mdui-menu-item value="0">未读完</mdui-menu-item>
-                </mdui-select>
+    <div class="book-filter-panel">
+        <form id="searchForm">
+            <div class="row col-space12">
+                <div class="col-xs12 col-sm6 col-md3">
+                    <mdui-text-field
+                        name="search"
+                        label="搜索书名或作者"
+                        icon="search"
+                        clearable
+                    ></mdui-text-field>
+                </div>
+
+                <div class="col-xs6 col-sm3 col-md2">
+                    <mdui-select style="max-height: 50vh;min-width: fit-content" name="series" clearable label="系列">
+                        <mdui-menu-item value="">全部</mdui-menu-item>
+                    </mdui-select>
+                </div>
+
+                <div class="col-xs6 col-sm3 col-md2">
+                    <mdui-select name="category" clearable label="分类">
+                        <mdui-menu-item value="">全部</mdui-menu-item>
+                    </mdui-select>
+                </div>
+
+                <div class="col-xs6 col-sm4 col-md2">
+                    <mdui-select name="favorite" clearable label="收藏">
+                        <mdui-menu-item value="">全部</mdui-menu-item>
+                    </mdui-select>
+                </div>
+
+                <div class="col-xs6 col-sm4 col-md2">
+                    <mdui-select name="finished" clearable label="已读完">
+                        <mdui-menu-item value="">全部</mdui-menu-item>
+                        <mdui-menu-item value="1">已读完</mdui-menu-item>
+                        <mdui-menu-item value="0">未读完</mdui-menu-item>
+                    </mdui-select>
+                </div>
+
+                <div class="col-xs6 col-sm4 col-md3 d-flex gap-2">
+                    <mdui-button type="submit" icon="search" variant="filled" class="flex-1">搜索</mdui-button>
+                    <mdui-button type="reset" icon="refresh" variant="outlined" class="flex-1">重置</mdui-button>
+                </div>
             </div>
-            
-            <!-- 按钮 -->
-            <div class="col-xs6 col-sm4 col-md3 d-flex gap-2">
-                <mdui-button type="submit" icon="search" variant="filled" class="flex-1">搜索</mdui-button>
-                <mdui-button type="reset" icon="refresh" variant="outlined" class="flex-1">重置</mdui-button>
-            </div>
-        </div>
-    </form>
-    
-    <!-- 书籍列表表格 -->
-    <div id="bookTable"></div>
+        </form>
+    </div>
+
+    <div class="book-list-panel">
+        <div id="bookTable"></div>
+    </div>
 
     <!-- 编辑对话框 -->
     <mdui-dialog-form id="bookEditDialog" label="编辑书籍" saveName="保存" >
