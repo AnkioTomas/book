@@ -3,6 +3,9 @@
 namespace app\database\dao;
 
 use app\database\model\BookModel;
+use app\utils\BookManager\BookManager;
+use app\utils\BookManager\CoverManager;
+use app\utils\BookManager\ProgressManager;
 use app\utils\SyncTask;
 use nova\plugin\corn\schedule\TaskerManager;
 use nova\plugin\corn\schedule\TaskerTime;
@@ -70,6 +73,20 @@ class BookDao extends Dao
     public function getById(int $id): ?BookModel
     {
         return $this->find(null, ['id' => $id]);
+    }
+
+    /**
+     * 按 $addTimes 批量查询，减少循环中的 N+1 数据库请求。
+     *
+     * @param int[] $addTimes
+     * @return BookModel[]
+     */
+    public function getByAddTime(array $addTimes): array
+    {
+        $in = implode(',', $addTimes);
+        return $this->select()
+            ->where(['addTime in (:addTime)', ':addTime' => $in])
+            ->commit();
     }
 
 
