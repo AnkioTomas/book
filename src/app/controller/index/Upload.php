@@ -4,7 +4,7 @@ namespace app\controller\index;
 
 use app\database\dao\BookDao;
 use app\database\model\BookModel;
-use app\utils\BookManager;
+use app\utils\MoonBookManager;
 use app\utils\BookOrganizer\Parser;
 use nova\framework\http\Response;
 use nova\plugin\upload\FileDao;
@@ -52,7 +52,7 @@ class Upload extends BaseController
         }
 
         $model = BookDao::getInstance()->getByFileName($file->name);
-        $bookManager = BookManager::instance();
+        $bookManager = MoonBookManager::instance();
         if ($bookManager->uploadBook($file->path, $file->name)) {
             [$author, $title, $year, $ext] = Parser::filename($file->name);
             if (empty($title)){

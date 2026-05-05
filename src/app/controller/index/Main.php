@@ -45,24 +45,6 @@ class Main extends BaseController
                     "pjax" => true
                 ],
                 [
-                    "title" => "定期采集",
-                    "icon" => "schedule",
-                    "sub" => [
-                        [
-                            "title" => "青年文摘采集",
-                            "url" => "/admin/qing",
-                            "icon" => "article",
-                            "pjax" => true
-                        ],
-                        [
-                            "title" => "读者阁采集",
-                            "url" => "/admin/dzg",
-                            "icon" => "article",
-                            "pjax" => true
-                        ],
-                    ]
-                ],
-                [
                     "title" => "系统设置",
                     "icon" => "settings",
                     "sub" => [
@@ -136,7 +118,8 @@ class Main extends BaseController
         $recentBooks = $bookDao->getList(1, 10)['list'];
         // 预处理书籍数据
         $recentBooks = $this->processBookData($recentBooks);
-        
+        $currentReading = $recentBooks[0] ?? null;
+
         // 3. 高分推荐 (评分>=4)
         $highRatedBooks = $bookDao->getAll(
             null,
@@ -149,11 +132,19 @@ class Main extends BaseController
         )['data'];
         // 预处理书籍数据
         $highRatedBooks = $this->processBookData($highRatedBooks);
-        
+
+        $dashboardMeta = [
+            'updatedAt' => date('Y-m-d H:i'),
+            'recentCount' => count($recentBooks),
+            'highRatedCount' => count($highRatedBooks),
+        ];
+
         return $this->viewResponse->asTpl('dashboard',[
             'globalStats' => $globalStats,
+            'currentReading' => $currentReading,
             'recentBooks' => $recentBooks,
             'highRatedBooks' => $highRatedBooks,
+            'dashboardMeta' => $dashboardMeta,
         ]);
     }
 
@@ -182,7 +173,7 @@ class Main extends BaseController
         }
 
         $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
-        $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl);
+        $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl) . '&filename=' . rawurlencode($filename);
         return $this->redirectTo($readerUrl);
     }
 
@@ -230,9 +221,5 @@ class Main extends BaseController
         return Response::asRedirect("/admin/dashboard");
     }
 
-    public function dzg():Response
-    {
-        return $this->viewResponse->asTpl('',['books' => Duzhege::$books]);
-    }
 
 }

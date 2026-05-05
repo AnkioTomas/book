@@ -5,7 +5,11 @@ namespace app\controller\index;
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
 use app\database\model\BookModel;
-use app\utils\BookManager;
+use app\utils\BookManager\BookManager;
+use app\utils\BookManager\CoverManager;
+use app\utils\BookManager\MoonManager;
+use app\utils\BookManager\ProgressManager;
+use app\utils\MoonBookManager;
 use app\utils\BookOrganizer\Parser;
 use nova\framework\core\Context;
 use nova\framework\core\File;
@@ -91,6 +95,86 @@ class Book extends BaseController
     }
 
     /**
+     * 获取阅读进度
+     * GET /book/progress?filename=xxx.epub
+     */
+    public function progress(): Response
+    {
+        $filename = rawurldecode($this->request->get('filename', ''));
+        $filename = trim($filename);
+        if ($filename === '') {
+            return Response::asJson(['code' => 400, 'msg' => '参数错误', 'data' => []]);
+        }
+
+        $progress = ReadingProgressDao::getInstance()->getByFilename($filename);
+        if (!$progress) {
+            return Response::asJson(['code' => 200, 'msg' => 'success', 'data' => []]);
+        }
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'success',
+            'data' => [
+                'filename' => $progress->filename,
+                'percent' => $progress->percent,
+                'percentText' => $progress->percentText,
+                'timestamp' => $progress->timestamp,
+            ],
+        ]);
+    }
+
+    /**
+     * 同步阅读进度
+     * POST /book/progressSync
+     */
+    public function progressSync(): Response
+    {
+        $data = $this->request->post();
+        if (empty($data)) {
+            $data = $this->request->json();
+        }
+        $filename = rawurldecode($data['filename'] ?? '');
+        $filename = trim($filename);
+        if ($filename === '') {
+            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
+        }
+
+        $fraction = (float)($data['fraction'] ?? 0);
+        if ($fraction < 0) {
+            $fraction = 0;
+        } elseif ($fraction > 1) {
+            $fraction = 1;
+        }
+        $percent = $fraction * 100;
+        $sectionIndex = (int)($data['sectionIndex'] ?? 0);
+        $locationCurrent = (int)($data['locationCurrent'] ?? 0);
+        $offset = (int)($data['offset'] ?? 0);
+
+        $progress = new \app\database\model\ReadingProgressModel();
+        $progress->filename = $filename;
+        $progress->spineIndex = $sectionIndex;
+        $progress->pageIndex = $locationCurrent;
+        $progress->offset = $offset;
+        $progress->timestamp = (int)(microtime(true) * 1000);
+        $progress->percent = $percent;
+        $progress->percentText = $this->formatPercentText($percent);
+        $progress->raw = $progress->toString();
+
+        ReadingProgressDao::getInstance()->insertModel($progress, true);
+        MoonBookManager::instance()->uploadProgressText($filename, $progress->raw);
+
+        if ($percent >= 100) {
+            $book = BookDao::getInstance()->getByFileName($filename);
+            if ($book && $book->isFinished === 0) {
+                $book->isFinished = 1;
+                BookDao::getInstance()->updateModel($book);
+            }
+        }
+
+        return Response::asJson(['code' => 200, 'msg' => 'success']);
+    }
+
+    /**
      * 获取 EPUB 文件用于在线阅读
      * GET /book/file?filename=xxx.epub
      */
@@ -117,7 +201,7 @@ class Book extends BaseController
         $localPath = $cacheDir . DS . basename($filename);
 
         if (!file_exists($localPath) || filesize($localPath) === 0) {
-            if (!BookManager::instance()->downloadBook($filename, $localPath)) {
+            if (!MoonBookManager::instance()->downloadBook($filename, $localPath)) {
                 return Response::asText('下载失败');
             }
         }
@@ -178,15 +262,11 @@ class Book extends BaseController
         }
 
         $book = BookDao::getInstance()->getById($id);
-        BookManager::instance()->deleteBook($book->filename);
-        BookManager::instance()->deleteCover($book->filename);
+        MoonManager::getInstance()->delete($book->filename);
         if (BookDao::getInstance()->deleteById($id)) {
             BookDao::getInstance()->syncBooks();
             return Response::asJson(['code' => 200, 'msg' => '删除成功']);
         }
-
-
-
 
         return Response::asJson(['code' => 500, 'msg' => '删除失败']);
     }
@@ -244,10 +324,9 @@ class Book extends BaseController
                     continue; // 保留最老的
                 }
                 
-                BookManager::instance()->deleteBook($book->filename);
-                BookManager::instance()->deleteCover($book->filename);
+                MoonManager::getInstance()->delete($book->filename);
                 BookDao::getInstance()->deleteById($book->id);
-                
+
                 $deletedBooks[] = [
                     'id' => $book->id,
                     'bookName' => $book->bookName,
@@ -257,6 +336,8 @@ class Book extends BaseController
                 $deletedCount++;
             }
         }
+
+        BookDao::getInstance()->syncBooks();
         
         return Response::asJson([
             'code' => 200,
@@ -266,6 +347,12 @@ class Book extends BaseController
                 'deletedBooks' => $deletedBooks
             ]
         ]);
+    }
+
+    private function formatPercentText(float $percent): string
+    {
+        $formatted = rtrim(rtrim(sprintf('%.6f', $percent), '0'), '.');
+        return $formatted === '' ? '0' : $formatted;
     }
     
     /**
@@ -279,7 +366,7 @@ class Book extends BaseController
         $book = BookDao::getInstance()->getById($id);
         if (!$book) return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
         
-        $bookManager = BookManager::instance();
+        $bookManager = MoonBookManager::instance();
         
         // 下载书籍到临时目录
         $tempPath = RUNTIME_PATH . DS . 'temp' . DS . $book->filename;
@@ -296,7 +383,7 @@ class Book extends BaseController
         }
         
         // 上传封面
-        if (!$bookManager->uploadCover($coverPath, $book->filename)) {
+        if (!CoverManager::getInstance()->uploadCover($coverPath, $book->filename)) {
             File::del($tempPath);
             return Response::asJson(['code' => 500, 'msg' => '上传封面失败']);
         }

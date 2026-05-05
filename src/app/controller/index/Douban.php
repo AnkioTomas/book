@@ -3,7 +3,7 @@
 namespace app\controller\index;
 
 use app\database\dao\BookDao;
-use app\utils\BookManager;
+use app\utils\MoonBookManager;
 use DOMDocument;
 use DOMXPath;
 use nova\framework\core\Context;
@@ -85,8 +85,8 @@ class Douban extends BaseController
             ->timeout(300)
             ->gzip()
             ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
-            ->setHeader('User-Agent', BookManager::getRandomUserAgent())
-            ->setHeader('X-Forwarded-For', BookManager::getRandomIP())
+            ->setHeader('User-Agent', MoonBookManager::getRandomUserAgent())
+            ->setHeader('X-Forwarded-For', MoonBookManager::getRandomIP())
             ->get();
 
         $response = $client->send(self::SEARCH_URL, [
@@ -359,8 +359,8 @@ class Douban extends BaseController
             ->timeout(300)
             ->gzip()
             ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
-            ->setHeader('User-Agent', BookManager::getRandomUserAgent())
-            ->setHeader('X-Forwarded-For', BookManager::getRandomIP())
+            ->setHeader('User-Agent', MoonBookManager::getRandomUserAgent())
+            ->setHeader('X-Forwarded-For', MoonBookManager::getRandomIP())
             ->get();
 
         try {
@@ -438,7 +438,8 @@ class Douban extends BaseController
     }
 
     public function proxy(string $uri):Response{
-        return Response::asStatic(BookManager::proxy($uri));
+        $file = \app\utils\Douban::download($uri);
+        return Response::asStatic($file);
     }
     public function webdav(string $filename):Response
     {
@@ -448,8 +449,8 @@ class Douban extends BaseController
            return Response::asText('404 not found');
        }
        if (empty($book->coverUrl)){
-           return Response::asStatic(BookManager::instance()->getCover($filename));
+           return Response::asStatic(MoonBookManager::instance()->getCover($filename));
        }
-        return Response::asStatic(BookManager::proxy($book->coverUrl));
+        return Response::asStatic(MoonBookManager::proxy($book->coverUrl));
     }
 }
