@@ -102,7 +102,7 @@ class Main extends BaseController
     public function dashboard():Response
     {
         // 2. 最近添加 10本
-        $recentBooks = BookDao::getInstance()->getAll([], [], 1, 20, 'id',false)['data'];
+        $recentBooks = BookDao::getInstance()->getAll([], [], 1, 25, 'id',false)['data'];
         foreach ($recentBooks as &$book) {
             // 格式化日期
             $book['formattedDate'] = date('Y-m-d', (int)($book['addTime'] / 1000));
@@ -110,7 +110,7 @@ class Main extends BaseController
         }
 
 
-        $_recentlyReadBooks = ReadingProgressDao::getInstance()->getAll([], [], 1, 20, 'timestamp',false)['data'];
+        $_recentlyReadBooks = ReadingProgressDao::getInstance()->getAll([], [], 1, 25, 'timestamp',false)['data'];
 
         $recentlyReadBooks =[];
 
