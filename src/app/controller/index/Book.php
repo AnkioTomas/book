@@ -8,7 +8,6 @@ use app\database\model\BookModel;
 use app\database\model\ReadingProgressModel;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
-use app\utils\BookManager\MoonManager;
 use app\utils\BookManager\ProgressManager;
 use app\utils\MoonBookManager;
 use app\utils\BookOrganizer\Parser;
@@ -108,11 +107,12 @@ class Book extends BaseController
         }
 
         $item = ReadingProgressModel::fromString($progress);
-
+$percent = $item->percent;
+if ($percent > 1) $percent /= 100;
         return Response::asJson([
             'code' => 200,
             'msg' => 'success',
-            'data' => $item->percent,
+            'data' => $percent
         ]);
     }
 
@@ -127,7 +127,7 @@ class Book extends BaseController
         $filename = trim($filename);
 
         $frac = $data["frac"] ?? 0;
-        $frac = round(floatval($frac), 2);
+        $frac = round(floatval($frac) * 100, 2);
 
         $spine  = $data["spine"] ?? 0;
         $spine = intval($spine);
@@ -145,7 +145,7 @@ class Book extends BaseController
         if (empty($progress)) {
             $progress = new ReadingProgressModel();
             $progress->filename = $filename;
-            $progress->timestamp = intval(microtime());
+            $progress->timestamp = time() * 1000;
             $progress->id = ReadingProgressDao::getInstance()->insertModel($progress);
         }
 
@@ -153,13 +153,15 @@ class Book extends BaseController
         $progress->spineIndex   = $spine;
         $progress->percentText = $percent;
         $progress->pageIndex = $page;
-        $progress->timestamp = intval(microtime());
+        $progress->timestamp = time() * 1000;
+        $progress->raw = $progress->toString();
 
         ReadingProgressDao::getInstance()->updateItem($progress);
         ProgressManager::getInstance()->uploadProgressText($filename, $progress->toString());
 
         return Response::asJson([
             'code' => 200,
+            'data' => $progress
         ]);
     }
 
@@ -216,11 +218,12 @@ class Book extends BaseController
         if ($progress == null) {
             $progress =  new ReadingProgressModel();
         }
-
+        $percent = $progress->percent;
+        if ($percent > 1) $percent /= 100;
         $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
         $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl)
             . '&filename=' . rawurlencode($filename)
-            . '&frac=' . $progress->percent;
+            . '&frac=' . $percent;
 
         return $this->redirectTo($readerUrl);
     }

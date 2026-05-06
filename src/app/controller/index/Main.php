@@ -175,35 +175,6 @@ class Main extends BaseController
         return $this->redirectTo($readerUrl);
     }
 
-    /**
-     * 预处理书籍数据：添加格式化日期和评分星星
-     */
-    private function processBookData(array $books): array
-    {
-        foreach ($books as &$book) {
-
-            // 格式化日期
-            $book['formattedDate'] = date('Y-m-d', (int)($book['addTime'] / 1000));
-
-            // 生成评分星星 HTML
-            $rate = (int)$book['rate'];
-            $stars = '';
-            for ($i = 1; $i <= 5; $i++) {
-                if ($i <= $rate) {
-                    $stars .= '<mdui-icon name="star"></mdui-icon>';
-                } else {
-                    $stars .= '<mdui-icon name="star_border"></mdui-icon>';
-                }
-            }
-            $book['ratingStars'] = $stars;
-
-
-            $book['coverUrl'] = "/webdav/".rawurlencode($book['filename']);
-
-        }
-        return $books;
-    }
-
     public function task():Response
     {
         return $this->viewResponse->asTpl(Task::TASK_TPL);

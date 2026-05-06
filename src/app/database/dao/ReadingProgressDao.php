@@ -33,6 +33,6 @@ class ReadingProgressDao extends Dao
         $array = $progress->toArray();
         unset($array['filename']);
         if ($progress->id <=0 )return;
-        ReadingProgressDao::getInstance()->update()->where(['id' => $progress->id])->set($array)->commit();
+        ReadingProgressDao::getInstance()->update()->where(['filename' => $progress->filename])->set($array)->commit();
     }
 }
