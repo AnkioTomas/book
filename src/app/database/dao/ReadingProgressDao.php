@@ -12,16 +12,6 @@ class ReadingProgressDao extends Dao
         return $this->find(null, ['filename' => $filename]);
     }
 
-    public function updateItem(string $filename, ReadingProgressModel $progress)
-    {
-        $_progress = $this->getByFilename($filename);
-        if(empty($_progress)){
-            $progress->id =   $this->insertModel($progress);
-        }else{
-            $progress->id =   $_progress->id;
-            $this->updateModel($progress);
-        }
-    }
 
     /**
      * @param string[] $filenames
@@ -36,5 +26,13 @@ class ReadingProgressDao extends Dao
         return $this->select()
             ->where(['filename in (:in)', ':in' => $in])
             ->commit();
+    }
+
+    public function updateItem(ReadingProgressModel $progress)
+    {
+        $array = $progress->toArray();
+        unset($array['filename']);
+        if ($progress->id <=0 )return;
+        ReadingProgressDao::getInstance()->update()->where(['id' => $progress->id])->set($array)->commit();
     }
 }

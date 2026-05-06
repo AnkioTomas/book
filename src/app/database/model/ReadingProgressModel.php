@@ -2,6 +2,7 @@
 
 namespace app\database\model;
 
+use nova\framework\core\Logger;
 use nova\plugin\orm\object\Model;
 
 class ReadingProgressModel extends Model
@@ -34,9 +35,9 @@ class ReadingProgressModel extends Model
         $model = new self();
         $model->raw = $value;
 
-        $full = '/^(?P<ts>\d+)\*(?P<spine>\d+)@(?P<page>\d+)#(?P<offset>\d+):(?P<pct>\d+(?:\.\d+)?)%$/';
-        $noHash = '/^(?P<ts>\d+)\*(?P<spine>\d+)@(?P<page>\d+):(?P<pct>\d+(?:\.\d+)?)%$/';
-        $short = '/^(?P<ts>\d+)\*(?P<page>\d+):(?P<pct>\d+(?:\.\d+)?)%$/';
+        $full = '/^(?P<ts>\d+)\*(?P<spine>\d+)@(?P<page>\d+)#(?P<offset>\d+):(?P<pct>\d+(?:\.\d+)?)%+$/';
+        $noHash = '/^(?P<ts>\d+)\*(?P<spine>\d+)@(?P<page>\d+):(?P<pct>\d+(?:\.\d+)?)%+$/';
+        $short = '/^(?P<ts>\d+)\*(?P<page>\d+):(?P<pct>\d+(?:\.\d+)?)%+$/';
 
         $m = [];
         if (preg_match($full, $value, $m)) {
@@ -55,15 +56,12 @@ class ReadingProgressModel extends Model
             $model->pageIndex = (int)$m['page'];
             $model->offset = 0;
         } else {
-            throw new \InvalidArgumentException(
-                'Invalid progress string format. Expected patterns like '
-                . '"{ts}*{spine}@{page}#{offset}:{pct}%", "{ts}*{spine}@{page}:{pct}%", '
-                . 'or "{ts}*{page}:{pct}%".'
-            );
+            Logger::error('Invalid progress string format.'.$value);
         }
 
-        $model->percentText = $m['pct'];
-        $model->percent = (float)$m['pct'];
+        $pct = $m['pct'] ?? '0';
+        $model->percentText = self::sanitizePercentText($pct);
+        $model->percent = (float)$model->percentText;
 
         return $model;
     }
@@ -75,7 +73,7 @@ class ReadingProgressModel extends Model
 
     public function toString(): string
     {
-        $percentText = $this->percentText;
+        $percentText = self::sanitizePercentText($this->percentText);
         if ($percentText === '') {
             $percentText = self::normalizePercentText($this->percent);
         }
@@ -99,5 +97,12 @@ class ReadingProgressModel extends Model
     {
         $formatted = rtrim(rtrim(sprintf('%.6f', $percent), '0'), '.');
         return $formatted === '' ? '0' : $formatted;
+    }
+
+    private static function sanitizePercentText(string $value): string
+    {
+        $clean = trim($value);
+        $clean = rtrim($clean, '%');
+        return $clean === '' ? '0' : $clean;
     }
 }
