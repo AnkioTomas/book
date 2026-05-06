@@ -86,8 +86,8 @@ class Douban extends BaseController
             ->timeout(300)
             ->gzip()
             ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
-            ->setHeader('User-Agent', MoonBookManager::getRandomUserAgent())
-            ->setHeader('X-Forwarded-For', MoonBookManager::getRandomIP())
+            ->setHeader('User-Agent', \app\utils\Douban::getRandomUserAgent())
+            ->setHeader('X-Forwarded-For', \app\utils\Douban::getRandomIP())
             ->get();
 
         $response = $client->send(self::SEARCH_URL, [
@@ -360,8 +360,8 @@ class Douban extends BaseController
             ->timeout(300)
             ->gzip()
             ->setOption(CURLOPT_DNS_SERVERS, '223.5.5.5,223.6.6.6')
-            ->setHeader('User-Agent', MoonBookManager::getRandomUserAgent())
-            ->setHeader('X-Forwarded-For', MoonBookManager::getRandomIP())
+            ->setHeader('User-Agent', \app\utils\Douban::getRandomUserAgent())
+            ->setHeader('X-Forwarded-For', \app\utils\Douban::getRandomIP())
             ->get();
 
         try {

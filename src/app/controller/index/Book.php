@@ -156,8 +156,12 @@ if ($percent > 1) $percent /= 100;
         $progress->timestamp = time() * 1000;
         $progress->raw = $progress->toString();
 
-        ReadingProgressDao::getInstance()->updateItem($progress);
+        ReadingProgressDao::getInstance()->insertModel($progress,true);
         ProgressManager::getInstance()->uploadProgressText($filename, $progress->toString());
+
+        if ($frac >= 0.99){
+
+        }
 
         return Response::asJson([
             'code' => 200,
@@ -200,7 +204,7 @@ if ($percent > 1) $percent /= 100;
             }
         }
         if (!file_exists($localPath) || filesize($localPath) < 100 * 1024) {
-            if (!MoonBookManager::instance()->downloadBook($filename, $localPath)) {
+            if (!BookManager::getInstance()->downloadBook($filename, $localPath)) {
                 return Response::asText('下载失败');
             }
         }
@@ -287,7 +291,7 @@ if ($percent > 1) $percent /= 100;
         }
 
         $book = BookDao::getInstance()->getById($id);
-        MoonBookManager::getInstance()->delete($book->filename);
+        BookManager::getInstance()->delete($book->filename);
         if (BookDao::getInstance()->deleteById($id)) {
             BookDao::getInstance()->syncBooks();
             return Response::asJson(['code' => 200, 'msg' => '删除成功']);
@@ -302,9 +306,24 @@ if ($percent > 1) $percent /= 100;
      */
     public function sync(): Response
     {
-        BookDao::getInstance()->syncBooks(true);
 
-        return Response::asJson(['code' => 200, 'msg' => '同步完成']);
+        $cache = Context::instance()->cache;
+
+        $msg = $cache->get('sync-books',null);
+
+        if ($msg == 'complete'){
+            Context::instance()->cache->delete('sync-books');
+            return Response::asJson(['code' => 200, 'msg' => '同步完成']);
+        }
+
+        if ($msg == null) {
+            BookDao::getInstance()->syncBooks(true);
+            $msg = "start sync";
+        }
+
+        return Response::asJson(['code' => 201, 'msg' => $msg]);
+
+
     }
     
     /**
@@ -349,7 +368,7 @@ if ($percent > 1) $percent /= 100;
                     continue; // 保留最老的
                 }
 
-                MoonBookManager::getInstance()->delete($book->filename);
+                BookManager::getInstance()->delete($book->filename);
                 BookDao::getInstance()->deleteById($book->id);
 
                 $deletedBooks[] = [
@@ -384,12 +403,10 @@ if ($percent > 1) $percent /= 100;
         
         $book = BookDao::getInstance()->getById($id);
         if (!$book) return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
-        
-        $bookManager = MoonBookManager::instance();
-        
+
         // 下载书籍到临时目录
         $tempPath = RUNTIME_PATH . DS . 'temp' . DS . $book->filename;
-        if (!$bookManager->downloadBook($book->filename, $tempPath)) {
+        if (!BookManager::getInstance()->downloadBook($book->filename, $tempPath)) {
             return Response::asJson(['code' => 500, 'msg' => '下载书籍失败']);
         }
         

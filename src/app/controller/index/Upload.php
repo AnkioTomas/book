@@ -4,6 +4,8 @@ namespace app\controller\index;
 
 use app\database\dao\BookDao;
 use app\database\model\BookModel;
+use app\utils\BookManager\BookManager;
+use app\utils\BookManager\CoverManager;
 use app\utils\MoonBookManager;
 use app\utils\BookOrganizer\Parser;
 use nova\framework\http\Response;
@@ -52,15 +54,14 @@ class Upload extends BaseController
         }
 
         $model = BookDao::getInstance()->getByFileName($file->name);
-        $bookManager = MoonBookManager::instance();
-        if ($bookManager->uploadBook($file->path, $file->name)) {
+        if (BookManager::getInstance()->uploadBook($file->path, $file->name)) {
             [$author, $title, $year, $ext] = Parser::filename($file->name);
             if (empty($title)){
                 return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
             }
             if (empty($model)){
                 $model = new BookModel();
-                $model->deviceId = $bookManager->deviceId;
+                $model->deviceId = BookManager::getInstance()->deviceId;
                 $model->addTime = time() * 1000;
                 $model->filename = $file->name;
                 $model->series = $series;
@@ -70,7 +71,7 @@ class Upload extends BaseController
                 $model->downloadUrl = "[WebDav]/Apps/Books/".$file->name;
                 $path = Parser::cover($path,$model);
                 if (!empty($path)){
-                    $bookManager->uploadCover($path, $model->filename);
+                    CoverManager::getInstance()->uploadCover($path, $model->filename);
                 }
                 BookDao::getInstance()->insertModel($model);
             }
