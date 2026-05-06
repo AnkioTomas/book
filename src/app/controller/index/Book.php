@@ -5,6 +5,7 @@ namespace app\controller\index;
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
 use app\database\model\BookModel;
+use app\database\model\ReadingProgressModel;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\MoonManager;
@@ -106,21 +107,28 @@ class Book extends BaseController
             return Response::asJson(['code' => 400, 'msg' => '参数错误', 'data' => []]);
         }
 
-        $progress = ReadingProgressDao::getInstance()->getByFilename($filename);
-        if (!$progress) {
+        $progress = ProgressManager::getInstance()->getProgressText($filename);
+        if (empty($progress)) {
             return Response::asJson(['code' => 200, 'msg' => 'success', 'data' => []]);
         }
+
+        $item = ReadingProgressModel::fromString($progress);
+        ReadingProgressDao::getInstance()->updateItem($filename,$item);
 
         return Response::asJson([
             'code' => 200,
             'msg' => 'success',
-            'data' => [
-                'filename' => $progress->filename,
-                'percent' => $progress->percent,
-                'percentText' => $progress->percentText,
-                'timestamp' => $progress->timestamp,
-            ],
+            'data' => $item,
         ]);
+    }
+
+    /**
+     * 与 progressSync 等价，供需要独立路由的客户端使用
+     * POST /book/progressUpdate
+     */
+    public function progressUpdate(): Response
+    {
+        return $this->persistReadingProgressFromRequestBody();
     }
 
     /**
@@ -129,10 +137,25 @@ class Book extends BaseController
      */
     public function progressSync(): Response
     {
+        return $this->persistReadingProgressFromRequestBody();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readProgressRequestBody(): array
+    {
         $data = $this->request->post();
         if (empty($data)) {
             $data = $this->request->json();
         }
+
+        return is_array($data) ? $data : [];
+    }
+
+    private function persistReadingProgressFromRequestBody(): Response
+    {
+        $data = $this->readProgressRequestBody();
         $filename = rawurldecode($data['filename'] ?? '');
         $filename = trim($filename);
         if ($filename === '') {
@@ -150,7 +173,7 @@ class Book extends BaseController
         $locationCurrent = (int)($data['locationCurrent'] ?? 0);
         $offset = (int)($data['offset'] ?? 0);
 
-        $progress = new \app\database\model\ReadingProgressModel();
+        $progress = new ReadingProgressModel();
         $progress->filename = $filename;
         $progress->spineIndex = $sectionIndex;
         $progress->pageIndex = $locationCurrent;
@@ -209,7 +232,33 @@ class Book extends BaseController
         return Response::asStatic($localPath);
     }
 
-    
+    public function reader():Response
+    {
+        $filename = rawurldecode($this->request->get('file', ''));
+        $filename = trim($filename);
+        if ($filename === '') {
+            return $this->redirectTo("/404");
+        }
+
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $supported = ['epub', 'pdf', 'mobi', 'azw', 'azw3'];
+        if (!in_array($ext, $supported, true)) {
+            return $this->redirectTo("/403");
+        }
+        $progress = ProgressManager::getInstance()->getProgressText($filename);
+        $item = new ReadingProgressModel();
+        if ($progress !== '') {
+            $item = ReadingProgressModel::fromString($progress);
+        }
+
+        $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
+        $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl)
+            . '&filename=' . rawurlencode($filename)
+            . '&frac=' . $item->percent;
+
+        return $this->redirectTo($readerUrl);
+    }
+
     /**
      * 更新书籍
      * POST /book/update

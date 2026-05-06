@@ -16,26 +16,54 @@ class ReadingProgressModel extends Model
     public string $percentText = '0'; // 原始百分比文本(不含%)
 
     /**
-     * 解析进度字符串格式:
-     * 1745487877136*1@0#7834:1.6%
+     * 第三方进度串（可多形态并存）。始终以原始串写入 {@see $raw}，结构化字段仅为内部使用；
+     * 规范输出见 {@see toString()}（完整形态）。
+     *
+     * 支持形态：
+     * - 完整：{ts}*{spine}@{page}#{offset}:{pct}%
+     * - 省略 offset：{ts}*{spine}@{page}:{pct}%（offset 视为 0）
+     * - 短串：{ts}*{page}:{pct}%（此处为全书/阅读器页码语义，spine、offset 视为 0）
      */
     public static function fromString(string $value): self
     {
         $value = trim($value);
-        $pattern = '/^(?P<ts>\d+)\*(?P<spine>\d+)@(?P<page>\d+)#(?P<offset>\d+):(?P<pct>\d+(?:\.\d+)?)%$/';
-
-        if (!preg_match($pattern, $value, $matches)) {
-            throw new \InvalidArgumentException('Invalid progress string format.');
+        if ($value === '') {
+            throw new \InvalidArgumentException('Empty progress string.');
         }
 
         $model = new self();
         $model->raw = $value;
-        $model->timestamp = (int)$matches['ts'];
-        $model->spineIndex = (int)$matches['spine'];
-        $model->pageIndex = (int)$matches['page'];
-        $model->offset = (int)$matches['offset'];
-        $model->percentText = $matches['pct'];
-        $model->percent = (float)$matches['pct'];
+
+        $full = '/^(?P<ts>\d+)\*(?P<spine>\d+)@(?P<page>\d+)#(?P<offset>\d+):(?P<pct>\d+(?:\.\d+)?)%$/';
+        $noHash = '/^(?P<ts>\d+)\*(?P<spine>\d+)@(?P<page>\d+):(?P<pct>\d+(?:\.\d+)?)%$/';
+        $short = '/^(?P<ts>\d+)\*(?P<page>\d+):(?P<pct>\d+(?:\.\d+)?)%$/';
+
+        $m = [];
+        if (preg_match($full, $value, $m)) {
+            $model->timestamp = (int)$m['ts'];
+            $model->spineIndex = (int)$m['spine'];
+            $model->pageIndex = (int)$m['page'];
+            $model->offset = (int)$m['offset'];
+        } elseif (preg_match($noHash, $value, $m)) {
+            $model->timestamp = (int)$m['ts'];
+            $model->spineIndex = (int)$m['spine'];
+            $model->pageIndex = (int)$m['page'];
+            $model->offset = 0;
+        } elseif (preg_match($short, $value, $m)) {
+            $model->timestamp = (int)$m['ts'];
+            $model->spineIndex = 0;
+            $model->pageIndex = (int)$m['page'];
+            $model->offset = 0;
+        } else {
+            throw new \InvalidArgumentException(
+                'Invalid progress string format. Expected patterns like '
+                . '"{ts}*{spine}@{page}#{offset}:{pct}%", "{ts}*{spine}@{page}:{pct}%", '
+                . 'or "{ts}*{page}:{pct}%".'
+            );
+        }
+
+        $model->percentText = $m['pct'];
+        $model->percent = (float)$m['pct'];
 
         return $model;
     }

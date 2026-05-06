@@ -163,7 +163,15 @@ class Main extends BaseController
         }
 
         $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
-        $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl) . '&filename=' . rawurlencode($filename);
+        $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl)
+            . '&filename=' . rawurlencode($filename);
+        foreach (['cfi', 'fraction', 'frac'] as $key) {
+            $v = $this->request->get($key, '');
+            if ($v === '') {
+                continue;
+            }
+            $readerUrl .= '&' . rawurlencode($key) . '=' . rawurlencode((string)$v);
+        }
         return $this->redirectTo($readerUrl);
     }
 
