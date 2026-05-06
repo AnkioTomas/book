@@ -18,12 +18,7 @@ use nova\framework\http\Response;
 
 class Book extends BaseController
 {
-    
-    public function __construct()
-    {
-        parent::__construct();
-    }
-    
+
     /**
      * 获取书籍列表（支持分页、搜索、筛选）
      * GET /book/list?page=1&pageSize=20&search=xxx&series=xxx&category=xxx&favorite=xxx
@@ -118,7 +113,7 @@ class Book extends BaseController
         return Response::asJson([
             'code' => 200,
             'msg' => 'success',
-            'data' => $item,
+            'data' => $item->percent,
         ]);
     }
 
@@ -128,74 +123,40 @@ class Book extends BaseController
      */
     public function progressUpdate(): Response
     {
-        return $this->persistReadingProgressFromRequestBody();
-    }
-
-    /**
-     * 同步阅读进度
-     * POST /book/progressSync
-     */
-    public function progressSync(): Response
-    {
-        return $this->persistReadingProgressFromRequestBody();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function readProgressRequestBody(): array
-    {
-        $data = $this->request->post();
-        if (empty($data)) {
-            $data = $this->request->json();
-        }
-
-        return is_array($data) ? $data : [];
-    }
-
-    private function persistReadingProgressFromRequestBody(): Response
-    {
-        $data = $this->readProgressRequestBody();
+        $data  = $this->request->post();
         $filename = rawurldecode($data['filename'] ?? '');
         $filename = trim($filename);
-        if ($filename === '') {
-            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
+
+        $frac = $data["frac"] ?? 0;
+        $frac = round(floatval($frac), 2);
+
+        $spine  = $data["spine"] ?? 0;
+        $spine = intval($spine);
+
+        $page  = $data["page"] ?? 0;
+        $page = intval($page);
+
+        $percent = $data["percent"] ?? '0%';
+
+        $progress = ReadingProgressDao::getInstance()->getByFilename($filename);
+        if (empty($progress)) {
+            $progress = new ReadingProgressModel();
+            $progress->filename = $filename;
+            $progress->id = ReadingProgressDao::getInstance()->insertModel($progress);
         }
 
-        $fraction = (float)($data['fraction'] ?? 0);
-        if ($fraction < 0) {
-            $fraction = 0;
-        } elseif ($fraction > 1) {
-            $fraction = 1;
-        }
-        $percent = $fraction * 100;
-        $sectionIndex = (int)($data['sectionIndex'] ?? 0);
-        $locationCurrent = (int)($data['locationCurrent'] ?? 0);
-        $offset = (int)($data['offset'] ?? 0);
+        $progress->percent = $frac;
+        $progress->spineIndex   = $spine;
+        $progress->percentText = $percent;
+        $progress->pageIndex = $page;
 
-        $progress = new ReadingProgressModel();
-        $progress->filename = $filename;
-        $progress->spineIndex = $sectionIndex;
-        $progress->pageIndex = $locationCurrent;
-        $progress->offset = $offset;
-        $progress->timestamp = (int)(microtime(true) * 1000);
-        $progress->percent = $percent;
-        $progress->percentText = $this->formatPercentText($percent);
-        $progress->raw = $progress->toString();
+        ReadingProgressDao::getInstance()->updateModel($progress);
 
-        ReadingProgressDao::getInstance()->insertModel($progress, true);
-        MoonBookManager::instance()->uploadProgressText($filename, $progress->raw);
-
-        if ($percent >= 100) {
-            $book = BookDao::getInstance()->getByFileName($filename);
-            if ($book && $book->isFinished === 0) {
-                $book->isFinished = 1;
-                BookDao::getInstance()->updateModel($book);
-            }
-        }
-
-        return Response::asJson(['code' => 200, 'msg' => 'success']);
+        return Response::asJson([
+            'code' => 200,
+        ]);
     }
+
 
     /**
      * 获取 EPUB 文件用于在线阅读
@@ -223,7 +184,7 @@ class Book extends BaseController
         File::mkDir($cacheDir);
         $localPath = $cacheDir . DS . basename($filename);
 
-        if (!file_exists($localPath) || filesize($localPath) === 0) {
+        if (!file_exists($localPath) || filesize($localPath) < 100 * 1024) {
             if (!MoonBookManager::instance()->downloadBook($filename, $localPath)) {
                 return Response::asText('下载失败');
             }
@@ -245,16 +206,15 @@ class Book extends BaseController
         if (!in_array($ext, $supported, true)) {
             return $this->redirectTo("/403");
         }
-        $progress = ProgressManager::getInstance()->getProgressText($filename);
-        $item = new ReadingProgressModel();
-        if ($progress !== '') {
-            $item = ReadingProgressModel::fromString($progress);
+        $progress = ReadingProgressDao::getInstance()->getByFilename($filename);
+        if ($progress == null) {
+            $progress =  new ReadingProgressModel();
         }
 
         $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
         $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl)
             . '&filename=' . rawurlencode($filename)
-            . '&frac=' . $item->percent;
+            . '&frac=' . $progress->percent;
 
         return $this->redirectTo($readerUrl);
     }
@@ -311,7 +271,7 @@ class Book extends BaseController
         }
 
         $book = BookDao::getInstance()->getById($id);
-        MoonManager::getInstance()->delete($book->filename);
+        MoonBookManager::getInstance()->delete($book->filename);
         if (BookDao::getInstance()->deleteById($id)) {
             BookDao::getInstance()->syncBooks();
             return Response::asJson(['code' => 200, 'msg' => '删除成功']);
@@ -372,8 +332,8 @@ class Book extends BaseController
                 if ($book->id === $oldest->id) {
                     continue; // 保留最老的
                 }
-                
-                MoonManager::getInstance()->delete($book->filename);
+
+                MoonBookManager::getInstance()->delete($book->filename);
                 BookDao::getInstance()->deleteById($book->id);
 
                 $deletedBooks[] = [
@@ -398,12 +358,6 @@ class Book extends BaseController
         ]);
     }
 
-    private function formatPercentText(float $percent): string
-    {
-        $formatted = rtrim(rtrim(sprintf('%.6f', $percent), '0'), '.');
-        return $formatted === '' ? '0' : $formatted;
-    }
-    
     /**
      * 刮削封面
      */

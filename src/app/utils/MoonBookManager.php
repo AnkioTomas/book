@@ -3,16 +3,21 @@
 namespace app\utils;
 
 use app\database\model\BookModel;
+use app\utils\BookManager\BookManager;
+use app\utils\BookManager\CoverManager;
+use app\utils\BookManager\ProgressManager;
 use nova\framework\core\Context;
 use nova\framework\core\File;
+use nova\framework\core\Instance;
 use nova\framework\http\Response;
 use nova\framework\json\Json;
+use nova\framework\json\JsonEncodeException;
 use nova\plugin\http\HttpClient;
 use nova\plugin\webdav\SimpleWebDAVClient;
 use function nova\framework\config;
 use function nova\framework\dump;
 
-class MoonBookManager
+class MoonBookManager extends Instance
 {
     private SimpleWebDAVClient $client;
 
@@ -23,21 +28,6 @@ class MoonBookManager
     private string $moon = "/Apps/Books/.Moon+";
 
     private string $runtime = "";
-
-    /**
-     * 当前请求内的书籍文件名索引，避免每本书都发一次远端探测请求。
-     * null 表示尚未加载，空数组表示已加载但目录为空。
-     *
-     * @var array<string, bool>|null
-     */
-    private ?array $bookFilenameIndex = null;
-
-    /**
-     * 当前请求内的阅读进度远端修改时间索引（filename => mtime 秒级时间戳）。
-     *
-     * @var array<string, int>|null
-     */
-    private ?array $progressMtimeIndex = null;
 
     public function __construct()
     {
@@ -88,7 +78,7 @@ class MoonBookManager
      * 将本地的书籍推送到webdav
      * @param array $books
      * @return bool
-     * @throws \nova\framework\json\JsonEncodeException
+     * @throws JsonEncodeException
      */
     public function push(array $books): bool
     {
@@ -127,6 +117,13 @@ class MoonBookManager
         } catch (\RuntimeException $exception) {
             return false;
         }
+    }
+
+    function delete(string $filename)
+    {
+        BookManager::getInstance()->deleteBook($filename);
+        CoverManager::getInstance()->deleteCover($filename);
+        ProgressManager::getInstance()->deleteProgress($filename);
     }
 
 
