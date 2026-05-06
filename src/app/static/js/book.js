@@ -139,11 +139,27 @@ window.pageOnLoad = function (loading) {
         bindEvents() {
             const that = this;
             
-            // 搜索表单提交
-            $.form.submit("#searchForm", {
-                callback: function (data) {
-                    that.cardView.reload(data, true);
-                }
+            const triggerSearch = () => {
+                that.cardView.reload($.form.val("#searchForm"), true);
+            };
+
+            const debouncedSearch = this.debounce(triggerSearch, 300);
+            const $searchForm = $('#searchForm');
+
+            // 回车提交保留兼容，同时阻止默认跳转
+            $searchForm.on('submit', (e) => {
+                e.preventDefault();
+                triggerSearch();
+            });
+
+            // 输入和筛选变更时自动触发搜索（防抖）
+            $searchForm.on('input change', 'mdui-text-field, mdui-select, input, select', () => {
+                debouncedSearch();
+            });
+
+            // 表单重置后同步刷新结果
+            $searchForm.on('reset', () => {
+                setTimeout(triggerSearch, 0);
             });
 
             // 添加书籍（支持多文件上传）
@@ -698,6 +714,14 @@ window.pageOnLoad = function (loading) {
                     });
                 }
             });
+        }
+
+        debounce(fn, delay = 300) {
+            let timer = null;
+            return (...args) => {
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
         }
 
         /**

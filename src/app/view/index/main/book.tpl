@@ -24,19 +24,6 @@
         margin-bottom: 14px;
     }
 
-    .book-list-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .book-list-tip {
-        color: rgba(var(--mdui-color-on-surface), 0.7);
-        font-size: 12px;
-    }
     
     /* 自动完成下拉列表 */
     mdui-dropdown {
@@ -160,12 +147,6 @@
                     </mdui-select>
                 </div>
 
-                <div class="col-xs6 col-sm3 col-md2">
-                    <mdui-select name="category" clearable label="分类">
-                        <mdui-menu-item value="">全部</mdui-menu-item>
-                    </mdui-select>
-                </div>
-
                 <div class="col-xs6 col-sm4 col-md2">
                     <mdui-select name="favorite" clearable label="收藏">
                         <mdui-menu-item value="">全部</mdui-menu-item>
@@ -180,10 +161,6 @@
                     </mdui-select>
                 </div>
 
-                <div class="col-xs6 col-sm4 col-md3 d-flex gap-2">
-                    <mdui-button type="submit" icon="search" variant="filled" class="flex-1">搜索</mdui-button>
-                    <mdui-button type="reset" icon="refresh" variant="outlined" class="flex-1">重置</mdui-button>
-                </div>
             </div>
         </form>
     </div>
