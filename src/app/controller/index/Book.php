@@ -192,6 +192,13 @@ if ($percent > 1) $percent /= 100;
         File::mkDir($cacheDir);
         $localPath = $cacheDir . DS . basename($filename);
 
+        foreach (scandir($cacheDir) as $file) {
+            if ($file === '.' || $file === '..') continue;
+            $f = $cacheDir . DS . $file;
+            if(time() - filectime($f) >= 3600 * 12) {
+                unlink($f);
+            }
+        }
         if (!file_exists($localPath) || filesize($localPath) < 100 * 1024) {
             if (!MoonBookManager::instance()->downloadBook($filename, $localPath)) {
                 return Response::asText('下载失败');
