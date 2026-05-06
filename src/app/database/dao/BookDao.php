@@ -162,7 +162,7 @@ class BookDao extends Dao
     {
         TaskerManager::del("syncBooks");
         if ($force){
-            (new SyncBooks())->onStart();
+            TaskerManager::add(TaskerTime::after(0),new SyncBooks(),"syncBooks");
         }else{
             TaskerManager::add(TaskerTime::after(300),new SyncBooks(),"syncBooks");
         }
