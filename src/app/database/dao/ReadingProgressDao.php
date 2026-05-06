@@ -12,6 +12,17 @@ class ReadingProgressDao extends Dao
         return $this->find(null, ['filename' => $filename]);
     }
 
+    public function updateItem(string $filename, ReadingProgressModel $progress)
+    {
+        $_progress = $this->getByFilename($filename);
+        if(empty($_progress)){
+            $progress->id =   $this->insertModel($progress);
+        }else{
+            $progress->id =   $_progress->id;
+            $this->updateModel($progress);
+        }
+    }
+
     /**
      * @param string[] $filenames
      * @return ReadingProgressModel[]
