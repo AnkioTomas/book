@@ -12,7 +12,7 @@ class BaseManager extends Instance
 
     protected SimpleWebDAVClient $client;
 
-    protected string $deviceId = "";
+    public string $deviceId = "";
 
     protected string $path = "/Apps/Books";
 

@@ -57,4 +57,11 @@ class BookManager extends BaseManager
         return [];
     }
 
+    function delete(string $filename)
+    {
+        BookManager::getInstance()->deleteBook($filename);
+        CoverManager::getInstance()->deleteCover($filename);
+        ProgressManager::getInstance()->deleteProgress($filename);
+    }
+
 }

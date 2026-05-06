@@ -179,18 +179,24 @@ window.pageOnLoad = function (loading) {
                 input.click();
             });
 
-            // 同步 WebDAV
-            $('#btnSync').on('click', () => {
-                $("body").showLoading("正在同步 WebDAV...")
+
+            function sync(){
                 $.request.postForm('/admin/api/sync', {}, (res) => {
-                    $("body").closeLoading();
                     if (res.code === 200) {
                         $.toaster.success(res.msg);
                         that.cardView.reload($.form.val("#searchForm"), true);
+                    } else if(res.code === 201){
+                        $.toaster.success(res.msg);
+                        setTimeout(sync,2000);
                     } else {
                         $.toaster.error(res.msg);
                     }
                 });
+            }
+
+            // 同步 WebDAV
+            $('#btnSync').on('click', () => {
+                sync();
             });
 
             // 删除重复书籍

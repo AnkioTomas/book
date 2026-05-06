@@ -6,6 +6,7 @@ use app\database\model\BookModel;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\ProgressManager;
+use app\utils\SyncBooks;
 use app\utils\SyncTask;
 use nova\plugin\corn\schedule\TaskerManager;
 use nova\plugin\corn\schedule\TaskerTime;
@@ -161,9 +162,9 @@ class BookDao extends Dao
     {
         TaskerManager::del("syncBooks");
         if ($force){
-            (new SyncTask())->onStart();
+            (new SyncBooks())->onStart();
         }else{
-            TaskerManager::add(TaskerTime::after(300),new SyncTask(),"syncBooks");
+            TaskerManager::add(TaskerTime::after(300),new SyncBooks(),"syncBooks");
         }
 
     }
