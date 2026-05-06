@@ -4,7 +4,6 @@ namespace app\controller\index;
 
 use app\database\dao\BookDao;
 use app\utils\BookManager\CoverManager;
-use app\utils\MoonBookManager;
 use DOMDocument;
 use DOMXPath;
 use nova\framework\core\Context;

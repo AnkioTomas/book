@@ -6,7 +6,6 @@ use app\database\dao\BookDao;
 use app\database\model\BookModel;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
-use app\utils\MoonBookManager;
 use app\utils\BookOrganizer\Parser;
 use nova\framework\http\Response;
 use nova\plugin\upload\FileDao;

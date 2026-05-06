@@ -9,7 +9,6 @@ use app\database\model\ReadingProgressModel;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\ProgressManager;
-use app\utils\MoonBookManager;
 use app\utils\BookOrganizer\Parser;
 use nova\framework\core\Context;
 use nova\framework\core\File;
