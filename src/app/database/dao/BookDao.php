@@ -13,6 +13,7 @@ use nova\plugin\corn\schedule\TaskerTime;
 use nova\plugin\orm\object\Dao;
 use nova\plugin\orm\object\Field;
 use function nova\framework\dump;
+use function nova\plugin\task\go;
 
 class BookDao extends Dao
 {
@@ -162,7 +163,9 @@ class BookDao extends Dao
     {
         TaskerManager::del("syncBooks");
         if ($force){
-            TaskerManager::add(TaskerTime::after(0),new SyncBooks(),"syncBooks");
+            go(function (){
+                (new SyncBooks())->onStart();
+            });
         }else{
             TaskerManager::add(TaskerTime::after(300),new SyncBooks(),"syncBooks");
         }
