@@ -108,7 +108,6 @@ class Book extends BaseController
         }
 
         $item = ReadingProgressModel::fromString($progress);
-        ReadingProgressDao::getInstance()->updateItem($filename,$item);
 
         return Response::asJson([
             'code' => 200,
@@ -137,11 +136,16 @@ class Book extends BaseController
         $page = intval($page);
 
         $percent = $data["percent"] ?? '0%';
+        $percent = rtrim(trim((string)$percent), '%');
+        if ($percent === '') {
+            $percent = '0';
+        }
 
         $progress = ReadingProgressDao::getInstance()->getByFilename($filename);
         if (empty($progress)) {
             $progress = new ReadingProgressModel();
             $progress->filename = $filename;
+            $progress->timestamp = intval(microtime());
             $progress->id = ReadingProgressDao::getInstance()->insertModel($progress);
         }
 
@@ -149,8 +153,10 @@ class Book extends BaseController
         $progress->spineIndex   = $spine;
         $progress->percentText = $percent;
         $progress->pageIndex = $page;
+        $progress->timestamp = intval(microtime());
 
-        ReadingProgressDao::getInstance()->updateModel($progress);
+        ReadingProgressDao::getInstance()->updateItem($progress);
+        ProgressManager::getInstance()->uploadProgressText($filename, $progress->toString());
 
         return Response::asJson([
             'code' => 200,
