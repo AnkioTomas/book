@@ -213,7 +213,7 @@ class Book extends BaseController
             }
         }
 
-        return Response::asStatic($localPath);
+        return Response::asFile($filename, $localPath);
     }
 
     public function reader(): Response
