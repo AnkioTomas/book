@@ -111,11 +111,79 @@ class BookModel extends Model
         // 先清理 category 中已存在的系列信息，避免重复
         $this->category = preg_replace('/^<.+?>\s*\n\s*#.+?#\s*\n/s', '', $this->category);
         $this->category = trim($this->category);
-        
+
         // 只有 series 不为空时才添加到 category
         if (!empty($this->series)) {
             $seriesLine = "<{$this->series}>\n#{$this->seriesNum}#\n";
             $this->category = $seriesLine . $this->category;
+        }
+        return $this;
+    }
+
+    // ===== 语义修正层 =====
+    // 历史包袱：DB 字段命名与 App 实际语义相反，不动 schema 仅在此暴露正确语义。
+    //   favorite (单值)  → 实际是「分类」(App 称收藏夹)
+    //   category (多行)  → 实际是「标签集」(\n 分隔，首部可能含 <系列>#编号# 前缀)
+    // 新代码请用本节方法，不要再直接读写 $favorite / $category。
+
+    /** 「已读」标签的固定文案，集中一处避免散落字面量。 */
+    public const TAG_FINISHED = '已读';
+
+    /** 真·分类：单值，对应底层 favorite 字段。 */
+    public function getCategoryName(): string
+    {
+        return $this->favorite;
+    }
+
+    public function setCategoryName(string $name): self
+    {
+        $this->favorite = trim($name);
+        return $this;
+    }
+
+    /**
+     * 真·标签集：数组形式访问 category 中的标签部分（自动剥离系列前缀）。
+     */
+    public function getTags(): array
+    {
+        $tags = [];
+        foreach (explode("\n", $this->category) as $line) {
+            $line = trim($line);
+            if ($line !== '') {
+                $tags[] = $line;
+            }
+        }
+        return $tags;
+    }
+
+    /**
+     * 写入标签集；自动去重去空，并保留原有的系列前缀（不破坏 series/seriesNum 的存储位置）。
+     */
+    public function setTags(array $tags): self
+    {
+        $this->category = implode("\n", $tags);
+        return $this;
+    }
+
+    /**
+     * 设置「已读 / 未读」状态，同步 isFinished 与「已读」标签，保证两者永远一致。
+     * 已读 → 自动加入「已读」标签（去重）
+     * 未读 → 自动移除「已读」标签
+     */
+    public function markFinished(bool $finished = true): self
+    {
+        $this->isFinished = $finished ? 1 : 0;
+
+        $tags = $this->getTags();
+        $has = in_array(self::TAG_FINISHED, $tags, true);
+        if ($finished && !$has) {
+            $tags[] = self::TAG_FINISHED;
+            $this->setTags($tags);
+        } elseif (!$finished && $has) {
+            $this->setTags(array_values(array_filter(
+                $tags,
+                fn ($t) => $t !== self::TAG_FINISHED
+            )));
         }
         return $this;
     }
