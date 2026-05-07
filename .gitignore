@@ -1,3 +1,4 @@
 /vendor
 composer.lock
 /src/runtime
+src/config.php
