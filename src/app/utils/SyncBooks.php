@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\utils;
 
 use app\database\dao\BookDao;
@@ -15,7 +17,6 @@ use Throwable;
 
 class SyncBooks extends TaskerAbstract
 {
-
     /**
      * @inheritDoc
      */
@@ -38,7 +39,7 @@ class SyncBooks extends TaskerAbstract
         foreach ($list as $_book) {
             $book = new BookModel($_book);
             $count++;
-            Context::instance()->cache->set("sync-books", "sync webdav → database $count / $total ",30);
+            Context::instance()->cache->set("sync-books", "sync webdav → database $count / $total ", 30);
             $book->splitCategory2Series();
             $progress = $this->syncProgress($book->filename);
             if ($progress && $progress->percent >= 100) {
@@ -64,7 +65,7 @@ class SyncBooks extends TaskerAbstract
         $total = count($books);
         foreach ($books as &$book) {
             $count++;
-            Context::instance()->cache->set("sync-books", "sync database → webdav $count / $total ",30);
+            Context::instance()->cache->set("sync-books", "sync database → webdav $count / $total ", 30);
             $book = $book->pushSeries2Category();
             if (!empty($book->coverUrl) && Context::instance()->cache->get("coverUrl/{$book->coverUrl}")) {
                 $file = Douban::download($book->coverUrl);
@@ -74,14 +75,16 @@ class SyncBooks extends TaskerAbstract
             }
         }
 
-        Context::instance()->cache->set("sync-books", "push book → webdav ",120);
+        Context::instance()->cache->set("sync-books", "push book → webdav ", 120);
         BookManager::getInstance()->updateBookList($books);
     }
 
     private function syncProgress(string $filename): ?ReadingProgressModel
     {
         $progressRaw = ProgressManager::getInstance()->getProgressText($filename);
-        if (!$progressRaw) return null;
+        if (!$progressRaw) {
+            return null;
+        }
         $progress = ReadingProgressModel::fromString($progressRaw);
         $progress->filename = $filename;
         ReadingProgressDao::getInstance()->insertModel($progress, true);
@@ -135,7 +138,7 @@ class SyncBooks extends TaskerAbstract
      */
     public function onStop(): void
     {
-        Context::instance()->cache->set("sync-books",'complete');
+        Context::instance()->cache->set("sync-books", 'complete');
     }
 
     /**
@@ -143,6 +146,6 @@ class SyncBooks extends TaskerAbstract
      */
     public function onAbort(Throwable $e): void
     {
-        Context::instance()->cache->set("sync-books",'complete');
+        Context::instance()->cache->set("sync-books", 'complete');
     }
 }

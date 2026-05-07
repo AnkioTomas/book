@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\utils\BookManager;
 
 use nova\framework\core\File;
@@ -29,7 +31,7 @@ class ProgressManager extends BaseManager
         if ($this->client->download($remotePath, $localPath)) {
             return file_get_contents($localPath);
         } else {
-           return   "";
+            return   "";
         }
     }
 
@@ -61,6 +63,5 @@ class ProgressManager extends BaseManager
             // 无论如何删除失败都不抛出异常
         }
     }
-
 
 }

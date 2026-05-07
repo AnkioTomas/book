@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\utils\BookManager;
 
 use nova\framework\core\File;
@@ -7,7 +9,6 @@ use nova\framework\json\Json;
 
 class BookManager extends BaseManager
 {
-
     public function updateBookList(array $books): bool
     {
         $path = $this->moon . "/books.sync";
@@ -23,7 +24,6 @@ class BookManager extends BaseManager
         return $this->client->delete($path);
     }
 
-
     public function uploadBook(string $file, string $filename): bool
     {
         return $this->client->upload($file, $this->path . DS . $this->normalizeFilename($filename));
@@ -34,7 +34,6 @@ class BookManager extends BaseManager
         File::mkDir(dirname($localPath));
         return $this->client->download($this->path . DS . $this->normalizeFilename($filename), $localPath);
     }
-
 
     public function bookExists(string $filename): bool
     {
@@ -57,7 +56,7 @@ class BookManager extends BaseManager
         return [];
     }
 
-    function delete(string $filename)
+    public function delete(string $filename)
     {
         BookManager::getInstance()->deleteBook($filename);
         CoverManager::getInstance()->deleteCover($filename);

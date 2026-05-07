@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\database\dao;
 
 use app\database\model\ReadingProgressModel;
@@ -12,9 +14,8 @@ class ReadingProgressDao extends Dao
         return $this->find(null, ['filename' => $filename]);
     }
 
-
     /**
-     * @param string[] $filenames
+     * @param  string[]               $filenames
      * @return ReadingProgressModel[]
      */
     public function getByFilenames(array $filenames): array
@@ -32,7 +33,9 @@ class ReadingProgressDao extends Dao
     {
         $array = $progress->toArray();
         unset($array['filename']);
-        if ($progress->id <=0 )return;
+        if ($progress->id <= 0) {
+            return;
+        }
         ReadingProgressDao::getInstance()->update()->where(['filename' => $progress->filename])->set($array)->commit();
     }
 }

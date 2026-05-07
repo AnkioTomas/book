@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\utils;
 
 use nova\framework\core\File;
@@ -7,7 +9,7 @@ use nova\plugin\http\HttpClient;
 
 class Douban
 {
-    public static function download($uri):string
+    public static function download($uri): string
     {
         $uri = urldecode($uri);
         $key = md5($uri);
@@ -25,10 +27,9 @@ class Douban
             ->setHeader("Referer", $uri)
             ->send($uri);
 
-        if($client->getHttpCode() === 200){
+        if ($client->getHttpCode() === 200) {
             File::write($file, $client->getBody());
         }
-
 
         return $file;
     }
@@ -36,7 +37,7 @@ class Douban
     /**
      * User-Agent 池（常见的真实浏览器）
      */
-    private  const USER_AGENTS = [
+    private const USER_AGENTS = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',

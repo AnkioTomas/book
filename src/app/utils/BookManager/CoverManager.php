@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\utils\BookManager;
 
 use app\utils\Douban;
@@ -24,7 +26,6 @@ class CoverManager extends BaseManager
         $path = $this->moon . DS . "Cover" . DS . $this->normalizeFilename($filename) . "_2.png";
         return $this->client->upload($file, $path);
     }
-
 
     private function listAll(): array
     {

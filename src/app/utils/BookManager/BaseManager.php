@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\utils\BookManager;
+
+use function nova\framework\config;
 
 use nova\framework\core\File;
 use nova\framework\core\Instance;
 use nova\plugin\webdav\SimpleWebDAVClient;
-use function nova\framework\config;
 
 class BaseManager extends Instance
 {
-
     protected SimpleWebDAVClient $client;
 
     public string $deviceId = "";
@@ -27,9 +29,9 @@ class BaseManager extends Instance
         $username = config('webdav.username');
         $password = config('webdav.password');
         $this->deviceId = config('webdav.deviceId') ?? "";
-        if (empty($this->deviceId)){
+        if (empty($this->deviceId)) {
             $this->deviceId = (string)(time() * 1000);
-            config('webdav.deviceId',$this->deviceId);
+            config('webdav.deviceId', $this->deviceId);
         }
 
         $this->client = new SimpleWebDAVClient($url, $username, $password);
@@ -51,6 +53,5 @@ class BaseManager extends Instance
         // 6. 直接返回
         return $filename;
     }
-
 
 }

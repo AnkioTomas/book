@@ -1,16 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\utils\BookOrganizer;
 
 use app\database\model\BookModel;
 use app\utils\EbookServiceClient;
+
+use function nova\framework\config;
+
 use nova\framework\core\File;
 use nova\framework\core\Logger;
-use function nova\framework\config;
 
 class Parser
 {
-    static function filename(string $filename): array
+    public static function filename(string $filename): array
     {
         $ext = pathinfo($filename, PATHINFO_EXTENSION);
         $name = pathinfo($filename, PATHINFO_FILENAME);
@@ -104,7 +108,7 @@ class Parser
         return [$author, $title, $year, $ext];
     }
 
-    static function cover(string $bookPath,BookModel $model): string
+    public static function cover(string $bookPath, BookModel $model): string
     {
         $key = md5($model->filename);
         $path = RUNTIME_PATH . DS. "images" . DS ;
@@ -112,9 +116,9 @@ class Parser
         $file = $path . $key . ".png";
         $client = new EbookServiceClient(config('calibre'));
         try {
-            $client->extractCoverToFile($bookPath,$file);
+            $client->extractCoverToFile($bookPath, $file);
             return $file;
-        }catch (\RuntimeException $exception){
+        } catch (\RuntimeException $exception) {
             Logger::debug($exception->getMessage());
             return '';
         }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\controller\index;
 
 use app\database\dao\BookDao;
@@ -7,13 +9,11 @@ use app\utils\BookManager\CoverManager;
 use DOMDocument;
 use DOMXPath;
 use nova\framework\core\Context;
-use nova\framework\core\File;
 use nova\framework\core\Logger;
 use nova\framework\http\Response;
 use nova\plugin\http\HttpClient;
 use nova\plugin\http\HttpException;
 use nova\plugin\task\PoolManager;
-use function nova\framework\dump;
 
 /**
  * 豆瓣图书搜索服务
@@ -28,7 +28,6 @@ class Douban extends BaseController
 {
     private const SEARCH_URL = 'https://www.douban.com/search';
     private const MIN_SIMILARITY = 0.6;
-
 
     /**
      * 搜索豆瓣图书
@@ -64,21 +63,21 @@ class Douban extends BaseController
     /**
      * 在豆瓣搜索书籍
      *
-     * @param string $query 搜索关键词
+     * @param  string     $query 搜索关键词
      * @return array|null 书籍信息数组
      */
     private function searchDouban(string $query): ?array
     {
 
-       $data =  Context::instance()->cache->get("search/$query");
-       if (!empty($data)) {
-           // 根据综合分数重新排序
-           usort($data, function($a, $b) {
-               return $this->calculateScore($b) <=> $this->calculateScore($a);
-           });
+        $data =  Context::instance()->cache->get("search/$query");
+        if (!empty($data)) {
+            // 根据综合分数重新排序
+            usort($data, function ($a, $b) {
+                return $this->calculateScore($b) <=> $this->calculateScore($a);
+            });
 
-           return $data;
-       }
+            return $data;
+        }
 
         // 发送HTTP请求（使用随机UA和IP）
         $client = HttpClient::init()
@@ -108,16 +107,15 @@ class Douban extends BaseController
 
         $doubans = [];
 
-
-        PoolManager::instance()->runPool($books,function (array $book,int $index,PoolManager $manager)use ($query) {
+        PoolManager::instance()->runPool($books, function (array $book, int $index, PoolManager $manager) use ($query) {
             if (!empty($book['url'])) {
                 $detailInfo = $this->fetchBookDetail($book['url']);
                 if ($detailInfo) {
                     $detail  =  array_merge($book, $detailInfo);
-                    Context::instance()->cache->set("search/$query/$index",$detail);
+                    Context::instance()->cache->set("search/$query/$index", $detail);
                 }
             }
-        },function (){});
+        }, function () {});
 
         foreach (Context::instance()->cache->getAll("search/$query") as $key => $book) {
             $doubans[] = $book;
@@ -125,11 +123,11 @@ class Douban extends BaseController
         }
 
         // 根据综合分数重新排序
-        usort($doubans, function($a, $b) {
+        usort($doubans, function ($a, $b) {
             return $this->calculateScore($b) <=> $this->calculateScore($a);
         });
 
-        Context::instance()->cache->set("search/$query",$doubans);
+        Context::instance()->cache->set("search/$query", $doubans);
 
         return $doubans;
     }
@@ -137,9 +135,9 @@ class Douban extends BaseController
     /**
      * 解析搜索结果页面
      *
-     * @param string $html HTML内容
-     * @param string $query 搜索关键词
-     * @return array 书籍信息数组，按相似度排序
+     * @param  string $html  HTML内容
+     * @param  string $query 搜索关键词
+     * @return array  书籍信息数组，按相似度排序
      */
     private function parseSearchResults(string $html, string $query): array
     {
@@ -161,7 +159,7 @@ class Douban extends BaseController
         }
 
         // 按相似度降序排序
-        usort($books, fn($a, $b) => $b['similarity'] <=> $a['similarity']);
+        usort($books, fn ($a, $b) => $b['similarity'] <=> $a['similarity']);
 
         // 优先返回高相似度结果，最多10个
         return array_slice($books, 0, 10);
@@ -170,10 +168,10 @@ class Douban extends BaseController
     /**
      * 解析单个搜索结果项
      *
-     * @param DOMXPath $xpath XPath对象
-     * @param \DOMElement $result 结果元素
-     * @param string $query 搜索关键词
-     * @return array|null 书籍信息
+     * @param  DOMXPath    $xpath  XPath对象
+     * @param  \DOMElement $result 结果元素
+     * @param  string      $query  搜索关键词
+     * @return array|null  书籍信息
      */
     private function parseSearchItem(DOMXPath $xpath, \DOMElement $result, string $query): ?array
     {
@@ -228,7 +226,7 @@ class Douban extends BaseController
     /**
      * 从URL中提取豆瓣subject ID
      *
-     * @param string $url URL地址
+     * @param  string      $url URL地址
      * @return string|null subject ID
      */
     private function extractSubjectId(string $url): ?string
@@ -253,8 +251,8 @@ class Douban extends BaseController
      * 解析出版信息字符串
      * 格式：作者 / 出版社 / 出版年 / 价格
      *
-     * @param string $text 出版信息文本
-     * @return array 解析后的信息数组
+     * @param  string $text 出版信息文本
+     * @return array  解析后的信息数组
      */
     private function parsePublishInfo(string $text): array
     {
@@ -285,9 +283,9 @@ class Douban extends BaseController
     /**
      * 计算字符串相似度
      *
-     * @param string $str1 字符串1
-     * @param string $str2 字符串2
-     * @return float 相似度 (0-1)
+     * @param  string $str1 字符串1
+     * @param  string $str2 字符串2
+     * @return float  相似度 (0-1)
      */
     private function calculateSimilarity(string $str1, string $str2): float
     {
@@ -303,8 +301,8 @@ class Douban extends BaseController
 
     /**
      * 计算书籍综合评分
-     * 
-     * @param array $book 书籍数据
+     *
+     * @param  array $book 书籍数据
      * @return float 综合分数 (0-100)
      */
     private function calculateScore(array $book): float
@@ -320,8 +318,8 @@ class Douban extends BaseController
 
     /**
      * 计算字段完整度
-     * 
-     * @param array $book 书籍数据
+     *
+     * @param  array $book 书籍数据
      * @return float 完整度 (0-1)
      */
     private function calculateCompleteness(array $book): float
@@ -350,7 +348,7 @@ class Douban extends BaseController
     /**
      * 获取图书详情页信息
      *
-     * @param string $url 图书详情页URL
+     * @param  string     $url 图书详情页URL
      * @return array|null 详细信息
      */
     private function fetchBookDetail(string $url): ?array
@@ -381,8 +379,8 @@ class Douban extends BaseController
     /**
      * 解析图书详情页
      *
-     * @param string $html HTML内容
-     * @return array 详细信息
+     * @param  string $html HTML内容
+     * @return array  详细信息
      */
     private function parseBookDetail(string $html): array
     {
@@ -425,8 +423,8 @@ class Douban extends BaseController
     /**
      * 从文本中提取字段值
      *
-     * @param string $text 文本内容
-     * @param string $field 字段名
+     * @param  string      $text  文本内容
+     * @param  string      $field 字段名
      * @return string|null 字段值
      */
     private function extractField(string $text, string $field): ?string
@@ -437,20 +435,21 @@ class Douban extends BaseController
         return null;
     }
 
-    public function proxy(string $uri):Response{
+    public function proxy(string $uri): Response
+    {
         $file = \app\utils\Douban::download($uri);
         return Response::asStatic($file);
     }
-    public function webdav(string $filename):Response
+    public function webdav(string $filename): Response
     {
         $filename = rawurldecode($filename);
-       $book = BookDao::getInstance()->getByFileName($filename);
-       if (empty($book)){
-           return Response::asText('404 not found');
-       }
-       if (empty($book->coverUrl)){
-           return Response::asStatic(CoverManager::getInstance()->getCover($filename));
-       }
+        $book = BookDao::getInstance()->getByFileName($filename);
+        if (empty($book)) {
+            return Response::asText('404 not found');
+        }
+        if (empty($book->coverUrl)) {
+            return Response::asStatic(CoverManager::getInstance()->getCover($filename));
+        }
         $file = \app\utils\Douban::download($book->coverUrl);
         return Response::asStatic($file);
     }

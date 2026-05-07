@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\utils\BookManager;
 
 use app\database\dao\BookDao;
@@ -8,7 +10,6 @@ use nova\framework\core\Context;
 
 class SyncManager extends BaseManager
 {
-
     private int $databaseTime = 0;
 
     private int $bookListTime = 0;
@@ -24,7 +25,6 @@ class SyncManager extends BaseManager
         }
     }
 
-
     // New, clearer method names
     public function isWebdavNewerThanDatabase(): bool
     {
@@ -35,7 +35,6 @@ class SyncManager extends BaseManager
     {
         return $this->databaseTime > $this->bookListTime;
     }
-
 
     public function startSync()
     {
@@ -108,7 +107,9 @@ class SyncManager extends BaseManager
 
             // 剩余的 webIndex 是新书，尝试插入到数据库（前先检查文件是否真在远端存在）
             foreach ($webIndex as $wb) {
-                if (!isset($wb['filename'])) continue;
+                if (!isset($wb['filename'])) {
+                    continue;
+                }
                 $book = new BookModel((array)$wb);
                 $book->splitCategory2Series();
                 try {
@@ -138,7 +139,6 @@ class SyncManager extends BaseManager
             // ignore push failure
         }
     }
-
 
     public function endSync()
     {

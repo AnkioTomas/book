@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\controller\index;
 
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
-use app\database\model\BookModel;
 use app\database\model\ReadingProgressModel;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
@@ -16,7 +17,6 @@ use nova\framework\http\Response;
 
 class Book extends BaseController
 {
-
     /**
      * 获取书籍列表（支持分页、搜索、筛选）
      * GET /book/list?page=1&pageSize=20&search=xxx&series=xxx&category=xxx&favorite=xxx
@@ -30,7 +30,7 @@ class Book extends BaseController
         $category = trim($this->request->get('category', ''));
         $favorite = trim($this->request->get('favorite', ''));
         $finished = trim($this->request->get('finished', ''));
-        
+
         $result = BookDao::getInstance()->getList($page, $limit, $search, $series, $category, $favorite, $finished);
         $books = $result['list'];
         $filenames = [];
@@ -39,7 +39,7 @@ class Book extends BaseController
                 $filenames[] = $book->filename;
             }
         }
-        
+
         $progressMap = [];
         if (!empty($filenames)) {
             $progressList = ReadingProgressDao::getInstance()->getByFilenames($filenames);
@@ -47,7 +47,7 @@ class Book extends BaseController
                 $progressMap[$progress->filename] = $progress;
             }
         }
-        
+
         $rows = [];
         foreach ($books as $book) {
             $row = $book->toArray();
@@ -62,7 +62,7 @@ class Book extends BaseController
             }
             $rows[] = $row;
         }
-        
+
         return Response::asJson([
             'code' => 200,
             'msg' => 'success',
@@ -70,7 +70,7 @@ class Book extends BaseController
             'count' => $result['total']
         ]);
     }
-    
+
     /**
      * 获取筛选选项
      * GET /book/filters
@@ -106,8 +106,10 @@ class Book extends BaseController
         }
 
         $item = ReadingProgressModel::fromString($progress);
-$percent = $item->percent;
-if ($percent > 1) $percent /= 100;
+        $percent = $item->percent;
+        if ($percent > 1) {
+            $percent /= 100;
+        }
         return Response::asJson([
             'code' => 200,
             'msg' => 'success',
@@ -155,10 +157,10 @@ if ($percent > 1) $percent /= 100;
         $progress->timestamp = time() * 1000;
         $progress->raw = $progress->toString();
 
-        ReadingProgressDao::getInstance()->insertModel($progress,true);
+        ReadingProgressDao::getInstance()->insertModel($progress, true);
         ProgressManager::getInstance()->uploadProgressText($filename, $progress->toString());
 
-        if ($frac >= 0.99){
+        if ($frac >= 0.99) {
 
         }
 
@@ -167,7 +169,6 @@ if ($percent > 1) $percent /= 100;
             'data' => $progress
         ]);
     }
-
 
     /**
      * 获取 EPUB 文件用于在线阅读
@@ -196,9 +197,11 @@ if ($percent > 1) $percent /= 100;
         $localPath = $cacheDir . DS . basename($filename);
 
         foreach (scandir($cacheDir) as $file) {
-            if ($file === '.' || $file === '..') continue;
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
             $f = $cacheDir . DS . $file;
-            if(time() - filectime($f) >= 3600 * 12) {
+            if (time() - filectime($f) >= 3600 * 12) {
                 unlink($f);
             }
         }
@@ -207,11 +210,11 @@ if ($percent > 1) $percent /= 100;
                 return Response::asText('下载失败');
             }
         }
-        
+
         return Response::asStatic($localPath);
     }
 
-    public function reader():Response
+    public function reader(): Response
     {
         $filename = rawurldecode($this->request->get('file', ''));
         $filename = trim($filename);
@@ -229,7 +232,9 @@ if ($percent > 1) $percent /= 100;
             $progress =  new ReadingProgressModel();
         }
         $percent = $progress->percent;
-        if ($percent > 1) $percent /= 100;
+        if ($percent > 1) {
+            $percent /= 100;
+        }
         $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
         $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl)
             . '&filename=' . rawurlencode($filename)
@@ -246,17 +251,17 @@ if ($percent > 1) $percent /= 100;
     {
         $data = $this->request->post();
         $id = intval($data['id'] ?? 0);
-        
+
         if ($id <= 0) {
             return Response::asJson(['code' => 400, 'msg' => '参数错误']);
         }
-        
+
         $book = BookDao::getInstance()->getById($id);
-        
+
         if (!$book) {
             return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
         }
-        
+
         // 更新可编辑字段
         $editableFields = ['bookName', 'author', 'description', 'category', 'series', 'seriesNum', 'favorite', 'rate','coverUrl'];
         foreach ($editableFields as $field) {
@@ -264,19 +269,18 @@ if ($percent > 1) $percent /= 100;
                 $book->$field = $data[$field];
             }
         }
-        if(!empty($book->coverUrl)){
-            Context::instance()->cache->set("coverUrl/{$book->coverUrl}",true);
+        if (!empty($book->coverUrl)) {
+            Context::instance()->cache->set("coverUrl/{$book->coverUrl}", true);
         }
 
-        
         if (BookDao::getInstance()->updateModel($book)) {
             BookDao::getInstance()->syncBooks();
             return Response::asJson(['code' => 200, 'msg' => '更新成功']);
         }
-        
+
         return Response::asJson(['code' => 500, 'msg' => '更新失败']);
     }
-    
+
     /**
      * 删除书籍
      * POST /book/delete
@@ -284,7 +288,7 @@ if ($percent > 1) $percent /= 100;
     public function delete(): Response
     {
         $id = intval($this->request->post('id', 0));
-        
+
         if ($id <= 0) {
             return Response::asJson(['code' => 400, 'msg' => '参数错误']);
         }
@@ -298,7 +302,7 @@ if ($percent > 1) $percent /= 100;
 
         return Response::asJson(['code' => 500, 'msg' => '删除失败']);
     }
-    
+
     /**
      * WebDAV同步（预留接口）
      * POST /book/sync
@@ -308,9 +312,9 @@ if ($percent > 1) $percent /= 100;
 
         $cache = Context::instance()->cache;
 
-        $msg = $cache->get('sync-books',null);
+        $msg = $cache->get('sync-books', null);
 
-        if ($msg == 'complete'){
+        if ($msg == 'complete') {
             Context::instance()->cache->delete('sync-books');
             return Response::asJson(['code' => 200, 'msg' => '同步完成']);
         }
@@ -322,9 +326,8 @@ if ($percent > 1) $percent /= 100;
 
         return Response::asJson(['code' => 201, 'msg' => $msg]);
 
-
     }
-    
+
     /**
      * 删除重复书籍（根据书名+作者判断，保留最早导入的）
      * POST /book/removeDuplicates
@@ -333,7 +336,7 @@ if ($percent > 1) $percent /= 100;
     {
         // 获取所有书籍
         $allBooks = BookDao::getInstance()->select()->commit();
-        
+
         // 按 bookName + author 分组
         $groups = [];
         foreach ($allBooks as $book) {
@@ -343,16 +346,16 @@ if ($percent > 1) $percent /= 100;
             }
             $groups[$key][] = $book;
         }
-        
+
         // 找出重复的书籍并删除（保留最早的）
         $deletedCount = 0;
         $deletedBooks = [];
-        
+
         foreach ($groups as $key => $books) {
             if (count($books) <= 1) {
                 continue; // 没有重复，跳过
             }
-            
+
             // 找出 addTime 最小的（最早导入的）
             $oldest = $books[0];
             foreach ($books as $book) {
@@ -360,7 +363,7 @@ if ($percent > 1) $percent /= 100;
                     $oldest = $book;
                 }
             }
-            
+
             // 删除所有不是最老的书籍
             foreach ($books as $book) {
                 if ($book->id === $oldest->id) {
@@ -381,7 +384,7 @@ if ($percent > 1) $percent /= 100;
         }
 
         BookDao::getInstance()->syncBooks();
-        
+
         return Response::asJson([
             'code' => 200,
             'msg' => $deletedCount > 0 ? "已删除 {$deletedCount} 本重复书籍" : '未发现重复书籍',
@@ -398,17 +401,21 @@ if ($percent > 1) $percent /= 100;
     public function scrapeCover(): Response
     {
         $id = intval($this->request->post('id', 0));
-        if ($id <= 0) return Response::asJson(['code' => 400, 'msg' => '参数错误']);
-        
+        if ($id <= 0) {
+            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
+        }
+
         $book = BookDao::getInstance()->getById($id);
-        if (!$book) return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
+        if (!$book) {
+            return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
+        }
 
         // 下载书籍到临时目录
         $tempPath = RUNTIME_PATH . DS . 'temp' . DS . $book->filename;
         if (!BookManager::getInstance()->downloadBook($book->filename, $tempPath)) {
             return Response::asJson(['code' => 500, 'msg' => '下载书籍失败']);
         }
-        
+
         // 提取封面
         $coverPath = Parser::cover($tempPath, $book);
 
@@ -416,7 +423,7 @@ if ($percent > 1) $percent /= 100;
             File::del($tempPath);
             return Response::asJson(['code' => 500, 'msg' => '提取封面失败']);
         }
-        
+
         // 上传封面
         if (!CoverManager::getInstance()->uploadCover($coverPath, $book->filename)) {
             File::del($tempPath);

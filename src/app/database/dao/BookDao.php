@@ -1,32 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\database\dao;
 
 use app\database\model\BookModel;
-use app\utils\BookManager\BookManager;
-use app\utils\BookManager\CoverManager;
-use app\utils\BookManager\ProgressManager;
 use app\utils\SyncBooks;
-use app\utils\SyncTask;
 use nova\plugin\corn\schedule\TaskerManager;
 use nova\plugin\corn\schedule\TaskerTime;
 use nova\plugin\orm\object\Dao;
 use nova\plugin\orm\object\Field;
-use function nova\framework\dump;
+
 use function nova\plugin\task\go;
 
 class BookDao extends Dao
 {
     /**
      * 分页查询书籍列表，支持搜索和筛选
-     * @param int $page 页码
-     * @param int $limit 每页数量
-     * @param string $search 搜索关键词（书名、作者）
-     * @param string $series 系列筛选
-     * @param string $category 分类筛选
-     * @param string $favorite 收藏筛选
-     * @param string $finished 已读完筛选
-     * @return array ['total' => int, 'list' => BookModel[]]
+     * @param  int    $page     页码
+     * @param  int    $limit    每页数量
+     * @param  string $search   搜索关键词（书名、作者）
+     * @param  string $series   系列筛选
+     * @param  string $category 分类筛选
+     * @param  string $favorite 收藏筛选
+     * @param  string $finished 已读完筛选
+     * @return array  ['total' => int, 'list' => BookModel[]]
      */
     public function getList(int $page = 1, int $limit = 20, string $search = '', string $series = '', string $category = '', string $favorite = '', string $finished = ''): array
     {
@@ -38,19 +36,19 @@ class BookDao extends Dao
             $where[] = "(bookName LIKE '%:search%' OR author LIKE '%:search%')";
             $where[':search'] = $search;
         }
-        
+
         // 筛选：系列
         if (!empty($series)) {
             $where['series'] = $series;
             $orderBy = "seriesNum";
         }
-        
+
         // 筛选：分类（模糊匹配）
         if (!empty($category)) {
             $where[] = "category LIKE '%:category%'";
             $where[':category'] = $category;
         }
-        
+
         // 筛选：收藏
         if (!empty($favorite)) {
             $where['favorite'] = $favorite;
@@ -60,15 +58,15 @@ class BookDao extends Dao
         if ($finished !== '') {
             $where['isFinished'] = ((int)$finished) > 0 ? 1 : 0;
         }
-        
+
         $result = $this->getAll([], $where, $page, $limit, $orderBy);
-        
+
         return [
             'total' => $result['total'],
             'list' => $result['data']
         ];
     }
-    
+
     /**
      * 根据ID获取书籍
      */
@@ -80,7 +78,7 @@ class BookDao extends Dao
     /**
      * 按 $addTimes 批量查询，减少循环中的 N+1 数据库请求。
      *
-     * @param int[] $addTimes
+     * @param  int[]       $addTimes
      * @return BookModel[]
      */
     public function getByAddTime(array $addTimes): array
@@ -91,8 +89,6 @@ class BookDao extends Dao
             ->commit();
     }
 
-
-    
     /**
      * 删除书籍
      */
@@ -101,7 +97,7 @@ class BookDao extends Dao
         $this->delete()->where(['id' => $id])->commit();
         return true;
     }
-    
+
     /**
      * 获取所有系列名称（去重）
      */
@@ -111,11 +107,11 @@ class BookDao extends Dao
                        ->where(['series <> ""'])
                        ->groupBy('series')
                        ->commit(object: false);
-        
+
         // GROUP BY已经保证唯一性，直接提取列值
         return array_column($result, 'series');
     }
-    
+
     /**
      * 获取所有分类（去重）
      */
@@ -124,7 +120,7 @@ class BookDao extends Dao
         $result = $this->select(new Field('category'))
                        ->where(['category != ""'])
                        ->commit(object: false);
-        
+
         // category可能包含多个分类，需要拆分
         // 使用关联数组去重，O(1)复杂度
         $categories = [];
@@ -139,7 +135,7 @@ class BookDao extends Dao
         }
         return array_keys($categories);
     }
-    
+
     /**
      * 获取所有收藏夹标签（去重）
      */
@@ -149,7 +145,7 @@ class BookDao extends Dao
                        ->where(['favorite <> ""'])
                        ->groupBy('favorite')
                        ->commit(object: false);
-        
+
         // GROUP BY已经保证唯一性，直接提取列值
         return array_column($result, 'favorite');
     }
@@ -162,12 +158,12 @@ class BookDao extends Dao
     public function syncBooks($force = false): void
     {
         TaskerManager::del("syncBooks");
-        if ($force){
-            go(function (){
+        if ($force) {
+            go(function () {
                 (new SyncBooks())->onStart();
             });
-        }else{
-            TaskerManager::add(TaskerTime::after(300),new SyncBooks(),"syncBooks");
+        } else {
+            TaskerManager::add(TaskerTime::after(300), new SyncBooks(), "syncBooks");
         }
 
     }

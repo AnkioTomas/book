@@ -1,13 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\controller\index;
 
-use nova\framework\http\Response;
 use function nova\framework\config;
+
+use nova\framework\http\Response;
 
 class Webdav extends BaseController
 {
-    function config(): Response
+    public function config(): Response
     {
         if ($this->request->isGet()) {
             $deviceId = config('webdav.deviceId');

@@ -14,9 +14,11 @@ namespace app;
 
 use app\utils\Installer;
 use nova\framework\App;
+
+use function nova\framework\route;
+
 use nova\framework\route\Route;
 use nova\plugin\task\PoolManager;
-use function nova\framework\route;
 
 class Application extends App
 {
@@ -55,7 +57,6 @@ class Application extends App
             ->post("/admin/api/douban", route("index", "douban", "search"))
             ->get("/webdav/{filename}", route('index', 'douban', 'webdav'))
             ->get("/proxy/{uri}", route('index', 'douban', 'proxy'));
-
 
     }
 

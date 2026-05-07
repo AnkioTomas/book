@@ -12,7 +12,6 @@ use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
 use nova\plugin\task\Task;
 use nova\plugin\tpl\ViewResponse;
-use function nova\framework\dump;
 
 class Main extends BaseController
 {
@@ -84,7 +83,6 @@ class Main extends BaseController
                 ]
             ];
 
-
             return $this->viewResponse->asTpl("layout", [
                 'menuConfig' => $menuInfo
 
@@ -105,7 +103,7 @@ class Main extends BaseController
         return $this->viewResponse->asTpl(SSOLoginManager::TPL_SSO);
     }
 
-    public function dashboard():Response
+    public function dashboard(): Response
     {
         // 1. 最近添加（后端渲染，按 addTime 降序）
         $recentBooks = BookDao::getInstance()->getAll([], [], 1, 25, 'addTime', false)['data'];
@@ -115,14 +113,13 @@ class Main extends BaseController
         }
         unset($book);
 
-        $_recentlyReadBooks = ReadingProgressDao::getInstance()->getAll([], [], 1, 25, 'timestamp',false)['data'];
+        $_recentlyReadBooks = ReadingProgressDao::getInstance()->getAll([], [], 1, 25, 'timestamp', false)['data'];
 
-        $recentlyReadBooks =[];
-
+        $recentlyReadBooks = [];
 
         foreach ($_recentlyReadBooks as $bookItem) {
             $readingBook = BookDao::getInstance()->getByFileName($bookItem['filename']);
-            if (empty($readingBook)){
+            if (empty($readingBook)) {
                 continue;
             }
             $bookItem += (array)$readingBook;
@@ -134,31 +131,29 @@ class Main extends BaseController
         // 4. 继续阅读：优先取最近阅读第一本
         $currentReading = $recentlyReadBooks[0] ?? null;
 
-
-
-        return $this->viewResponse->asTpl('dashboard',[
+        return $this->viewResponse->asTpl('dashboard', [
             'currentReading' => $currentReading,
             'recentlyReadBooks' => $recentlyReadBooks,
             'recentBooks' => $recentBooks,
         ]);
     }
 
-    public function webdav():Response
+    public function webdav(): Response
     {
         return $this->viewResponse->asTpl();
     }
 
-    public function calibre():Response
+    public function calibre(): Response
     {
         return $this->viewResponse->asTpl();
     }
 
-    public function book():Response
+    public function book(): Response
     {
         return $this->viewResponse->asTpl();
     }
 
-    public function reader():Response
+    public function reader(): Response
     {
         $filename = rawurldecode($this->request->get('file', ''));
         $filename = trim($filename);
@@ -185,15 +180,14 @@ class Main extends BaseController
         return $this->redirectTo($readerUrl);
     }
 
-    public function task():Response
+    public function task(): Response
     {
         return $this->viewResponse->asTpl(Task::TASK_TPL);
     }
 
-    public function index():Response
+    public function index(): Response
     {
         return Response::asRedirect("/admin/dashboard");
     }
-
 
 }

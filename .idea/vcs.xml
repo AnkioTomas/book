@@ -9,6 +9,7 @@
     <mapping directory="$PROJECT_DIR$/src/app/static/components/formDialog" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/app/static/framework" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/framework" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/nova/plugin/ai" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/avatar" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/captcha" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/nova/plugin/cookie" vcs="Git" />

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\controller\index;
 
 use app\database\dao\BookDao;
@@ -44,7 +46,9 @@ class Upload extends BaseController
         $name = $this->request->post('name', '');
         $series = $this->request->post('series', '');
         $file = FileDao::getInstance()->getFile($name);
-        if (empty($file)) return Response::asJson(["code" => 404, "msg" => "文件不存在"]);
+        if (empty($file)) {
+            return Response::asJson(["code" => 404, "msg" => "文件不存在"]);
+        }
 
         $path = $file->path;
 
@@ -55,10 +59,10 @@ class Upload extends BaseController
         $model = BookDao::getInstance()->getByFileName($file->name);
         if (BookManager::getInstance()->uploadBook($file->path, $file->name)) {
             [$author, $title, $year, $ext] = Parser::filename($file->name);
-            if (empty($title)){
+            if (empty($title)) {
                 return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
             }
-            if (empty($model)){
+            if (empty($model)) {
                 $model = new BookModel();
                 $model->deviceId = BookManager::getInstance()->deviceId;
                 $model->addTime = time() * 1000;
@@ -68,8 +72,8 @@ class Upload extends BaseController
                 $model->bookName = $title;
                 $model->author = $author ?? "";
                 $model->downloadUrl = "[WebDav]/Apps/Books/".$file->name;
-                $path = Parser::cover($path,$model);
-                if (!empty($path)){
+                $path = Parser::cover($path, $model);
+                if (!empty($path)) {
                     CoverManager::getInstance()->uploadCover($path, $model->filename);
                 }
                 BookDao::getInstance()->insertModel($model);
@@ -82,8 +86,6 @@ class Upload extends BaseController
             return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
         }
 
-
     }
-
 
 }

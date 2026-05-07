@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace app\utils;
 
 use app\Application;
+
+use function nova\framework\config;
+
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\event\EventManager;
@@ -14,9 +17,8 @@ use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\tpl\ViewResponse;
 use PDO;
 use PDOException;
-use Throwable;
 
-use function nova\framework\config;
+use Throwable;
 
 /**
  * 安装向导

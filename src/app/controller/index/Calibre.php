@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace app\controller\index;
 
 use app\utils\EbookServiceClient;
-use nova\framework\http\Response;
-use Throwable;
 
 use function nova\framework\config;
+
+use nova\framework\http\Response;
+
+use Throwable;
 
 /**
  * Calibre 微服务地址配置
