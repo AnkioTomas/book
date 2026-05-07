@@ -107,14 +107,13 @@ class Main extends BaseController
 
     public function dashboard():Response
     {
-        // 2. 最近添加 10本
-        $recentBooks = BookDao::getInstance()->getAll([], [], 1, 25, 'id',false)['data'];
+        // 1. 最近添加（后端渲染，按 addTime 降序）
+        $recentBooks = BookDao::getInstance()->getAll([], [], 1, 25, 'addTime', false)['data'];
         foreach ($recentBooks as &$book) {
-            // 格式化日期
             $book['formattedDate'] = date('Y-m-d', (int)($book['addTime'] / 1000));
             $book['coverUrl'] = "/webdav/".rawurlencode($book['filename']);
         }
-
+        unset($book);
 
         $_recentlyReadBooks = ReadingProgressDao::getInstance()->getAll([], [], 1, 25, 'timestamp',false)['data'];
 
@@ -139,8 +138,8 @@ class Main extends BaseController
 
         return $this->viewResponse->asTpl('dashboard',[
             'currentReading' => $currentReading,
-            'recentBooks' => $recentBooks,
             'recentlyReadBooks' => $recentlyReadBooks,
+            'recentBooks' => $recentBooks,
         ]);
     }
 
