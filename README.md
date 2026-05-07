@@ -31,6 +31,20 @@
 
 ---
 
+## 界面预览
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="仪表盘：继续阅读 + 最近阅读" width="900" /><br/>
+  <sub><b>仪表盘</b> — 继续阅读卡片 + 最近阅读列表，一眼回到上次的位置</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/library.png" alt="书架管理：搜索 / 系列 / 收藏 / 已读筛选 + 批量操作" width="900" /><br/>
+  <sub><b>书架管理</b> — 多维度筛选（书名/作者、系列、收藏、已读）与批量操作</sub>
+</p>
+
+---
+
 ## 系统要求
 
 | 组件 | 版本 / 说明 |
