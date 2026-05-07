@@ -37,16 +37,16 @@
         overflow: hidden;
     }
 
-    .added-wall {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(136px, 136px));
-        justify-content: start;
-        gap: 14px;
+    /* 最近添加：复用 CardView 的 grid 容器样式（.card-view-container + --card-min-width） */
+    #recentAdded book-card {
+        display: block;
+        width: 100%;
     }
 
-    .added-item,
-    .added-item book-card {
-        width: 136px;
+    @media (max-width: 560px) {
+        #recentAdded.card-view-container {
+            --card-min-width: 100% !important;
+        }
     }
 
     @media (max-width: 768px) {
@@ -65,15 +65,6 @@
             width: 100%;
         }
 
-        .added-wall {
-            grid-template-columns: repeat(auto-fill, minmax(120px, 120px));
-            gap: 10px;
-        }
-
-        .added-item,
-        .added-item book-card {
-            width: 120px;
-        }
     }
 </style>
 
@@ -128,18 +119,27 @@
     </div>
 
     <h2 class="title-medium mb-2"  style="font-weight: bold">最近添加</h2>
-    <div class="added-wall">
-        {if $recentBooks}
+    {if $recentBooks}
+    <div id="recentAdded" class="card-view-container" style="--card-min-width: 180px;">
         {foreach $recentBooks as $book}
-        <div class="added-item">
-            <book-card cover="{$book.coverUrl}" title="{$book.bookName}" author="{$book.author}"></book-card>
-            <div class="label-small text-on-surface-variant mt-2">添加于 {$book.formattedDate}</div>
+        <div class="card-view-item js-open-reader" data-file="{$book.filename}" data-title="{$book.bookName}">
+            <div class="card-content">
+                <div class="d-flex flex-col h-full p-2">
+                    <book-card
+                        cover="{$book.coverUrl}"
+                        title="{$book.bookName}"
+                        author="{$book.author}"
+                        description="添加于 {$book.formattedDate}"
+                        show-description
+                    ></book-card>
+                </div>
+            </div>
         </div>
         {/foreach}
-        {else}
-        <div class="body-medium text-on-surface-variant">暂无数据</div>
-        {/if}
     </div>
+    {else}
+    <div class="body-medium text-on-surface-variant">暂无数据</div>
+    {/if}
 </div>
 
 <script id="script" src="/static/js/dashboard.js?v={$__v}"></script>
