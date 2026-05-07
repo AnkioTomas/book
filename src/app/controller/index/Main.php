@@ -69,6 +69,12 @@ class Main extends BaseController
                             "pjax" => true
                         ],
                         [
+                            "title" => "Calibre配置",
+                            "url" => "/admin/calibre",
+                            "icon" => "auto_stories",
+                            "pjax" => true
+                        ],
+                        [
                             "title" => "任务列表",
                             "url" => "/admin/task",
                             "icon" => "checklist",
@@ -139,6 +145,11 @@ class Main extends BaseController
     }
 
     public function webdav():Response
+    {
+        return $this->viewResponse->asTpl();
+    }
+
+    public function calibre():Response
     {
         return $this->viewResponse->asTpl();
     }

@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace app;
 
+use app\utils\Installer;
 use nova\framework\App;
 use nova\framework\route\Route;
 use nova\plugin\task\PoolManager;
@@ -21,6 +22,7 @@ class Application extends App
 {
     public function onFrameworkStart(): void
     {
+        Installer::register();
         PoolManager::start();
         // Route::getInstance()->get()
         Route::getInstance()
@@ -29,8 +31,6 @@ class Application extends App
             ->get("/admin/book", route('index', 'main', 'book'))
             ->get("/admin/reader", route('index', 'book', 'reader'))
             ->get("/admin/webdav", route('index', 'main', 'webdav'))
-            ->get("/admin/qing", route('index', 'main', 'qing'))
-            ->get("/admin/dzg", route('index', 'main', 'dzg'))
             ->get("/admin/task", route('index', 'main', 'task'))
             ->getOrPost('/admin/api/book/list', route('index', 'book', 'list'))
             ->getOrPost('/admin/api/book/filters', route('index', 'book', 'filters'))
@@ -45,14 +45,14 @@ class Application extends App
             ->post('/admin/api/book/scrapeCover', route('index', 'book', 'scrapeCover'))
             //filters
             ->getOrPost('/admin/api/webdav', route('index', 'webdav', 'config'))
+            ->get('/admin/calibre', route('index', 'main', 'calibre'))
+            ->getOrPost('/admin/api/calibre', route('index', 'calibre', 'config'))
+            ->post('/admin/api/calibre/test', route('index', 'calibre', 'test'))
             ->get("/settings/account", route('index', 'main', 'account'))//√
             ->get("/settings/sso", route('index', 'main', 'sso'))
             ->post("/admin/api/upload", route("index", "upload", "upload")) // 文件上传
             ->post("/admin/api/publish", route("index", "upload", "publish")) // 文件上传
             ->post("/admin/api/douban", route("index", "douban", "search"))
-            ->getOrPost("/admin/api/qing/cron", route("index", "qing", "cron"))
-            ->getOrPost("/admin/api/dzg/cron", route("index", "duzhege", "cron"))
-            ->post("/admin/api/dzg/test", route("index", "duzhege", "test"))
             ->get("/webdav/{filename}", route('index', 'douban', 'webdav'))
             ->get("/proxy/{uri}", route('index', 'douban', 'proxy'));
 
