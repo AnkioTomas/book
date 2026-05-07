@@ -1,7 +1,7 @@
 {
     "name": "book",
     "description": "A Nova project",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "type": "project",
     "license": "MIT",
     "authors": [
