@@ -104,6 +104,16 @@ class SyncBooks extends TaskerAbstract
             $dbValue = $dbBook->$field;
             $incomingValue = $incomingBook->$field;
 
+            // 书名/作者不做常规覆盖：仅在数据库为空时，才尝试用更长值补齐
+            if (in_array($field, ['bookName', 'author'], true)) {
+                if ($this->isEmptyValue($dbValue)
+                    && $this->valueLength($incomingValue) > $this->valueLength($dbValue)
+                ) {
+                    $dbBook->$field = $incomingValue;
+                }
+                continue;
+            }
+
             if ($this->valueLength($incomingValue) > $this->valueLength($dbValue)) {
                 $dbBook->$field = $incomingValue;
             }
@@ -131,6 +141,23 @@ class SyncBooks extends TaskerAbstract
         }
 
         return $lengthFn((string)$value);
+    }
+
+    /**
+     * 判断值是否为空（字符串会先 trim）。
+     */
+    private function isEmptyValue($value): bool
+    {
+        if ($value === null) {
+            return true;
+        }
+        if (is_string($value)) {
+            return trim($value) === '';
+        }
+        if (is_array($value)) {
+            return count($value) === 0;
+        }
+        return $value === '';
     }
 
     /**
