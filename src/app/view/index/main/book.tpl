@@ -134,6 +134,7 @@
             <div class="row col-space12">
                 <div class="col-xs12 col-sm6 col-md3">
                     <mdui-text-field
+                        variant="outlined"
                         name="search"
                         label="搜索书名或作者"
                         icon="search"
@@ -142,19 +143,19 @@
                 </div>
 
                 <div class="col-xs6 col-sm3 col-md2">
-                    <mdui-select style="max-height: 50vh;min-width: fit-content" name="series" clearable label="系列">
+                    <mdui-select variant="outlined" style="max-height: 50vh;min-width: fit-content" name="series" clearable label="系列">
                         <mdui-menu-item value="">全部</mdui-menu-item>
                     </mdui-select>
                 </div>
 
                 <div class="col-xs6 col-sm4 col-md2">
-                    <mdui-select name="favorite" clearable label="收藏">
+                    <mdui-select variant="outlined" name="favorite" clearable label="分类">
                         <mdui-menu-item value="">全部</mdui-menu-item>
                     </mdui-select>
                 </div>
 
                 <div class="col-xs6 col-sm4 col-md2">
-                    <mdui-select name="finished" clearable label="已读完">
+                    <mdui-select variant="outlined" name="finished" clearable label="阅读状态">
                         <mdui-menu-item value="">全部</mdui-menu-item>
                         <mdui-menu-item value="1">已读完</mdui-menu-item>
                         <mdui-menu-item value="0">未读完</mdui-menu-item>
@@ -177,6 +178,7 @@
             <div class="row col-space12">
                 <div class="col-xs12 d-flex items-end gap-2">
                     <mdui-text-field
+                            variant="outlined"
                             label="书名"
                             name="bookName"
                             id="bookName"
@@ -188,6 +190,7 @@
 
                 <div class="col-xs12">
                     <mdui-text-field
+                            variant="outlined"
                             label="作者"
                             name="author"
                     ></mdui-text-field>
@@ -195,6 +198,7 @@
 
                 <div class="col-xs12">
                     <mdui-text-field
+                            variant="outlined"
                             label="封面"
                             name="coverUrl"
                     ></mdui-text-field>
@@ -202,6 +206,7 @@
 
                 <div class="col-xs12">
                     <mdui-text-field
+                            variant="outlined"
                             label="简介"
                             name="description"
                             rows="3"
@@ -210,29 +215,14 @@
                 </div>
 
             <div class="col-xs12 col-sm6">
-                <mdui-dropdown id="categoryDropdown">
-                    <mdui-text-field
-                        slot="trigger"
-                        id="editCategory"
-                        label="分类"
-                        name="category"
-                        helper="可选择或输入新值"
-                        clearable
-                        icon="arrow_drop_down"
-                        end-icon
-                    ></mdui-text-field>
-                    <mdui-list id="categoryList"></mdui-list>
-                </mdui-dropdown>
-            </div>
-
-            <div class="col-xs12 col-sm6">
                 <mdui-dropdown id="favoriteDropdown">
                     <mdui-text-field
+                        variant="outlined"
                         slot="trigger"
                         id="editFavorite"
-                        label="收藏夹"
+                        label="分类"
                         name="favorite"
-                        helper="可选择或输入新值"
+                        helper="单值，可选择或输入新值"
                         clearable
                         icon="arrow_drop_down"
                         end-icon
@@ -241,9 +231,27 @@
                 </mdui-dropdown>
             </div>
 
+            <div class="col-xs12 col-sm6">
+                <mdui-dropdown id="categoryDropdown">
+                    <mdui-text-field
+                        variant="outlined"
+                        slot="trigger"
+                        id="editCategory"
+                        label="标签"
+                        name="category"
+                        helper="多个标签用换行分隔"
+                        clearable
+                        icon="arrow_drop_down"
+                        end-icon
+                    ></mdui-text-field>
+                    <mdui-list id="categoryList"></mdui-list>
+                </mdui-dropdown>
+            </div>
+
             <div class="col-xs12 col-sm8">
                 <mdui-dropdown id="seriesDropdown">
                     <mdui-text-field
+                        variant="outlined"
                         slot="trigger"
                         id="editSeries"
                         label="系列名称"
@@ -259,6 +267,7 @@
 
                 <div class="col-xs12 col-sm4">
                     <mdui-text-field
+                            variant="outlined"
                             label="系列编号"
                             name="seriesNum"
                             type="number"
@@ -268,6 +277,7 @@
 
                 <div class="col-xs12">
                     <mdui-text-field
+                            variant="outlined"
                             label="评分"
                             name="rate"
                             type="number"
@@ -291,6 +301,7 @@
         <form id="batchEditForm">
             <div class="mb-3">
                 <mdui-text-field
+                    variant="outlined"
                     label="批量设置作者"
                     name="author"
                     id="batchAuthor"
@@ -298,29 +309,32 @@
                     helper="将选中的所有书籍设置为该作者"
                 ></mdui-text-field>
             </div>
-            
+
             <div class="mb-3">
                 <mdui-text-field
+                    variant="outlined"
                     label="批量设置分类"
-                    name="category"
-                    id="batchCategory"
-                    clearable
-                    helper="将选中的所有书籍设置为该分类"
-                ></mdui-text-field>
-            </div>
-            
-            <div class="mb-3">
-                <mdui-text-field
-                    label="批量设置收藏夹"
                     name="favorite"
                     id="batchFavorite"
                     clearable
-                    helper="将选中的所有书籍设置为该收藏夹"
+                    helper="将选中的所有书籍设置为该分类（单值）"
                 ></mdui-text-field>
             </div>
-            
+
             <div class="mb-3">
                 <mdui-text-field
+                    variant="outlined"
+                    label="批量设置标签"
+                    name="category"
+                    id="batchCategory"
+                    clearable
+                    helper="多个标签用换行分隔，将覆盖原有标签"
+                ></mdui-text-field>
+            </div>
+
+            <div class="mb-3">
+                <mdui-text-field
+                    variant="outlined"
                     label="批量设置系列"
                     name="series"
                     id="batchSeries"
@@ -328,12 +342,12 @@
                     helper="将选中的所有书籍设置为该系列"
                 ></mdui-text-field>
             </div>
-            
+
             <div class="body-small text-on-surface-variant">
                 提示：只填写需要批量设置的字段，留空的字段不会被修改
             </div>
         </form>
-        
+
         <mdui-button slot="action" variant="text" onclick="this.closest('mdui-dialog').open = false">取消</mdui-button>
         <mdui-button slot="action" variant="filled" id="btnBatchSubmit">批量更新</mdui-button>
     </mdui-dialog-form>
