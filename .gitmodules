@@ -58,3 +58,6 @@
 [submodule "src/app/static/components/cron"]
     path = src/app/static/components/cron
     url = https://github.com/NovaPHPOrgUI/cron.git
+[submodule "src/nova/plugin/ai"]
+	path = src/nova/plugin/ai
+	url = https://github.com/NovaPHPOrg/nova-ai
