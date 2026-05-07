@@ -25,6 +25,9 @@ window.pageOnLoad = function (loading) {
             this.editDialog = document.querySelector("#bookEditDialog");
             this.batchDialog = document.querySelector("#batchEditDialog");
             this.$dragOverlay = $("#dragOverlay");
+            this.searchResetTimer = null;
+            this.syncTimer = null;
+            this.isDestroyed = false;
         }
 
         init() {
@@ -142,10 +145,11 @@ window.pageOnLoad = function (loading) {
             const that = this;
             
             const triggerSearch = () => {
+                if (that.isDestroyed) return;
                 that.cardView.reload($.form.val("#searchForm"), true);
             };
 
-            const debouncedSearch = this.debounce(triggerSearch, 300);
+            const throttledSearch = $.throttle(triggerSearch, 300);
             const $searchForm = $('#searchForm');
 
             // 回车提交保留兼容，同时阻止默认跳转
@@ -154,14 +158,18 @@ window.pageOnLoad = function (loading) {
                 triggerSearch();
             });
 
-            // 输入和筛选变更时自动触发搜索（防抖）
+            // 输入和筛选变更时自动触发搜索（节流）
             $searchForm.on('input change', 'mdui-text-field, mdui-select, input, select', () => {
-                debouncedSearch();
+                throttledSearch();
             });
 
             // 表单重置后同步刷新结果
             $searchForm.on('reset', () => {
-                setTimeout(triggerSearch, 0);
+                if (that.searchResetTimer) clearTimeout(that.searchResetTimer);
+                that.searchResetTimer = setTimeout(() => {
+                    if (that.isDestroyed) return;
+                    triggerSearch();
+                }, 0);
             });
 
             // 添加书籍（支持多文件上传）
@@ -183,13 +191,16 @@ window.pageOnLoad = function (loading) {
 
 
             function sync(){
+                if (that.isDestroyed) return;
                 $.request.postForm('/admin/api/sync', {}, (res) => {
+                    if (that.isDestroyed) return;
                     if (res.code === 200) {
                         $.toaster.success(res.msg);
                         that.cardView.reload($.form.val("#searchForm"), true);
                     } else if(res.code === 201){
                         $.toaster.success(res.msg);
-                        setTimeout(sync,2000);
+                        if (that.syncTimer) clearTimeout(that.syncTimer);
+                        that.syncTimer = setTimeout(sync, 2000);
                     } else {
                         $.toaster.error(res.msg);
                     }
@@ -724,18 +735,19 @@ window.pageOnLoad = function (loading) {
             });
         }
 
-        debounce(fn, delay = 300) {
-            let timer = null;
-            return (...args) => {
-                if (timer) clearTimeout(timer);
-                timer = setTimeout(() => fn.apply(this, args), delay);
-            };
-        }
-
         /**
          * 销毁
          */
         destroy() {
+            this.isDestroyed = true;
+            if (this.searchResetTimer) {
+                clearTimeout(this.searchResetTimer);
+                this.searchResetTimer = null;
+            }
+            if (this.syncTimer) {
+                clearTimeout(this.syncTimer);
+                this.syncTimer = null;
+            }
             if (this.cardView) this.cardView.destroy();
             $('#searchForm, #btnAdd, #btnSync, #btnRemoveDuplicates, #btnBatchDelete').off();
             $(this.editDialog).off();
