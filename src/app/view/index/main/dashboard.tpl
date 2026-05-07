@@ -1,9 +1,5 @@
 <title id="title">仪表盘 - {$title}</title>
 <style id="style">
-    .dashboard-v3 {
-        padding: 20px;
-    }
-
     .continue-cover {
         width: 130px;
         min-width: 130px;
@@ -54,10 +50,19 @@
     }
 
     @media (max-width: 768px) {
+        .continue-layout {
+            flex-direction: column;
+            gap: 12px;
+        }
+
         .continue-cover {
             width: 100%;
             min-width: 0;
             max-height: 260px;
+        }
+
+        .continue-actions mdui-button {
+            width: 100%;
         }
 
         .added-wall {
@@ -72,12 +77,12 @@
     }
 </style>
 
-<div id="container" class="container dashboard-v3 h-fit">
+<div id="container" class="container h-fit py-3">
     <h2 class="title-medium mb-2 " style="font-weight: bold">继续阅读</h2>
     <mdui-card class="p-3 rounded-lg mb-3 w-full">
 
         {if $currentReading}
-        <div class="d-flex items-stretch gap-4">
+        <div class="d-flex items-stretch gap-4 continue-layout">
             <image-loader src="{$currentReading.coverUrl}" class="continue-cover"></image-loader>
             <div class="d-flex flex-col flex-1 min-w-0">
                 <div class="title-large text-ellipsis" title="{$currentReading.bookName}">{$currentReading.bookName}</div>
@@ -87,7 +92,7 @@
                 <div class="progress-track mt-1">
                     <div class="progress-bar" style="width:{$currentReading.percent}%;"></div>
                 </div>
-                <div class="mt-auto pt-3">
+                <div class="mt-auto pt-3 continue-actions">
                     <mdui-button class="js-resume-reading rounded-full" data-file="{$currentReading.filename}" data-title="{$currentReading.bookName}" variant="filled" icon="menu_book">
                         继续阅读
                     </mdui-button>
