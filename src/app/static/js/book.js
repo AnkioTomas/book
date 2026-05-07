@@ -74,6 +74,7 @@ window.pageOnLoad = function (loading) {
             };
             this.cardView = new CardView("#bookTable");
             this.cardView.load({
+                params: '#searchForm',
                 uri: "/admin/api/book/list",
                 cardWidth: "180px",
                 template: `
@@ -137,7 +138,7 @@ window.pageOnLoad = function (loading) {
                         $.request.postForm('/admin/api/book/delete', {id: bookId}, (res) => {
                             if (res.code === 200) {
                                 $.toaster.success(res.msg || '删除成功');
-                                that.cardView.reload($.form.val("#searchForm"), true);
+                                that.cardView.reload();
                             } else {
                                 $.toaster.error(res.msg || '删除失败');
                             }
@@ -157,7 +158,7 @@ window.pageOnLoad = function (loading) {
             
             const triggerSearch = () => {
                 if (that.isDestroyed) return;
-                that.cardView.reload($.form.val("#searchForm"), true);
+                that.cardView.reload(true);
             };
 
             const throttledSearch = $.throttle(triggerSearch, 300);
@@ -207,7 +208,7 @@ window.pageOnLoad = function (loading) {
                     if (that.isDestroyed) return;
                     if (res.code === 200) {
                         $.toaster.success(res.msg);
-                        that.cardView.reload($.form.val("#searchForm"), true);
+                        that.cardView.reload();
                     } else if(res.code === 201){
                         $.toaster.success(res.msg);
                         if (that.syncTimer) clearTimeout(that.syncTimer);
@@ -233,7 +234,7 @@ window.pageOnLoad = function (loading) {
                             $("body").closeLoading();
                             if (res.code === 200) {
                                 $.toaster.success(res.msg);
-                                that.cardView.reload($.form.val("#searchForm"), true);
+                                that.cardView.reload(true);
                             } else {
                                 $.toaster.error(res.msg);
                             }
@@ -285,7 +286,7 @@ window.pageOnLoad = function (loading) {
 
             // 编辑书籍提交
             this.editDialog.submit('/admin/api/book/update', () => {
-                that.cardView.reload($.form.val("#searchForm"), true);
+                that.cardView.reload();
             });
 
             // 批量编辑提交 - 传入 null 作为 URL，直接处理数据
@@ -324,7 +325,7 @@ window.pageOnLoad = function (loading) {
                         } else {
                             $.toaster.warn(`批量更新完成：${successCount} 本成功，${failCount} 本失败`);
                         }
-                        that.cardView.reload($.form.val("#searchForm"), true);
+                        that.cardView.reload(true);
                         return;
                     }
 
@@ -567,7 +568,7 @@ window.pageOnLoad = function (loading) {
                 if (index >= total) {
                     $("body").closeLoading();
                     $.toaster[failCount === 0 ? 'success' : 'warn'](`删除完成：${successCount} 成功，${failCount} 失败`);
-                    that.cardView.reload($.form.val("#searchForm"), true);
+                    that.cardView.reload(true);
                     return;
                 }
 
@@ -598,7 +599,7 @@ window.pageOnLoad = function (loading) {
                 if (index >= total) {
                     $("body").closeLoading();
                     $.toaster[failCount === 0 ? 'success' : 'warn'](`刮削完成：${successCount} 成功，${failCount} 失败`);
-                    that.cardView.reload($.form.val("#searchForm"), true);
+                    that.cardView.reload(true);
                     return;
                 }
 
@@ -628,7 +629,7 @@ window.pageOnLoad = function (loading) {
                 this.uploadFile(file, () => {
                     if (++count === total) {
                         $.toaster.success(`${total} 个文件上传完成`);
-                        that.cardView.reload($.form.val("#searchForm"), true);
+                        that.cardView.reload(true);
                     }
                 });
             });
