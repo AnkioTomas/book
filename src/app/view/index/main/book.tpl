@@ -85,12 +85,20 @@
 
     #bookTable .book-actions {
         position: absolute;
-        top: 12px;
-        left: 12px;
+        top: 0.5rem;
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.15s ease;
-        z-index: 21;
+        z-index: 19;
+        padding-top: 3px;
+        left: 0;
+        right: 0;
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+        border-radius: 0.5rem 0.5rem 0 0;
+        padding-bottom: 3px;
+        background: rgba(var(--mdui-color-background));
+
     }
 
     #bookTable .card-view-item:hover .book-actions,
@@ -107,9 +115,19 @@
     }
 
     @media (hover: none), (pointer: coarse) {
+        #bookTable .book-card-shell {
+            gap: 0.5rem;
+        }
+
         #bookTable .book-actions {
+            position: static;
             opacity: 1;
             pointer-events: auto;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
+            justify-content: flex-end;
         }
     }
 </style>

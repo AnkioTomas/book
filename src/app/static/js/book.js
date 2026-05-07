@@ -93,8 +93,9 @@ window.pageOnLoad = function (loading) {
                         field: "actions",
                         formatter: (value, row, index) => {
                             return `
-                                <mdui-button-icon class="btn-edit" icon="edit" data-id="${row.id}" data-index="${index}"></mdui-button-icon>
-                                <mdui-button-icon class="btn-delete" icon="delete" data-id="${row.id}" data-index="${index}"></mdui-button-icon>
+                                <mdui-button-icon class="btn-download" icon="download" data-index="${index}"></mdui-button-icon>
+                                <mdui-button-icon class="btn-edit"  icon="edit" data-id="${row.id}" data-index="${index}"></mdui-button-icon>
+                                <mdui-button-icon class="btn-delete"  icon="delete" data-id="${row.id}" data-index="${index}"></mdui-button-icon>
                             `;
                         }
                     }
@@ -117,6 +118,16 @@ window.pageOnLoad = function (loading) {
                 const book = that.cardView.getRow(index);
                 that.editDialog.open();
                 that.editDialog.setValue(book);
+            }).on('click', '.btn-download', function (e) {
+                e.stopPropagation();
+                const index = $(this).data('index');
+                const book = that.cardView.getRow(index);
+                const filename = String(book?.filename || '').trim();
+                if (!filename) {
+                    $.toaster.warning('文件名缺失，无法下载');
+                    return;
+                }
+                window.open(`/admin/api/book/file?filename=${encodeURIComponent(filename)}`, '_blank', 'noopener');
             }).on('click', '.btn-delete', function (e) {
                 e.stopPropagation();
                 const bookId = $(this).data('id');
