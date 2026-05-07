@@ -1,6 +1,6 @@
 class BookCard extends HTMLElement {
     static get observedAttributes() {
-        return ["cover", "title", "author", "description", "show-author"];
+        return ["cover", "title", "author", "description", "show-author", "show-description"];
     }
 
     constructor() {
@@ -64,6 +64,17 @@ class BookCard extends HTMLElement {
                     }
                     .description {
                         display: none;
+                    }
+
+                    :host([show-description]) .description {
+                        display: block;
+                        margin-top: 6px;
+                        font-size: 12px;
+                        line-height: 1.45;
+                        color: rgba(var(--mdui-color-on-surface), 0.66);
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
                     }
 
                     @media (max-width: 560px) {
