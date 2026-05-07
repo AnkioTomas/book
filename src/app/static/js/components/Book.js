@@ -10,10 +10,16 @@ class BookCard extends HTMLElement {
 
     connectedCallback() {
         this.render();
+        if (typeof window.lazyImageObserveElement === "function") {
+            window.lazyImageObserveElement(this);
+        }
     }
 
     attributeChangedCallback() {
         this.render();
+        if (typeof window.lazyImageObserveElement === "function") {
+            window.lazyImageObserveElement(this);
+        }
     }
 
     render() {
@@ -135,6 +141,8 @@ class BookCard extends HTMLElement {
                     </div>
                 </div>
             `;
+
+        $.emitter.emit("imageLoader",this.shadowRoot);
     }
 }
 
