@@ -1,320 +1,301 @@
 # Book 书籍管理系统
 
-> **基于静读天下 App WebDAV 同步的在线书籍管理系统**
+> **基于静读天下 App WebDAV 同步的 Web 端书库管理系统**
 
-一个专为 **静读天下（Moon+ Reader）** 用户设计的 Web 端书库管理系统，通过 WebDAV 同步静读天下的书籍，提供 PC 端友好的书籍管理界面。
+一个为 **静读天下（Moon+ Reader）** 用户设计的 PC 端书库管理后台：手机 App 通过 WebDAV 同步书籍和元数据，本系统在 Web 端提供更顺手的搜索、批量编辑、豆瓣抓取、阅读器等能力，并把改动同步回 WebDAV，形成双向闭环。
+
+---
+
+## ⚠️ 使用前必读
+
+本系统**不是独立的书库管理系统**，必须配合静读天下 App + WebDAV 一起使用：
+
+1. 在手机上安装静读天下（Moon+ Reader）
+2. 配置一个可用的 WebDAV 服务（坚果云 / Nextcloud / 群晖 等）
+3. 在静读天下中至少完成一次同步，让 WebDAV 上出现 `Apps/Books/` 目录
+4. 把**完全相同**的 WebDAV 凭据填入本系统的 `config.php`
+
+没有静读天下生成的 WebDAV 数据，本系统是空的。
 
 ---
 
-## 📢 使用前必读
+## 功能概览
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  ⚠️  本系统不是独立的书籍管理系统！                        │
-│                                                         │
-│  必须配合静读天下 App 使用：                              │
-│  1. 在手机上安装静读天下（Moon+ Reader）                  │
-│  2. 配置 WebDAV 服务器（坚果云/Nextcloud 等）             │
-│  3. 在静读天下中至少同步一次书籍                          │
-│  4. 将相同的 WebDAV 配置填入本系统                       │
-│                                                         │
-│  没有静读天下同步的 WebDAV 数据，本系统将无法工作！        │
-└─────────────────────────────────────────────────────────┘
-```
+- WebDAV 双向同步：与静读天下共享同一个书库
+- 元数据管理：分类、收藏、系列（带编号）、5 星评分
+- 豆瓣自动抓取：书名、作者、简介、封面、出版信息
+- 批量操作：批量改分类 / 收藏 / 系列、批量删除、批量刮削封面、删除重复
+- Web 端上传：拖拽 / 多选，大文件分片（2MB），上传后自动入库并发布到 WebDAV
+- 在线阅读器（Foliate.js）：支持 EPUB / MOBI / AZW / AZW3 / PDF
+- 阅读进度同步：与静读天下共享同一份进度文件
 
 ---
-## 核心功能
-
-### 📱 静读天下集成
-
-- **WebDAV 双向同步**：与静读天下共享同一个 WebDAV 书库
-- **元数据同步**：自动读取静读天下的书籍分类、收藏、系列、评分
-- **跨设备管理**：在 PC 端管理，手机 App 自动同步变化
-
-### 📚 书籍管理
-
-- **浏览与搜索**：按书名、作者、系列、分类、收藏夹筛选
-- **批量操作**：批量设置分类、收藏夹、系列
-- **元数据编辑**：
-    - 手动编辑书名、作者、简介、封面
-    - 豆瓣自动获取元数据（评分、出版信息等）
-    - 系列管理（支持系列编号排序）
-    - 自定义分类标签和收藏夹
-    - 5星评分系统
-
-### 📤 文件上传
-
-除了从静读天下同步，也支持直接在 Web 端上传：
-
-- 拖拽上传 / 批量选择上传
-- 大文件分片上传（2MB/片）
-- 支持格式：EPUB, MOBI, AZW, AZW3, PDF, TXT
-- 上传后自动发布到 WebDAV
-
-### 🔍 智能搜索
-
-- 全文搜索书名和作者
-- 多条件组合筛选
-- 分页浏览（支持 20/50/100 条/页）
-
-## 技术栈
-
-- **后端**：PHP 8.3+、Nova 框架、MySQL 5.7+
-- **前端**：MDUI 2.x、jQuery、原生 JavaScript
-- **存储**：WebDAV
-- **外部 API**：豆瓣图书 API
 
 ## 系统要求
 
-### 服务端
-
-- PHP >= 8.3
-- MySQL >= 5.7 或 MariaDB >= 10.2
-- Nginx / Apache（支持 URL 重写）
-
-### 必需服务
-
-- **WebDAV 服务器**（必需，不是可选！）
-    - 坚果云（推荐，国内访问快）
-    - Nextcloud（自建方案）
-    - Synology NAS / 群晖
-    - 阿里云盘 WebDAV 网关
-
-### 客户端
-
-- **静读天下 App**（Android ）
-    - 版本要求：支持 WebDAV 同步的任意版本
-
-
-## 快速开始（3 步走）
-
-### 第一步：准备 WebDAV 服务
-
-推荐使用**坚果云**（国内访问快，配置简单）：
-
-1. 注册坚果云账号：https://www.jianguoyun.com/
-2. 获取应用密码：账户信息 → 安全选项 → 添加应用密码
-3. 记录以下信息：
-   ```
-   WebDAV 地址: https://dav.jianguoyun.com/dav/
-   用户名: 你的邮箱
-   密码: 应用密码（不是登录密码！）
-   ```
-
-### 第二步：配置静读天下
-
-下载并安装静读天下：
-- Android: https://www.moondownload.com/download.html
-
-
-在 App 中配置 WebDAV 同步并上传书籍。
-
-### 第三步：部署本系统
-
-参考下方「快速安装」部分部署本系统，并填入相同的 WebDAV 配置。
+| 组件 | 版本 / 说明 |
+| --- | --- |
+| PHP | ≥ 8.3，需要 `mbstring`、`pdo_mysql`、`curl`、`gd`、`zip`、`fileinfo` |
+| MySQL / MariaDB | MySQL ≥ 5.7 或 MariaDB ≥ 10.2，字符集 `utf8mb4` |
+| Web 服务器 | Nginx 或 Apache（必须支持 URL 重写） |
+| WebDAV | 坚果云 / Nextcloud / 群晖 / 阿里云盘网关，任选其一 |
+| 静读天下 App | Android，支持 WebDAV 同步的版本即可 |
+| Docker（可选） | 仅当需要 MOBI/AZW 格式转换、Calibre 元数据时使用 |
 
 ---
 
-## 静读天下详细配置
+## 需要起哪些容器（部署形态）
 
-### 1. 在静读天下 App 中配置 WebDAV
+本系统是一个普通 PHP 项目，**核心服务不强制 Docker**，但配套依赖建议容器化：
 
-打开静读天下 App → 设置选项 → 通过WebDAV同步：
+### 必需
 
-```
-服务器地址: https://dav.jianguoyun.com/dav/  (坚果云示例)
-用户名: your_email@example.com
-密码: your_app_password  (应用密码，非登录密码)
-同步文件夹: Apps/Books/  (默认路径即可，不要修改)
-勾选【同步我的书架】
-```
+| 服务 | 用途 | 推荐镜像 |
+| --- | --- | --- |
+| MySQL / MariaDB | 业务数据库 | `mysql:8.0` 或 `mariadb:11` |
+| PHP-FPM | 运行 PHP 8.3 | `php:8.3-fpm` |
+| Nginx | 静态资源 + 反向代理到 PHP-FPM | `nginx:alpine` |
 
-**推荐的 WebDAV 服务提供商：**
+> 如果用 1Panel / 宝塔 / Laradock / Docker Compose 直接装现成 LNMP 也可以，本质就是一个 PHP 8.3 + MySQL 的环境。
 
-- **坚果云**（国内，免费 1GB/月上传流量）：https://www.jianguoyun.com/
-- **Nextcloud**（自建，无限制）
-- **Synology NAS**（群晖 WebDAV）
-- **阿里云盘**（通过 WebDAV 网关）
+### 可选
 
-### 2. 在静读天下中同步书籍
+- **`ebook-service` 容器**：位于 `src/calibre/ebook-service/`，封装 Calibre CLI 提供 HTTP 接口，用于：
+  - MOBI / AZW / AZW3 ↔ EPUB 等格式转换
+  - 非 EPUB 文件的封面提取与元数据读取
 
-1. 将电子书导入静读天下（支持 EPUB/MOBI/AZW/PDF/TXT）
-2. 添加书籍元数据（分类、收藏夹、系列、评分等）
-3. 书架页面，点击「同步到云端」将书籍上传到 WebDAV
-4. 确认 WebDAV 服务器上出现 `Apps/Books/` 目录
+  启动方式：
 
-### 3. 配置本系统
+  ```bash
+  cd src/calibre/ebook-service
+  docker compose up -d
+  ```
 
-编辑 `src/config.php`，填入**与静读天下完全相同的 WebDAV 配置**：
+  服务监听 `8080` 端口，然后在 `src/config.php` 中配置：
 
-```php
-'webdav' => [
-    // 唯一设备标识，随便填一个不重复的字符串即可
-    'deviceId' => 'web_manager_001',
-    
-    // ⚠️ 必须与静读天下 App 中的地址完全一致
-    'url' => 'https://dav.jianguoyun.com/dav/',
-    
-    // ⚠️ 坚果云使用邮箱作为用户名
-    'username' => 'your_email@example.com',
-    
-    // ⚠️ 坚果云必须使用「应用密码」，不是登录密码
-    'password' => 'your_app_password',
-],
-```
+  ```php
+  'calibre' => 'http://localhost:8080',
+  ```
 
-**⚠️ 常见错误：**
-- ❌ 地址末尾忘记 `/dav/`
-- ❌ 坚果云使用了登录密码而不是应用密码
-- ❌ 地址或用户名与 App 中不一致
+  不需要 Calibre 能力时，**这个容器可以完全不装**，系统只会失去格式转换功能。
 
-### 4. 点击「同步」按钮
+---
 
-首次访问本系统后，点击右上角的「同步」按钮，系统会：
+## 安装步骤
 
-1. 连接到 WebDAV 服务器
-2. 扫描 `Apps/Books/` 目录下的所有书籍
-3. 读取静读天下生成的元数据文件
-4. 导入书籍信息到数据库
-5. 在 Web 端展示你的书库
-
-
-## 快速安装
-
-### 1. 下载源码包
+### 1. 拉代码
 
 ```bash
 git clone <repository-url> book
 cd book
+git submodule update --init --recursive
 ```
 
-### 3. 配置应用
+### 2. 创建数据库
 
-编辑 `src/config.php`：
+登录 MySQL，建一个空库 + 一个专用账号：
+
+```sql
+CREATE DATABASE `book` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'book'@'%' IDENTIFIED BY '改成你自己的强密码';
+GRANT ALL PRIVILEGES ON `book`.* TO 'book'@'%';
+FLUSH PRIVILEGES;
+```
+
+> 不需要手工建表，应用首次启动会自动建表并升级 schema（见 `BookModel::getUpgradeSql()`）。
+
+### 3. 配置 `src/config.php`
+
+复制 / 编辑这份配置（生产环境务必关闭 debug）：
 
 ```php
 <?php
 return [
-    'debug' => false,  // 生产环境关闭调试
+    'debug'    => false,
     'timezone' => 'Asia/Shanghai',
-    'domain' => ['your-domain.com'],
-    
-    // 数据库配置
+    'domain'   => ['your-domain.com'],   // 允许访问的域名/IP
+
+    // —— 数据库 ——
     'db' => [
-        'host' => 'localhost',
-        'type' => 'mysql',
-        'port' => 3306,
+        'host'     => '127.0.0.1',       // 容器内可填容器名，如 mysql
+        'type'     => 'mysql',
+        'port'     => 3306,
         'username' => 'book',
-        'password' => 'your_password',
-        'db' => 'book',
-        'charset' => 'utf8mb4',
+        'password' => '上一步设置的密码',
+        'db'       => 'book',
+        'charset'  => 'utf8mb4',
     ],
-    
-    // WebDAV 配置（必需！与静读天下保持一致）
+
+    // —— WebDAV（必填，要和静读天下完全一致）——
     'webdav' => [
-        'deviceId' => 'web_server_001',  // 唯一设备标识，随意填写
-        'url' => 'https://dav.jianguoyun.com/dav/',  // 坚果云 WebDAV 地址
-        'username' => 'your_email@example.com',  // 坚果云邮箱
-        'password' => 'your_app_password',  // 坚果云应用密码
+        'deviceId' => 'web_manager_001',                  // 任意不重复字符串
+        'url'      => 'https://dav.jianguoyun.com/dav/',  // 坚果云示例
+        'username' => 'your_email@example.com',
+        'password' => '坚果云应用密码（不是登录密码）',
     ],
-    
-    // 登录配置
+
+    // —— 登录 / 系统 ——
     'login' => [
-        'allowedLoginCount' => 1,
-        'loginCallback' => '/',
-        'systemName' => '我的书库',
-        'ssoEnable' => false,
+        'allowedLoginCount' => 1,        // 同账号最大在线数
+        'loginCallback'     => '/',
+        'systemName'        => '我的书库',
+        'ssoEnable'         => false,    // 不用 SSO 就关掉
     ],
+
+    // —— 可选：Calibre 微服务 ——
+    'calibre' => 'http://localhost:8080',
 ];
 ```
 
-### 4. 配置 Web 服务器
+⚠️ 三个最常见的 WebDAV 配错：
+- 地址少了末尾 `/dav/`
+- 坚果云填了登录密码而不是“应用密码”
+- App 端和本系统 `username/url` 不一致
 
-1. 伪静态
+### 4. 配置 Nginx
+
+工作目录指向 `src/public`，并加 URL 重写：
 
 ```nginx
-  rewrite ^(.*)$ /index.php/$1 last;
+server {
+    listen 80;
+    server_name your-domain.com;
+    root /path/to/book/src/public;
+    index index.php;
+
+    location / {
+        rewrite ^(.*)$ /index.php/$1 last;
+    }
+
+    location ~ \.php(/|$) {
+        fastcgi_split_path_info ^(.+\.php)(/.*)$;
+        fastcgi_pass   127.0.0.1:9000;   # 容器化部署改成 php-fpm:9000
+        fastcgi_index  index.php;
+        include        fastcgi_params;
+        fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param  PATH_INFO       $fastcgi_path_info;
+    }
+}
 ```
 
-2. 工作目录
+确保 `src/runtime` 目录对 PHP 进程可写（缓存、日志、首次管理员密码都写这里）。
 
-```
-/public
-```
+### 5. 首次访问
 
+打开 `http://your-domain.com`，会被重定向到登录页。
 
+---
 
-### 7. 访问系统并同步数据
+## 用户名密码在哪里设置？
 
-打开浏览器访问：`http://your-domain.com`
+本系统**没有注册页**，账号是首次启动时自动生成的：
 
-**首次使用流程：**
+1. 第一次访问触发数据库建表，`UserDao::onCreateTable()` 会创建一个超级管理员：
+   - 用户名固定：`admin`
+   - 密码：随机 16 位十六进制串
+2. 这个初始密码会写到两个地方：
+   - 应用日志（`Logger::info`）
+   - **文件 `src/runtime/admin_password.txt`**
 
-1. 系统会引导你注册管理员账号
-2. 登录后点击右上角「同步」按钮
-3. 系统从 WebDAV 拉取静读天下的书籍数据
-4. 刷新页面，你的书库就出现了
+获取初始密码：
 
-**⚠️ 如果同步后没有数据：**
-- 确认静读天下已同步书籍到 WebDAV
-- 检查 WebDAV 配置是否正确
-- 查看错误日志：`tail -f /var/log/php-fpm/error.log`
-- 手动测试 WebDAV：`curl -u "user:pass" https://dav.jianguoyun.com/dav/Apps/Books/`
-
-## 使用说明
-
-### 典型工作流程
-
-```
-手机静读天下 → 添加书籍 → 同步到 WebDAV
-                                ↓
-                         本系统点击「同步」
-                                ↓
-                         Web 端查看/编辑
-                                ↓
-                         修改保存后自动更新
-                                ↓
-                  手机静读天下再次同步 → 获取最新变化
+```bash
+cat src/runtime/admin_password.txt
+# 输出形如：初始管理员账户创建成功，账户: admin，密码: 8f3c9a1b6d2e4a07
 ```
 
-### 书籍导入方式
+登录后立刻去**右上角用户菜单 → 修改密码**，把初始随机密码换成你自己的。底层走的是 `/login/reset`，限制：
+- 新密码最少 8 位
+- 新用户名只能是 `5–10` 位的小写字母数字
+- 修改成功会强制踢下线，需要用新凭据重新登录
 
-**方式一：静读天下同步（推荐）**
+> 删除 `src/runtime/admin_password.txt` 没问题，密码已经入库。但如果你忘了密码、又没保存这个文件，最快的做法是直接 `DROP TABLE` 用户相关表（让系统重新生成 admin），或者手动用 `password_hash()` 在 MySQL 里改 `password` 字段。
 
-1. 在静读天下 App 中导入电子书
-2. 在 App 中编辑书籍信息（分类、收藏、评分等）
-3. 点击 App 的「立即同步」上传到 WebDAV
-4. 在本系统点击「同步」按钮拉取最新数据
+如果你有自建 SSO（OIDC），把 `login.ssoEnable` 改成 `true`，再填 `ssoProviderUrl / ssoClientId / ssoClientSecret` 即可，密码登录会自动跳过。
 
-**方式二：Web 端直接上传**
+---
 
-- 拖拽 EPUB/MOBI/AZW/PDF/TXT 文件到页面
-- 或点击「导入」按钮选择文件
-- 上传后自动发布到 WebDAV
-- 静读天下下次同步时会自动下载
+## 静读天下侧配置（一次就够）
 
-### 编辑书籍信息
+打开静读天下 App → 设置 → 通过 WebDAV 同步：
 
-1. 点击表格中的「编辑」图标
-2. 手动填写或点击「搜索」按钮从豆瓣获取信息
-3. 支持字段：
-   - 书名、作者、简介
-   - 分类、收藏夹、系列名称、系列编号
-   - 评分（0-5星）
+```
+服务器地址 : https://dav.jianguoyun.com/dav/    （以坚果云为例）
+用户名     : your_email@example.com
+密码       : 应用密码（不是登录密码）
+同步文件夹 : Apps/Books/                        （保持默认，不要改）
+勾选【同步我的书架】
+```
 
-### 批量操作
+在 App 侧执行一次「立即同步」，确认 WebDAV 上出现 `Apps/Books/` 目录后，再回到本系统点右上角「同步」按钮拉数据。
 
-1. 勾选要批量操作的书籍
-2. 点击「批量操作」按钮
-3. 填写要统一设置的字段（分类/收藏/系列）
-4. 点击「批量更新」
+---
 
-### 搜索筛选
+## 典型工作流
 
-- **搜索**：支持书名和作者模糊搜索
-- **筛选**：按系列、分类、收藏夹精确筛选
-- **重置**：一键清空所有搜索条件
+```
+手机静读天下 → 加书 / 改元数据 → 同步到 WebDAV
+                                      │
+                                      ▼
+                          本系统点击「同步」按钮
+                                      │
+                                      ▼
+                       Web 端搜索 / 批量编辑 / 豆瓣抓取
+                                      │
+                                      ▼
+                         手机静读天下下次同步拉走更新
+```
 
+---
+
+## 故障排查
+
+**同步后没有任何书：**
+- 确认手机端真的成功同步了（WebDAV 上有 `Apps/Books/<书名>.epub`）
+- 用 curl 验证 WebDAV 凭据：`curl -u "user:pass" https://dav.jianguoyun.com/dav/Apps/Books/`
+- 检查 `src/runtime/log/` 下的错误日志
+
+**登录页一直 403：**
+- 验证码识别有误，刷新一下
+- 看 `src/runtime/log/` 是否记录了「密码错误 / 验证码错误」
+
+**封面 / 格式转换报错：**
+- 没起 `ebook-service` 容器；EPUB 不依赖它，其他格式必须有
+- 在容器里 `curl http://localhost:8080/health` 自检
+
+**数据库连不上：**
+- Docker 部署时 `db.host` 必须是容器名（如 `mysql`），不能写 `localhost`
+- 确认账号有 `book` 库的全部权限
+
+---
+
+## 目录结构
+
+```
+book/
+├── src/
+│   ├── app/                # 业务代码（controller / database / utils / view）
+│   ├── nova/               # Nova 框架 + 插件（submodule）
+│   ├── public/             # Web 入口，Nginx root 指向这里
+│   ├── runtime/            # 缓存、日志、admin_password.txt
+│   ├── calibre/
+│   │   └── ebook-service/  # 可选 Calibre 微服务（docker compose）
+│   └── config.php          # 全部配置都在这一个文件
+├── nginx.conf              # 仅包含一行 rewrite，作为参考
+├── nova.phar               # CLI 工具
+└── README.md
+```
+
+---
+
+## 技术栈
+
+- 后端：PHP 8.3 + Nova 框架 + MySQL
+- 前端：MDUI 2.x + jQuery + Foliate.js（在线阅读器）
+- 存储：WebDAV（坚果云 / Nextcloud / 群晖 ……）
+- 可选：Calibre（封装在 `ebook-service` Python 微服务里）
+
+---
 
 ## 许可证
 
@@ -322,24 +303,7 @@ MIT License
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request。
-
-代码风格：
-- PHP: PSR-12
-- JavaScript: ES6+
-- 提交信息：清晰描述改动内容
-
-特别欢迎：
-- 支持更多阅读器的 WebDAV 格式
-- UI/UX 改进
-- 性能优化建议
-
----
-
-**⚠️ 重要声明**：
-
-1. 本系统依赖静读天下 App 的 WebDAV 同步功能，不是独立的书籍管理系统
-2. 为个人/小团队使用设计，不适合大规模并发场景
-3. 使用前必须先配置好静读天下的 WebDAV 同步
-4. 建议定期备份数据库和 WebDAV 数据
-
+欢迎 Issue / PR：
+- PHP：PSR-12 / `php-cs-fixer.dist.php`
+- JS：ES6+
+- Commit：写清楚“为什么改”，不只是“改了什么”
