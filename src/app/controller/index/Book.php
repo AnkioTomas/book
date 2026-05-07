@@ -13,6 +13,8 @@ use app\utils\BookManager\ProgressManager;
 use app\utils\BookOrganizer\Parser;
 use nova\framework\core\Context;
 use nova\framework\core\File;
+
+use nova\framework\core\Text;
 use nova\framework\http\Response;
 
 class Book extends BaseController
@@ -266,7 +268,7 @@ class Book extends BaseController
         $editableFields = ['bookName', 'author', 'description', 'category', 'series', 'seriesNum', 'favorite', 'rate','coverUrl'];
         foreach ($editableFields as $field) {
             if (isset($data[$field])) {
-                $book->$field = $data[$field];
+                $book->$field = Text::parseType($book->$field, $data[$field]);
             }
         }
         if (!empty($book->coverUrl)) {
