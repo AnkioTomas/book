@@ -185,7 +185,7 @@
             <div class="row col-space12">
                 <div class="col-xs12 d-flex items-end gap-2">
                     <mdui-text-field
-                            variant="outlined"
+
                             label="书名"
                             name="bookName"
                             id="bookName"
@@ -197,7 +197,7 @@
 
                 <div class="col-xs12">
                     <mdui-text-field
-                            variant="outlined"
+
                             label="作者"
                             name="author"
                     ></mdui-text-field>
@@ -205,7 +205,7 @@
 
                 <div class="col-xs12">
                     <mdui-text-field
-                            variant="outlined"
+
                             label="封面"
                             name="coverUrl"
                     ></mdui-text-field>
@@ -213,7 +213,7 @@
 
                 <div class="col-xs12">
                     <mdui-text-field
-                            variant="outlined"
+
                             label="简介"
                             name="description"
                             rows="3"
@@ -224,7 +224,7 @@
             <div class="col-xs12 col-sm6">
                 <mdui-dropdown id="favoriteDropdown">
                     <mdui-text-field
-                        variant="outlined"
+
                         slot="trigger"
                         id="editFavorite"
                         label="分类"
@@ -241,7 +241,7 @@
             <div class="col-xs12 col-sm6">
                 <mdui-dropdown id="categoryDropdown">
                     <mdui-text-field
-                        variant="outlined"
+
                         slot="trigger"
                         id="editCategory"
                         label="标签"
@@ -258,7 +258,7 @@
             <div class="col-xs12 col-sm8">
                 <mdui-dropdown id="seriesDropdown">
                     <mdui-text-field
-                        variant="outlined"
+
                         slot="trigger"
                         id="editSeries"
                         label="系列名称"
@@ -274,7 +274,7 @@
 
                 <div class="col-xs12 col-sm4">
                     <mdui-text-field
-                            variant="outlined"
+
                             label="系列编号"
                             name="seriesNum"
                             type="number"
@@ -284,7 +284,7 @@
 
                 <div class="col-xs12">
                     <mdui-text-field
-                            variant="outlined"
+
                             label="评分"
                             name="rate"
                             type="number"
@@ -308,7 +308,7 @@
         <form id="batchEditForm">
             <div class="mb-3">
                 <mdui-text-field
-                    variant="outlined"
+
                     label="批量设置作者"
                     name="author"
                     id="batchAuthor"
@@ -319,7 +319,7 @@
 
             <div class="mb-3">
                 <mdui-text-field
-                    variant="outlined"
+
                     label="批量设置分类"
                     name="favorite"
                     id="batchFavorite"
@@ -330,7 +330,7 @@
 
             <div class="mb-3">
                 <mdui-text-field
-                    variant="outlined"
+
                     label="批量设置标签"
                     name="category"
                     id="batchCategory"
@@ -341,7 +341,7 @@
 
             <div class="mb-3">
                 <mdui-text-field
-                    variant="outlined"
+
                     label="批量设置系列"
                     name="series"
                     id="batchSeries"
