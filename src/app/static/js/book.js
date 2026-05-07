@@ -58,12 +58,14 @@ window.pageOnLoad = function (loading) {
                     : `/webdav/${encodeURIComponent(row.filename || "")}`;
                 const title = row.bookName || "未命名书籍";
                 const author = row.author || "未知作者";
+                const description = row.description || "";
 
                 return `
                     <book-card
                         cover="${$.escapeHtml(cover)}"
                         title="${$.escapeHtml(title)}"
                         author="${$.escapeHtml(author)}"
+                        description="${$.escapeHtml(description)}"
                     ></book-card>
                 `;
             };
