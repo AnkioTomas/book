@@ -50,19 +50,10 @@
         }
 
         .install-wrap {
-            position: relative;
-            z-index: 2;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 2rem 1rem;
             box-sizing: border-box;
         }
 
         .install-card {
-            width: 100%;
             max-width: 720px;
         }
 
@@ -102,22 +93,11 @@
             box-sizing: border-box;
         }
 
-        .install-grid-full {
-            grid-column: 1 / -1;
-        }
-
         @media (max-width: 600px) {
             .install-grid {
                 grid-template-columns: 1fr;
                 gap: 16px;
             }
-        }
-
-        .install-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-top: 1rem;
         }
 
         .copyright {
@@ -137,12 +117,8 @@
         }
 
         .settings-fab {
-            position: fixed;
             right: 1rem;
             bottom: 1rem;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
         }
 
         .settings-fab mdui-menu {
@@ -175,8 +151,8 @@
 </head>
 <body>
 
-<div class="install-wrap">
-    <mdui-card variant="filled" class="install-card p-4">
+<div class="install-wrap position-relative z-1 d-flex flex-col items-center justify-center min-h-screen py-4 px-3">
+    <mdui-card variant="filled" class="install-card p-4 w-full">
         <div class="install-header">
             <mdui-icon name="auto_fix_high" style="font-size: 40px;color: rgb(var(--mdui-color-primary));"></mdui-icon>
             <div class="headline-medium mt-1">{$title} 安装向导</div>
@@ -224,8 +200,7 @@
                         value="book"
                         helper="需提前创建空库（utf8mb4）"
                         required
-                        class="install-grid-full"
-                        style="grid-column: 1 / -1;">
+                        class="col-span-2">
                     </mdui-text-field>
                 </div>
             </div>
@@ -240,8 +215,7 @@
                 </h3>
                 <div class="install-grid">
                     <mdui-text-field
-                        class="install-grid-full"
-                        style="grid-column: 1 / -1;"
+                        class="col-span-2"
                         name="webdav_url"
                         label="WebDAV 地址"
                         placeholder="https://dav.jianguoyun.com/dav/"
@@ -279,7 +253,7 @@
                 </mdui-text-field>
             </div>
 
-            <div class="install-actions">
+            <div class="d-flex justify-end gap-2 mt-3">
                 <mdui-button form="installForm" type="submit" variant="filled" icon="rocket_launch" full-width>
                     开始安装
                 </mdui-button>
@@ -292,7 +266,7 @@
     </div>
 </div>
 
-<div class="settings-fab">
+<div class="settings-fab position-fixed z-100 d-flex flex-col">
     <mdui-dropdown>
         <mdui-fab icon="settings" slot="trigger"></mdui-fab>
         <mdui-menu>
@@ -300,30 +274,6 @@
         </mdui-menu>
     </mdui-dropdown>
 </div>
-
-<!-- 安装完成对话框：展示一次性 admin 密码 -->
-<mdui-dialog id="doneDialog" close-on-overlay-click="false" close-on-esc="false">
-    <div slot="header" class="d-flex items-center gap-2">
-        <mdui-icon name="check_circle" style="color: rgb(var(--mdui-color-primary));"></mdui-icon>
-        <span>安装完成</span>
-    </div>
-    <div class="body-medium mb-2">
-        系统已自动生成超级管理员账户，请<strong>立即记录</strong>下面的初始密码（仅显示一次）：
-    </div>
-    <div class="password-box">
-        <div class="d-flex flex-col" style="flex:1;min-width:0;">
-            <div class="body-small text-on-surface-variant">账号</div>
-            <code id="adminUser">admin</code>
-            <div class="body-small text-on-surface-variant mt-2">初始密码</div>
-            <code id="adminPwd">--</code>
-        </div>
-        <mdui-button-icon id="copyPwd" icon="content_copy" variant="tonal" title="复制密码"></mdui-button-icon>
-    </div>
-    <div class="body-small text-on-surface-variant mt-3">
-        登录后请立即在「系统设置 → 账户安全」中修改密码与用户名。
-    </div>
-    <mdui-button slot="action" variant="filled" id="goLogin">前往登录</mdui-button>
-</mdui-dialog>
 
 <script src="/static/bundle?file=
 framework/libs/vhcheck.min.js,
@@ -343,35 +293,14 @@ framework/language/Language.js
 &type=js&v={$__v}"></script>
 <script>
     (function () {
-        // 独立页面（非 PJAX）必须自己关掉 Loading.js 自动启动的全屏蒙层，
-        // 否则蒙层（z-index:2000，不透明背景）会盖住整个安装页。
-        // 跳过淡出动画直接移除节点，避免 500ms 闪烁。
-        function dismissBootLoading() {
-            const ml = window.mainAppLoading;
-            if (ml && ml.overlayElement && ml.overlayElement.parentNode) {
-                ml.overlayElement.parentNode.removeChild(ml.overlayElement);
-            }
-            window.mainAppLoading = null;
-        }
-        dismissBootLoading();
-        // 兜底：极端情况下 Loading.js 在我们之后才执行 show()
-        window.addEventListener('load', dismissBootLoading);
+        window.mainAppLoading.close();
 
         const form = document.getElementById('installForm');
-        const dialog = document.getElementById('doneDialog');
-        const userEl = document.getElementById('adminUser');
-        const pwdEl = document.getElementById('adminPwd');
 
-        const required = ['db_host', 'db_port', 'db_username', 'db_name', 'webdav_url', 'webdav_username'];
 
         $.form.submit('#installForm', {
             callback: function (data) {
-                for (const name of required) {
-                    if (!String(data[name] ?? '').trim()) {
-                        $.toaster.error('请完整填写带 * 的必填项');
-                        return false;
-                    }
-                }
+
 
                 $(form).showLoading('正在写入配置并初始化数据库...');
 
@@ -382,10 +311,18 @@ framework/language/Language.js
                             $.toaster.error(res.msg || '安装失败');
                             return;
                         }
-                        const info = res.data || {};
-                        userEl.textContent = info.username || 'admin';
-                        pwdEl.textContent = info.password || '（未读取到初始密码，请查看 runtime/admin_password.txt）';
-                        dialog.open = true;
+                        const info = res.data;
+                        const lines = ['安装完成'];
+                        lines.push('管理员账号: ' + info.username);
+                        const adminPassword = info.password || '（未读取到初始密码，请查看 runtime/admin_password.txt）';
+                        lines.push('管理员密码: ' + adminPassword);
+                        $.layer.alert({
+                            title: '安装完成',
+                            msg: lines.join('<br>'),
+                            yes: function () {
+                                location.href = info.redirect || '/login';
+                            }
+                        });
                     },
                     function () {
                         $(form).closeLoading();
@@ -396,19 +333,6 @@ framework/language/Language.js
             }
         });
 
-        document.getElementById('copyPwd').addEventListener('click', function () {
-            const text = pwdEl.textContent || '';
-            if (!text) return;
-            navigator.clipboard.writeText(text).then(function () {
-                $.toaster.success('已复制到剪贴板');
-            }).catch(function () {
-                $.toaster.error('复制失败，请手动选中');
-            });
-        });
-
-        document.getElementById('goLogin').addEventListener('click', function () {
-            location.href = '/login';
-        });
     })();
 </script>
 </body>
