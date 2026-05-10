@@ -141,9 +141,10 @@
 <div id="container" class="container book-page">
     <div class="book-toolbar">
         <div class="title-large d-flex items-center">
-            <form id="searchForm">
+            <form id="searchForm" class="d-flex flex-wrap items-end gap-2" style="flex:1;min-width:0">
                 <mdui-text-field
-                        class="w-100"
+                        class="flex-1"
+                        style="min-width: 12rem"
                         name="search"
                         label="搜索书名或作者"
                         icon="search"
@@ -161,6 +162,8 @@
                     <mdui-menu-item id="btnBatchEdit" icon="edit_note">批量编辑</mdui-menu-item>
                     <mdui-menu-item id="btnBatchDelete" icon="delete_sweep">批量删除</mdui-menu-item>
                     <mdui-menu-item id="btnBatchScrape" icon="image">批量刮削封面</mdui-menu-item>
+                    <mdui-menu-item id="btnBatchMarkRead" icon="task_alt">批量标记已读</mdui-menu-item>
+                    <mdui-menu-item id="btnBatchMarkUnread" icon="radio_button_unchecked">批量标记未读</mdui-menu-item>
                     <mdui-divider></mdui-divider>
                     <mdui-menu-item id="btnRemoveDuplicates" icon="content_copy">删除重复</mdui-menu-item>
                 </mdui-menu>

@@ -43,7 +43,7 @@ class SyncBooks extends TaskerAbstract
             $book->splitCategory2Series();
             $progress = $this->syncProgress($book->filename);
             if ($progress && $progress->percent >= 100) {
-                $book->isFinished = 1;
+                $book->markFinished(true);
             }
             $filename = $book->filename;
             if (BookManager::getInstance()->bookExists($filename)) {

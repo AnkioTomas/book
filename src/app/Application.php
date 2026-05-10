@@ -41,6 +41,7 @@ class Application extends App
             ->post('/admin/api/book/progressSync', route('index', 'book', 'progressSync'))
             ->post('/admin/api/book/progressUpdate', route('index', 'book', 'progressUpdate'))
             ->post('/admin/api/book/update', route('index', 'book', 'update'))
+            ->post('/admin/api/book/batchRead', route('index', 'book', 'batchRead'))
             ->post('/admin/api/book/delete', route('index', 'book', 'delete'))
             ->post('/admin/api/sync', route('index', 'book', 'sync'))
             ->post("/admin/api/book/removeDuplicates", route('index', 'book', 'removeDuplicates'))

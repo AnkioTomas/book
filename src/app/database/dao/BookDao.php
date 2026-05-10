@@ -57,11 +57,6 @@ class BookDao extends Dao
             $where['favorite'] = $favorite;
         }
 
-        // 筛选：是否已读完
-        if ($finished !== '') {
-            $where['isFinished'] = ((int)$finished) > 0 ? 1 : 0;
-        }
-
         $result = $this->getAll([], $where, $page, $limit, $orderBy);
 
         return [

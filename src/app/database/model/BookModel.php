@@ -23,7 +23,6 @@ class BookModel extends Model
     public string $rate = "0";           // 评分: 0-5
     public string $favorite = "";      // 收藏夹标签: 动物
     public string $deviceId = "";         // 设备ID
-    public int $isFinished = 0;        // 是否已读完: 0/1
 
     // 关联数据 (如果groupBooks是字符串存储,否则应该用关联表)
     public array $groupBooks = [];    // 分组书籍JSON: []
@@ -64,7 +63,7 @@ class BookModel extends Model
 
     public function getSchemaVersion(): int
     {
-        return 3;
+        return 4;
     }
 
     public function getUpgradeSql(): array
@@ -76,6 +75,10 @@ class BookModel extends Model
             ],
             "2_3" => [
                 "ALTER TABLE `book` ADD COLUMN `isFinished` TINYINT(1) NOT NULL DEFAULT 0",
+            ],
+            "3_4" => [
+                "UPDATE `{table}` SET category = CASE WHEN IFNULL(TRIM(category), '') = '' THEN '已读' ELSE CONCAT(TRIM(category), CHAR(10), '已读') END WHERE COALESCE(isFinished, 0) = 1 AND NOT (CONCAT(CHAR(10), IFNULL(category, ''), CHAR(10)) LIKE CONCAT('%', CHAR(10), '已读', CHAR(10), '%'))",
+                "ALTER TABLE `{table}` DROP COLUMN `isFinished`",
             ],
         ];
     }
@@ -165,14 +168,18 @@ class BookModel extends Model
     }
 
     /**
-     * 设置「已读 / 未读」状态，同步 isFinished 与「已读」标签，保证两者永远一致。
-     * 已读 → 自动加入「已读」标签（去重）
-     * 未读 → 自动移除「已读」标签
+     * 是否含有「已读」标签（与 category 单行标签完全一致才算）。
+     */
+    public function hasFinishedTag(): bool
+    {
+        return in_array(self::TAG_FINISHED, $this->getTags(), true);
+    }
+
+    /**
+     * 「已读 / 未读」仅维护标签行「已读」，不再使用 isFinished 字段。
      */
     public function markFinished(bool $finished = true): self
     {
-        $this->isFinished = $finished ? 1 : 0;
-
         $tags = $this->getTags();
         $has = in_array(self::TAG_FINISHED, $tags, true);
         if ($finished && !$has) {

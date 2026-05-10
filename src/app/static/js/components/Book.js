@@ -1,6 +1,6 @@
 class BookCard extends HTMLElement {
     static get observedAttributes() {
-        return ["cover", "title", "author", "description", "show-author", "show-description"];
+        return ["cover", "title", "author", "description", "show-author", "show-description", "read"];
     }
 
     constructor() {
@@ -23,6 +23,7 @@ class BookCard extends HTMLElement {
         const description = $.escapeHtml(this.getAttribute("description") || "");
         const showAuthorAttr = this.getAttribute("show-author");
         const showAuthor = showAuthorAttr === null || String(showAuthorAttr).toLowerCase() !== "false";
+        const showReadRibbon = String(this.getAttribute("read") || "").trim() === "1";
 
         this.shadowRoot.innerHTML = `
                 <style>
@@ -37,6 +38,27 @@ class BookCard extends HTMLElement {
                     }
                     .meta {
                         display: block;
+                    }
+                    .cover-wrap {
+                        position: relative;
+                        display: block;
+                        border-radius: 8px;
+                    }
+                    .read-ribbon {
+                        position: absolute;
+                        top: 6px;
+                        right: 6px;
+                        z-index: 2;
+                        font-size: 11px;
+                        font-weight: 600;
+                        line-height: 1;
+                        padding: 4px 7px;
+                        border-radius: 999px;
+                        color: rgb(var(--mdui-color-on-primary));
+                        background: rgb(var(--mdui-color-primary));
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+                        pointer-events: none;
+                        letter-spacing: 0.02em;
                     }
                     image-loader {
                         width: 100%;
@@ -79,7 +101,10 @@ class BookCard extends HTMLElement {
 
                 </style>
                 <div class="book-card">
-                    <image-loader src="${cover}" no-refer></image-loader>
+                    <div class="cover-wrap">
+                        <image-loader src="${cover}" no-refer></image-loader>
+                        ${showReadRibbon ? `<span class="read-ribbon" part="read-ribbon">已读</span>` : ""}
+                    </div>
                     <div class="meta">
                         <div class="title" title="${title}">${title}</div>
                         ${showAuthor ? `<div class="author" title="${author}">${author}</div>` : ""}

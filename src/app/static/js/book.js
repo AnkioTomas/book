@@ -66,13 +66,14 @@ window.pageOnLoad = function (loading) {
                 const title = row.bookName || "未命名书籍";
                 const author = row.author || "未知作者";
                 const description = row.description || "";
+                const readAttr = row.hasReadTag ? ' read="1"' : '';
 
                 return `
                     <book-card
                         cover="${$.escapeHtml(cover)}"
                         title="${$.escapeHtml(title)}"
                         author="${$.escapeHtml(author)}"
-                        description="${$.escapeHtml(description)}"
+                        description="${$.escapeHtml(description)}"${readAttr}
                     ></book-card>
                 `;
             };
@@ -178,6 +179,13 @@ window.pageOnLoad = function (loading) {
                 throttledSearch();
             });
 
+            $searchForm.on('change', 'mdui-select', function () {
+                const name = $(this).attr('name');
+                const val = $(this).val();
+                $.url.setParam(name, val === undefined || val === null ? '' : val);
+                triggerSearch();
+            });
+
 
             // 添加书籍（支持多文件上传）
             $('#btnAdd').on('click', () => {
@@ -274,6 +282,24 @@ window.pageOnLoad = function (loading) {
                     return;
                 }
                 that.batchScrape(selected);
+            });
+
+            $('#btnBatchMarkRead').on('click', () => {
+                const selected = that.cardView.getSelectedRows();
+                if (!selected || selected.length === 0) {
+                    $.toaster.warning('请先选择要标记的书籍');
+                    return;
+                }
+                that.batchReadState(selected, true);
+            });
+
+            $('#btnBatchMarkUnread').on('click', () => {
+                const selected = that.cardView.getSelectedRows();
+                if (!selected || selected.length === 0) {
+                    $.toaster.warning('请先选择要标记的书籍');
+                    return;
+                }
+                that.batchReadState(selected, false);
             });
 
             // 拖拽上传
@@ -484,6 +510,14 @@ window.pageOnLoad = function (loading) {
             fillSelect('series', this.filterOptions.groupNames);
             fillSelect('category', this.filterOptions.categories);
             fillSelect('favorite', this.filterOptions.favorites);
+
+            const $finished = $('mdui-select[name="finished"]');
+            if ($finished.length) {
+                const v = $.url.getParam('finished');
+                if (v !== null && v !== '') {
+                    $finished[0].value = v;
+                }
+            }
         }
 
         /**
@@ -582,6 +616,33 @@ window.pageOnLoad = function (loading) {
         /**
          * 批量刮削封面
          */
+        /**
+         * 批量已读 / 未读（服务端增删标签「已读」）
+         * @param {Array<{id:number}>} books
+         * @param {boolean} read
+         */
+        batchReadState(books, read) {
+            const that = this;
+            $("body").showLoading(read ? '正在标记已读…' : '正在标记未读…');
+            $.request.postForm(
+                '/admin/api/book/batchRead',
+                { ids: JSON.stringify(books.map((b) => b.id)), read: read ? '1' : '0' },
+                (res) => {
+                    $("body").closeLoading();
+                    if (res.code === 200) {
+                        $.toaster.success(res.msg);
+                        that.cardView.reload(true);
+                    } else {
+                        $.toaster.error(res.msg || '操作失败');
+                    }
+                },
+                () => {
+                    $("body").closeLoading();
+                    $.toaster.error('请求失败');
+                }
+            );
+        }
+
         batchScrape(books) {
             const that = this;
             const total = books.length;

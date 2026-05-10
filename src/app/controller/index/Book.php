@@ -62,6 +62,7 @@ class Book extends BaseController
                 $row['progressText'] = $progress->percentText . '%';
                 $row['progressPercent'] = $progress->percent;
             }
+            $row['hasReadTag'] = $book->hasFinishedTag();
             $rows[] = $row;
         }
 
@@ -70,6 +71,43 @@ class Book extends BaseController
             'msg' => 'success',
             'data' => $rows,
             'count' => $result['total']
+        ]);
+    }
+
+    /**
+     * 批量标记已读 / 未读（仅增删标签「已读」）
+     * POST /book/batchRead  ids=json array, read=1|0
+     */
+    public function batchRead(): Response
+    {
+        $rawIds = $this->request->post('ids', '[]');
+        $ids = json_decode((string)$rawIds, true);
+        if (!is_array($ids)) {
+            $ids = [];
+        }
+        $ids = array_values(array_filter(array_map('intval', $ids), static fn ($id) => $id > 0));
+        if ($ids === []) {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
+        }
+
+        $read = ((int)$this->request->post('read', 1)) === 1;
+        $updated = 0;
+        foreach ($ids as $id) {
+            $book = BookDao::getInstance()->getById($id);
+            if ($book === null) {
+                continue;
+            }
+            $book->markFinished($read);
+            if (BookDao::getInstance()->updateModel($book)) {
+                $updated++;
+            }
+        }
+        BookDao::getInstance()->syncBooks();
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => $read ? "已标记 {$updated} 本书为已读" : "已标记 {$updated} 本书为未读",
+            'data' => ['count' => $updated],
         ]);
     }
 
