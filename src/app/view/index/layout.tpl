@@ -23,25 +23,8 @@
 
     <mdui-navigation-drawer open class="navigation-drawer position-fixed" id="navigation-drawer" close-on-overlay-click>
         <mdui-list class="m-2">
-            {foreach $menuConfig as $item}
-                {if isset($item.sub)}
-                    <mdui-collapse>
-                        <mdui-collapse-item value="item-{$item@index}">
-                            <mdui-list-item slot="header" rounded icon="{$item.icon}">
-                                <span>{$item.title}</span>
-                                <mdui-icon slot="end-icon" name="keyboard_arrow_left"></mdui-icon>
-                            </mdui-list-item>
-                            <div style="margin-left: 2.5rem">
-                                {foreach $item.sub as $sub}
-                                    <mdui-list-item rounded data-match="{isset($sub['match'])?$sub['match']:''}" data-pjax="{$sub.pjax ? 'true' : 'false'}" data-target="{isset($sub['self']) ? 'self' : ''}" data-link="{$sub.url}" icon="{$sub.icon}">{$sub.title}</mdui-list-item>
-                                {/foreach}
-                            </div>
-                        </mdui-collapse-item>
-                    </mdui-collapse>
-                {else}
-                    <mdui-list-item rounded data-match="{isset($sub['match'])?$sub['match']:''}" data-pjax="{$item.pjax ? 'true' : 'false'}" data-target="{isset($sub['self'])  ? 'self' : ''}" data-link="{$item.url}" icon="{$item.icon}">{$item.title}</mdui-list-item>
-                {/if}
-            {/foreach}
+            { $menuNavItems = $menuConfig }
+            {include file="menuNav.tpl"}
         </mdui-list>
     </mdui-navigation-drawer>
 
