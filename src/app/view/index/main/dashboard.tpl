@@ -42,10 +42,20 @@
         display: block;
         width: 100%;
     }
-
+    @media (max-width: 768px) {
+        .card-view-container {
+            --card-min-width: 140px !important;
+        }
+        .card-view-item{
+            padding: 0.5rem;
+        }
+    }
     @media (max-width: 560px) {
-        #recentAdded.card-view-container {
-            --card-min-width: 100% !important;
+        .card-view-container {
+            --card-min-width: 100px !important;
+        }
+        .card-view-item{
+            padding: 0.2rem;
         }
     }
 

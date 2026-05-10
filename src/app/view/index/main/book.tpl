@@ -107,12 +107,18 @@
         pointer-events: auto;
     }
 
-    /* 小屏：只覆盖 CardView 的最小卡片宽度，避免 180px 网格挤压 */
-    @media (max-width: 560px) {
-        #bookTable .card-view-container {
-            --card-min-width: 100%!important;
+    @media (max-width: 768px) {
+        .card-view-container {
+            --card-min-width: 130px !important;
+        }
+        .card-view-item{
+            padding: 0.2rem;
+        }
+        .btn-download{
+            display: none;
         }
     }
+
 
     @media (hover: none), (pointer: coarse) {
         #bookTable .book-card-shell {

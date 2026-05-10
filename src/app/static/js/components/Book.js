@@ -10,16 +10,10 @@ class BookCard extends HTMLElement {
 
     connectedCallback() {
         this.render();
-        if (typeof window.lazyImageObserveElement === "function") {
-            window.lazyImageObserveElement(this);
-        }
     }
 
     attributeChangedCallback() {
         this.render();
-        if (typeof window.lazyImageObserveElement === "function") {
-            window.lazyImageObserveElement(this);
-        }
     }
 
     render() {
@@ -83,54 +77,6 @@ class BookCard extends HTMLElement {
                         white-space: nowrap;
                     }
 
-                    @media (max-width: 560px) {
-                        .book-card {
-                            flex-direction: row;
-                            gap: 12px;
-                            align-items: flex-start;
-                        }
-
-                        image-loader {
-                            width: 72px;
-                            min-width: 72px;
-                            aspect-ratio: 3 / 4;
-                            border-radius: 8px;
-                            box-shadow: none;
-                        }
-
-                        .meta {
-                            flex: 1;
-                            min-width: 0;
-                        }
-
-                        .title {
-                            margin-top: 0;
-                            white-space: normal;
-                            display: -webkit-box;
-                            -webkit-line-clamp: 2;
-                            -webkit-box-orient: vertical;
-                            line-height: 1.35;
-                        }
-
-                        .author {
-                            white-space: normal;
-                            display: -webkit-box;
-                            -webkit-line-clamp: 1;
-                            -webkit-box-orient: vertical;
-                        }
-
-                        .description {
-                            display: block;
-                            margin-top: 6px;
-                            font-size: 12px;
-                            line-height: 1.45;
-                            color: rgba(var(--mdui-color-on-surface), 0.66);
-                            overflow: hidden;
-                            display: -webkit-box;
-                            -webkit-line-clamp: 2;
-                            -webkit-box-orient: vertical;
-                        }
-                    }
                 </style>
                 <div class="book-card">
                     <image-loader src="${cover}" no-refer></image-loader>
