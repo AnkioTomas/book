@@ -139,6 +139,18 @@ class Main extends BaseController
         return $out;
     }
 
+    /**
+     * 书库页「全部书籍」高亮：路径为 /admin/book，且查询串中不含书架维度筛选参数（允许搜索、分页等）。
+     * 与 book 页 URL 工具、筛选字段名保持一致。正则供前端 `new RegExp(...)` 使用。
+     */
+    private function bookListUnfilteredMatch(): string
+    {
+        $p = 'series|favorite|category|seriesNum';
+
+        // 查询串起点或 & 之后出现「维度参数名=」则视为已做书架筛选，不计入「全部书籍」
+        return '^/admin/book/?(?:$|\?(?!(?:'.$p.')=)(?!.*[?&](?:'.$p.')=)[^#]*)(?:#.*)?$';
+    }
+
     private function subMenus(): array
     {
 
@@ -146,61 +158,65 @@ class Main extends BaseController
         foreach (BookDao::getInstance()->getSeriesNames() as $item) {
             $series[] = [
                 "title" => $item,
-                "icon" => "",
+                "icon" => "book",
                 "url" => "/admin/book?series=".rawurlencode($item),
                 "pjax" => true,
-                "match" => "^/admin/book\?([^#]*&)?series=" . rawurlencode($item) . "(&|$)",
+                "match" => "^/admin/book\?([^#]*&)?series=".preg_quote(rawurlencode($item), '/')."(&|$)",
             ];
         }
         $categories = [];
         foreach (BookDao::getInstance()->getCategories() as $item) {
             $categories[] = [
                 "title" => $item,
-                "icon" => "",
+                "icon" => "folder",
                 "url" => "/admin/book?favorite=".rawurlencode($item),
                 "pjax" => true,
-                "match" => "^/admin/book\?([^#]*&)?favorite=" . rawurlencode($item) . "(&|$)",
+                "match" => "^/admin/book\?([^#]*&)?favorite=".preg_quote(rawurlencode($item), '/')."(&|$)",
             ];
         }
+        $categories[] = [
+            "title" => '无分类',
+            "icon" => "folder",
+            "url" => "/admin/book?favorite=empty",
+            "pjax" => true,
+            "match" => "^/admin/book\?([^#]*&)?favorite=empty(&|$)",
+        ];
         $tags = [];
         foreach (BookDao::getInstance()->getTags() as $item) {
             $tags[] = [
                 "title" => $item,
-                "icon" => "",
+                "icon" => "label",
                 "url" => "/admin/book?category=".rawurlencode($item),
                 "pjax" => true,
-                "match" => "^/admin/book\?([^#]*&)?category=" . rawurlencode($item) . "(&|$)",
+                "match" => "^/admin/book\?([^#]*&)?category=".preg_quote(rawurlencode($item), '/')."(&|$)",
             ];
         }
 
         $menu = [
             [
                 "title" => "全部书籍",
-                "icon" => "",
+                "icon" => "menu_book",
                 "url" => "/admin/book",
                 "pjax" => true,
-                "match" => "^/admin/book(?!\?.*series=)($|\?)",
+                "match" => $this->bookListUnfilteredMatch(),
             ],
             [
                 "title" => "系列",
-                "icon" => "",
+                "icon" => "bookmarks",
                 "pjax" => true,
-                "match" => "^/admin/book(?!\?.*series=)($|\?)",
-                "sub" => $series
+                "sub" => $series,
             ],
             [
                 "title" => "分类",
-                "icon" => "",
+                "icon" => "topic",
                 "pjax" => true,
-                "match" => "^/admin/book(?!\?.*favorite=)($|\?)",
-                "sub" => $categories
+                "sub" => $categories,
             ],
             [
                 "title" => "标签",
-                "icon" => "",
+                "icon" => "sell",
                 "pjax" => true,
-                "match" => "^/admin/book(?!\?.*category=)($|\?)",
-                "sub" => $tags
+                "sub" => $tags,
             ],
         ];
 
