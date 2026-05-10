@@ -141,14 +141,37 @@
 <div id="container" class="container book-page">
     <div class="book-toolbar">
         <div class="title-large d-flex items-center">
-            <mdui-icon name="book" class="mr-2"></mdui-icon>
-            <span>书籍列表</span>
+            <form id="searchForm">
+
+                <mdui-text-field
+                        class="w-100"
+                        name="search"
+                        label="搜索书名或作者"
+                        icon="search"
+                        clearable
+                ></mdui-text-field>
+
+                <mdui-select variant="outlined" class="d-none"  name="series" clearable label="系列">
+                    <mdui-menu-item value="">全部</mdui-menu-item>
+                </mdui-select>
+
+                <mdui-select variant="outlined"   class="d-none"   name="favorite" clearable label="分类">
+                    <mdui-menu-item value="">全部</mdui-menu-item>
+                </mdui-select>
+
+                <mdui-select variant="outlined" class="d-none"    name="finished" clearable label="阅读状态">
+                    <mdui-menu-item value="">全部</mdui-menu-item>
+                    <mdui-menu-item value="1">已读完</mdui-menu-item>
+                    <mdui-menu-item value="0">未读完</mdui-menu-item>
+                </mdui-select>
+
+            </form>
         </div>
         <div class="book-toolbar-actions">
             <mdui-button id="btnAdd" icon="add" variant="filled">导入</mdui-button>
             <mdui-button id="btnSync" icon="sync" variant="tonal">同步</mdui-button>
             <mdui-dropdown>
-                <mdui-button slot="trigger" icon="more_vert" variant="outlined" end-icon="arrow_drop_down">批量操作</mdui-button>
+                <mdui-button slot="trigger" icon="more_vert" variant="outlined" end-icon="arrow_drop_down">批量</mdui-button>
                 <mdui-menu>
                     <mdui-menu-item id="btnBatchEdit" icon="edit_note">批量编辑</mdui-menu-item>
                     <mdui-menu-item id="btnBatchDelete" icon="delete_sweep">批量删除</mdui-menu-item>
@@ -160,42 +183,6 @@
         </div>
     </div>
 
-    <div class="book-filter-panel">
-        <form id="searchForm">
-            <div class="row col-space12">
-                <div class="col-xs12 col-sm6 col-md3">
-                    <mdui-text-field
-                        variant="outlined"
-                        name="search"
-                        label="搜索书名或作者"
-                        icon="search"
-                        clearable
-                    ></mdui-text-field>
-                </div>
-
-                <div class="col-xs6 col-sm3 col-md2">
-                    <mdui-select variant="outlined" style="max-height: 50vh;min-width: fit-content" name="series" clearable label="系列">
-                        <mdui-menu-item value="">全部</mdui-menu-item>
-                    </mdui-select>
-                </div>
-
-                <div class="col-xs6 col-sm4 col-md2">
-                    <mdui-select variant="outlined" name="favorite" clearable label="分类">
-                        <mdui-menu-item value="">全部</mdui-menu-item>
-                    </mdui-select>
-                </div>
-
-                <div class="col-xs6 col-sm4 col-md2">
-                    <mdui-select variant="outlined" name="finished" clearable label="阅读状态">
-                        <mdui-menu-item value="">全部</mdui-menu-item>
-                        <mdui-menu-item value="1">已读完</mdui-menu-item>
-                        <mdui-menu-item value="0">未读完</mdui-menu-item>
-                    </mdui-select>
-                </div>
-
-            </div>
-        </form>
-    </div>
 
     <div class="book-list-panel">
         <div id="bookTable"></div>

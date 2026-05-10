@@ -34,6 +34,10 @@ window.pageOnLoad = function (loading) {
             this.loadFilters();
         }
 
+        reload(){
+            this.cardView.reload($.url.getAllParams(),true)
+        }
+
         /**
          * 初始化 CardView
          */
@@ -74,7 +78,7 @@ window.pageOnLoad = function (loading) {
             };
             this.cardView = new CardView("#bookTable");
             this.cardView.load({
-                params: '#searchForm',
+                params: $.url.getAllParams(),
                 uri: "/admin/api/book/list",
                 cardWidth: "180px",
                 template: `
@@ -158,31 +162,22 @@ window.pageOnLoad = function (loading) {
             
             const triggerSearch = () => {
                 if (that.isDestroyed) return;
-                that.cardView.reload(true);
+                that.cardView.reload($.url.getAllParams(),true);
             };
 
-            const throttledSearch = $.throttle(triggerSearch, 300);
+            const throttledSearch = $.throttle(triggerSearch, 1000);
             const $searchForm = $('#searchForm');
 
-            // 回车提交保留兼容，同时阻止默认跳转
-            $searchForm.on('submit', (e) => {
-                e.preventDefault();
-                triggerSearch();
-            });
-
             // 输入和筛选变更时自动触发搜索（节流）
-            $searchForm.on('input change', 'mdui-text-field, mdui-select, input, select', () => {
+            $searchForm.on('input change', 'mdui-text-field',function () {
+                let name = $(this).attr('name');
+                let val = $(this).val();
+
+                $.url.setParam(name,val)
+
                 throttledSearch();
             });
 
-            // 表单重置后同步刷新结果
-            $searchForm.on('reset', () => {
-                if (that.searchResetTimer) clearTimeout(that.searchResetTimer);
-                that.searchResetTimer = setTimeout(() => {
-                    if (that.isDestroyed) return;
-                    triggerSearch();
-                }, 0);
-            });
 
             // 添加书籍（支持多文件上传）
             $('#btnAdd').on('click', () => {
@@ -769,7 +764,9 @@ window.pageOnLoad = function (loading) {
 
     const bookPage = new BookPage();
     bookPage.init();
-
+    $.emitter.on('pjax:prevented',function () {
+        bookPage.reload()
+    })
     window.pageOnUnLoad = function () {
         bookPage.destroy();
     };

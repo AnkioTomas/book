@@ -84,8 +84,8 @@ class Book extends BaseController
             'msg' => 'success',
             'data' => [
                 'groupNames' => BookDao::getInstance()->getSeriesNames(),
-                'categories' => BookDao::getInstance()->getCategories(),
-                'favorites' => BookDao::getInstance()->getFavorites()
+                'categories' => BookDao::getInstance()->getTags(),
+                'favorites' => BookDao::getInstance()->getCategories()
             ]
         ]);
     }
