@@ -51,6 +51,9 @@ class BookDao extends Dao
 
         // 筛选：收藏
         if (!empty($favorite)) {
+            if ($favorite === 'empty') {
+                $favorite = '';
+            }
             $where['favorite'] = $favorite;
         }
 
