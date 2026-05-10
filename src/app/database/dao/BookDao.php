@@ -115,7 +115,7 @@ class BookDao extends Dao
     /**
      * 获取所有分类（去重）
      */
-    public function getCategories(): array
+    public function getTags(): array
     {
         $result = $this->select(new Field('category'))
                        ->where(['category != ""'])
@@ -139,7 +139,7 @@ class BookDao extends Dao
     /**
      * 获取所有收藏夹标签（去重）
      */
-    public function getFavorites(): array
+    public function getCategories(): array
     {
         $result = $this->select('favorite')
                        ->where(['favorite <> ""'])
