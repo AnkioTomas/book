@@ -142,7 +142,6 @@
     <div class="book-toolbar">
         <div class="title-large d-flex items-center">
             <form id="searchForm">
-
                 <mdui-text-field
                         class="w-100"
                         name="search"
@@ -150,20 +149,6 @@
                         icon="search"
                         clearable
                 ></mdui-text-field>
-
-                <mdui-select variant="outlined" class="d-none"  name="series" clearable label="系列">
-                    <mdui-menu-item value="">全部</mdui-menu-item>
-                </mdui-select>
-
-                <mdui-select variant="outlined"   class="d-none"   name="favorite" clearable label="分类">
-                    <mdui-menu-item value="">全部</mdui-menu-item>
-                </mdui-select>
-
-                <mdui-select variant="outlined" class="d-none"    name="finished" clearable label="阅读状态">
-                    <mdui-menu-item value="">全部</mdui-menu-item>
-                    <mdui-menu-item value="1">已读完</mdui-menu-item>
-                    <mdui-menu-item value="0">未读完</mdui-menu-item>
-                </mdui-select>
 
             </form>
         </div>
