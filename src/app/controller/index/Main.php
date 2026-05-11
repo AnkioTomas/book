@@ -85,70 +85,10 @@ class Main extends BaseController
             ];
 
             return $this->viewResponse->asTpl("layout", [
-                'menuConfig' => $this->normalizeMenuForCollapse($menuInfo),
+                'menuConfig' => $menuInfo,
             ]);
         }
         return null;
-    }
-
-    /**
-     * MDUI Collapse expects multiple sibling <mdui-collapse-item> under one <mdui-collapse>;
-     * one wrapper plus a single item often defaults to expanded incorrectly.
-     * Also yields stable paths for accordion value / setActive highlighting.
-     *
-     * @param  array<int, array<string, mixed>> $items
-     * @return array<int, array<string, mixed>>
-     */
-    private function normalizeMenuForCollapse(array $items, string $pathPrefix = ''): array
-    {
-        $out = [];
-        $buffer = [];
-
-        $flushBuffer = function () use (&$out, &$buffer, $pathPrefix): void {
-            if ($buffer === []) {
-                return;
-            }
-            $groupItems = [];
-            foreach ($buffer as $entry) {
-                $idx = $entry['__idx'];
-                $path = $pathPrefix === '' ? (string)$idx : $pathPrefix.'-'.$idx;
-                /** @var array<string, mixed> $item */
-                $item = $entry['item'];
-                /** @var array<int, mixed> $sub */
-                $sub = $item['sub'] ?? [];
-                if ($sub !== []) {
-                    $item['sub'] = $this->normalizeMenuForCollapse($sub, $path);
-                }
-                $item['__navPath'] = $path;
-                $groupItems[] = $item;
-            }
-            $out[] = ['_collapseGroup' => true, 'items' => $groupItems];
-            $buffer = [];
-        };
-
-        foreach ($items as $idx => $item) {
-            if (!empty($item['sub'])) {
-                $buffer[] = ['__idx' => $idx, 'item' => $item];
-            } else {
-                $flushBuffer();
-                $out[] = $item;
-            }
-        }
-        $flushBuffer();
-
-        return $out;
-    }
-
-    /**
-     * 书库页「全部书籍」高亮：路径为 /admin/book，且查询串中不含书架维度筛选参数（允许搜索、分页等）。
-     * 与 book 页 URL 工具、筛选字段名保持一致。正则供前端 `new RegExp(...)` 使用。
-     */
-    private function bookListUnfilteredMatch(): string
-    {
-        $p = 'series|favorite|category|seriesNum';
-
-        // 查询串起点或 & 之后出现「维度参数名=」则视为已做书架筛选，不计入「全部书籍」
-        return '^/admin/book/?(?:$|\?(?!(?:'.$p.')=)(?!.*[?&](?:'.$p.')=)[^#]*)(?:#.*)?$';
     }
 
     private function subMenus(): array
@@ -191,14 +131,17 @@ class Main extends BaseController
                 "match" => "^/admin/book\?([^#]*&)?category=".preg_quote(rawurlencode($item), '/')."(&|$)",
             ];
         }
+        $p = 'series|favorite|category|seriesNum';
 
+        // 查询串起点或 & 之后出现「维度参数名=」则视为已做书架筛选，不计入「全部书籍」
+        $rule = '^/admin/book/?(?:$|\?(?!(?:'.$p.')=)(?!.*[?&](?:'.$p.')=)[^#]*)(?:#.*)?$';
         $menu = [
             [
                 "title" => "全部书籍",
                 "icon" => "menu_book",
                 "url" => "/admin/book",
                 "pjax" => true,
-                "match" => $this->bookListUnfilteredMatch(),
+                "match" => $rule,
             ],
             [
                 "title" => "系列",
