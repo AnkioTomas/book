@@ -25,8 +25,8 @@
             <mdui-list-item
                     rounded
                     icon="{$node.icon}"
-                    data-link="{$node.url}"
-                    data-pjax="{$node.pjax ? 'true' : 'false'}"
+                    data-link="{isset($node.url) ? $node.url : '' }"
+                    data-pjax="{isset($node.pjax) ? 'true' : 'false'}"
                     data-match="{if isset($node.match)}{$node.match}{/if}">
                 {$node.title}
             </mdui-list-item>
