@@ -13,6 +13,7 @@ use nova\framework\core\Logger;
 use nova\framework\http\Response;
 use nova\plugin\http\HttpClient;
 use nova\plugin\http\HttpException;
+use nova\plugin\login\controller\BaseAPIController;
 use nova\plugin\task\PoolManager;
 
 /**
@@ -24,7 +25,7 @@ use nova\plugin\task\PoolManager;
  * - 返回最佳匹配结果
  * - 随机UA和IP以规避反爬
  */
-class Douban extends BaseController
+class Douban extends BaseAPIController
 {
     private const SEARCH_URL = 'https://www.douban.com/search';
     private const MIN_SIMILARITY = 0.6;

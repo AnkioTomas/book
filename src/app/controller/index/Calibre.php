@@ -10,6 +10,8 @@ use function nova\framework\config;
 
 use nova\framework\http\Response;
 
+use nova\plugin\login\controller\BaseAPIController;
+
 use Throwable;
 
 /**
@@ -18,7 +20,7 @@ use Throwable;
  * config.calibre 在系统里以字符串形式存储（兼容现有 EbookServiceClient / Parser），
  * 这里用单字段表单适配。
  */
-class Calibre extends BaseController
+class Calibre extends BaseAPIController
 {
     public function config(): Response
     {

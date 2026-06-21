@@ -18,6 +18,8 @@ use nova\framework\App;
 use function nova\framework\route;
 
 use nova\framework\route\Route;
+
+use nova\plugin\login\LoginTpl;
 use nova\plugin\task\PoolManager;
 
 class Application extends App
@@ -26,6 +28,7 @@ class Application extends App
     {
         Installer::register();
         PoolManager::start();
+        LoginTpl::getInstance()->registerRouter('index', 'main');
         // Route::getInstance()->get()
         Route::getInstance()
             ->get("/", route('index', 'main', 'index'))
@@ -51,8 +54,6 @@ class Application extends App
             ->get('/admin/calibre', route('index', 'main', 'calibre'))
             ->getOrPost('/admin/api/calibre', route('index', 'calibre', 'config'))
             ->post('/admin/api/calibre/test', route('index', 'calibre', 'test'))
-            ->get("/settings/account", route('index', 'main', 'account'))//√
-            ->get("/settings/sso", route('index', 'main', 'sso'))
             ->post("/admin/api/upload", route("index", "upload", "upload")) // 文件上传
             ->post("/admin/api/publish", route("index", "upload", "publish")) // 文件上传
             ->post("/admin/api/douban", route("index", "douban", "search"))

@@ -16,8 +16,10 @@ use nova\framework\core\File;
 
 use nova\framework\core\Text;
 use nova\framework\http\Response;
+use nova\plugin\login\controller\BaseAPIController;
+use nova\plugin\tpl\Pjax;
 
-class Book extends BaseController
+class Book extends BaseAPIController
 {
     /**
      * 获取书籍列表（支持分页、搜索、筛选）
@@ -259,13 +261,13 @@ class Book extends BaseController
         $filename = rawurldecode($this->request->get('file', ''));
         $filename = trim($filename);
         if ($filename === '') {
-            return $this->redirectTo("/404");
+            return Pjax::redirectTo("/404");
         }
 
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $supported = ['epub', 'pdf', 'mobi', 'azw', 'azw3'];
         if (!in_array($ext, $supported, true)) {
-            return $this->redirectTo("/403");
+            return Pjax::redirectTo("/403");
         }
         $progress = ReadingProgressDao::getInstance()->getByFilename($filename);
         if ($progress == null) {
@@ -280,7 +282,7 @@ class Book extends BaseController
             . '&filename=' . rawurlencode($filename)
             . '&frac=' . $percent;
 
-        return $this->redirectTo($readerUrl);
+        return Pjax::redirectTo($readerUrl);
     }
 
     /**

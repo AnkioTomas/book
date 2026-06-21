@@ -8,7 +8,9 @@ use function nova\framework\config;
 
 use nova\framework\http\Response;
 
-class Webdav extends BaseController
+use nova\plugin\login\controller\BaseAPIController;
+
+class Webdav extends BaseAPIController
 {
     public function config(): Response
     {

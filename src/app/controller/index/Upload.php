@@ -10,10 +10,11 @@ use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookOrganizer\Parser;
 use nova\framework\http\Response;
+use nova\plugin\login\controller\BaseAPIController;
 use nova\plugin\upload\FileDao;
 use nova\plugin\upload\UploadController;
 
-class Upload extends BaseController
+class Upload extends BaseAPIController
 {
     public function upload(): Response
     {
