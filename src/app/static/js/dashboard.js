@@ -5,8 +5,6 @@
 
 window.pageLoadFiles = [
     'Toaster',
-    '/components/dataTable/CardView.css',
-    '/js/components/Book.js'
 ];
 
 window.pageOnLoad = () => {
@@ -23,17 +21,11 @@ window.pageOnLoad = () => {
             return;
         }
         const finalTitle = title || filename;
-        const readerUrl = `/admin/reader?file=${encodeURIComponent(filename)}&title=${encodeURIComponent(finalTitle)}`;
+        const readerUrl = `/index/book/reader?file=${encodeURIComponent(filename)}&title=${encodeURIComponent(finalTitle)}`;
         window.open(readerUrl, '_blank', 'noopener');
     };
 
     $('.js-resume-reading').on('click', function () {
-        const target = $(this);
-        openReader(target.data('file') || '', target.data('title') || '');
-    });
-
-    // 最近添加：后端渲染，仅绑定整卡点击
-    $('#recentAdded').on('click', '.js-open-reader', function () {
         const target = $(this);
         openReader(target.data('file') || '', target.data('title') || '');
     });

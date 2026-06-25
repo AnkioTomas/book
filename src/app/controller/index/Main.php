@@ -20,13 +20,6 @@ class Main extends BaseViewController
 
     public function dashboard(): Response
     {
-        $recentBooks = BookDao::getInstance()->getAll([], [], 1, 25, 'addTime', false)['data'];
-        foreach ($recentBooks as &$book) {
-            $book['formattedDate'] = date('Y-m-d', (int)($book['addTime'] / 1000));
-            $book['coverUrl'] = '/webdav/' . rawurlencode($book['filename']);
-        }
-        unset($book);
-
         $_recentlyReadBooks = ReadingProgressDao::getInstance()->getAll([], [], 1, 25, 'timestamp', false)['data'];
 
         $recentlyReadBooks = [];
@@ -47,7 +40,6 @@ class Main extends BaseViewController
         return $this->viewResponse->asTpl('dashboard', [
             'currentReading' => $currentReading,
             'recentlyReadBooks' => $recentlyReadBooks,
-            'recentBooks' => $recentBooks,
         ]);
     }
 
@@ -310,28 +302,10 @@ class Main extends BaseViewController
                 'sub' => $this->subMenus(),
             ],
             [
-                'title' => '系统设置',
-                'icon' => 'settings',
-                'sub' => [
-                    [
-                        'title' => '账户安全',
-                        'url' => '/login/pwd',
-                        'icon' => 'security',
-                        'pjax' => true,
-                    ],
-                    [
-                        'title' => '统一认证登录',
-                        'url' => '/login/oidc',
-                        'icon' => 'vpn_key',
-                        'pjax' => true,
-                    ],
-                    [
-                        'title' => 'Calibre配置',
-                        'url' => '/index/main/calibre',
-                        'icon' => 'auto_stories',
-                        'pjax' => true,
-                    ],
-                ],
+                'title' => 'Calibre配置',
+                'url' => '/index/main/calibre',
+                'icon' => 'auto_stories',
+                'pjax' => true,
             ],
         ];
     }
