@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace app\controller\index;
 
+use app\ai\BookMetadataResolver;
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
 use app\database\model\ReadingProgressModel;
+use app\task\AiIdentifyTask;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\ProgressManager;
@@ -17,6 +19,9 @@ use nova\framework\core\File;
 use nova\framework\core\Text;
 use nova\framework\http\Response;
 use nova\plugin\login\controller\BaseAPIController;
+
+use function nova\plugin\task\go;
+
 use nova\plugin\tpl\Pjax;
 
 class Book extends BaseAPIController
@@ -100,6 +105,7 @@ class Book extends BaseAPIController
                 continue;
             }
             $book->markFinished($read);
+            $book->update_at = time() * 1000;
             if (BookDao::getInstance()->updateModel($book)) {
                 $updated++;
             }
@@ -277,7 +283,7 @@ class Book extends BaseAPIController
         if ($percent > 1) {
             $percent /= 100;
         }
-        $bookUrl = '/admin/api/book/file?filename=' . rawurlencode($filename);
+        $bookUrl = '/index/book/file?filename=' . rawurlencode($filename);
         $readerUrl = '/static/foliate/reader.html?url=' . rawurlencode($bookUrl)
             . '&filename=' . rawurlencode($filename)
             . '&frac=' . $percent;
@@ -315,12 +321,81 @@ class Book extends BaseAPIController
             Context::instance()->cache->set("coverUrl/{$book->coverUrl}", true);
         }
 
+        $book->update_at = time() * 1000;
+
         if (BookDao::getInstance()->updateModel($book)) {
             BookDao::getInstance()->syncBooks();
             return Response::asJson(['code' => 200, 'msg' => '更新成功']);
         }
 
         return Response::asJson(['code' => 500, 'msg' => '更新失败']);
+    }
+
+    /**
+     * AI 智能填充：让助手检索并挑选最匹配的元数据，通过 SSE 实时推送进度。
+     * 仅把结果推给前端预填，由用户核对后再走 update 保存。
+     * GET /book/aiFill?bookName=&author=
+     * 事件：chunk -> {type,text}（type ∈ progress/error）；result -> 表单字段对象；done -> end
+     */
+    public function aiFill(): Response
+    {
+        $bookName = trim((string)$this->request->get('bookName', ''));
+        $author   = trim((string)$this->request->get('author', ''));
+
+        return Response::asSSE(function (callable $emit) use ($bookName, $author): void {
+            $send = static function (string $type, string $text) use ($emit): void {
+                $emit(json_encode(['type' => $type, 'text' => $text], JSON_UNESCAPED_UNICODE), 'chunk');
+            };
+
+            if ($bookName === '') {
+                $send('error', '请先输入书名');
+                $emit('end', 'done');
+                return;
+            }
+
+            $send('progress', '开始检索…');
+
+            $out = (new BookMetadataResolver())->resolve($bookName, $author, function (string $msg) use ($send): void {
+                $send('progress', $msg);
+            });
+
+            if ($out === null) {
+                $send('error', 'AI 未找到合适信息');
+                $emit('end', 'done');
+                return;
+            }
+
+            $send('progress', '已找到匹配信息，正在填充…');
+            $emit(json_encode($out, JSON_UNESCAPED_UNICODE), 'result');
+            $emit('end', 'done');
+        });
+    }
+
+    /**
+     * AI 识别：让助手自动检索并直接写库（无需人工核对），支持单本/批量。
+     * 提交后台任务异步执行，进度写入后台任务面板，前端立即返回。
+     * GET /book/aiIdentify?ids=[1,2,3]
+     */
+    public function aiIdentify(): Response
+    {
+        $ids = json_decode((string)$this->request->get('ids', '[]'), true);
+        $ids = is_array($ids)
+            ? array_values(array_filter(array_map('intval', $ids), fn (int $i): bool => $i > 0))
+            : [];
+
+        if ($ids === []) {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
+        }
+
+        $task = new AiIdentifyTask($ids);
+        go('AI 识别', static function () use ($task): void {
+            $task->onStart();
+        }, $task->getTimeOut());
+
+        return Response::asJson([
+            'code' => 200,
+            'msg'  => '已提交后台 AI 识别任务（' . count($ids) . ' 本），可在任务面板查看进度',
+        ]);
     }
 
     /**

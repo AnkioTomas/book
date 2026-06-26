@@ -67,6 +67,7 @@ class Upload extends BaseAPIController
                 $model = new BookModel();
                 $model->deviceId = BookManager::getInstance()->deviceId;
                 $model->addTime = time() * 1000;
+                $model->update_at = time() * 1000;
                 $model->filename = $file->name;
                 $model->series = $series;
 
