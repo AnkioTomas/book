@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\ai;
 
 use app\ai\agent\BookAssistantAgent;
+use nova\framework\core\Logger;
 
 /**
  * 书籍元数据解析器：给定书名/作者，让 AI 检索并挑选最匹配的元数据，返回白名单字段。
@@ -43,6 +44,7 @@ class BookMetadataResolver
      */
     public function resolve(string $bookName, string $author, ?callable $onProgress = null): ?array
     {
+
         if ($bookName === '') {
             return null;
         }
@@ -77,12 +79,21 @@ class BookMetadataResolver
                     }
                 },
             ]);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            // 不再静默吞掉：AI 调用失败时把真实原因暴露出来，否则只看到「返回 null」无从排查。
+            Logger::error('[BookMetadataResolver] AI 调用异常：' . $e->getMessage());
+            return null;
+        }
+
+        // run() 返回 null 多为「AI 提供商未配置/解析失败」——此时根本没调用模型，必须可见。
+        if ($answer === null || trim($answer) === '') {
+            Logger::warning('[BookMetadataResolver] AI 无返回（请检查 AI 提供商是否已正确配置）：' . $bookName);
             return null;
         }
 
         $data = $this->extractJsonObject($answer);
         if ($data === null) {
+            Logger::warning('[BookMetadataResolver] AI 返回内容无法解析出 JSON：' . $answer);
             return null;
         }
 

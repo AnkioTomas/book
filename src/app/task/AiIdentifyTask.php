@@ -27,7 +27,7 @@ class AiIdentifyTask extends TaskerAbstract
     /**
      * @param int[] $ids 需要识别的书籍 ID
      */
-    public function __construct(private array $ids)
+    public function __construct(private readonly array $ids)
     {
     }
 

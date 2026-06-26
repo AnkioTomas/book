@@ -244,7 +244,7 @@ class SyncTask extends TaskerAbstract
     /**
      * 进度增量同步：仅处理变化的 .po（远端 mtime 新于上次同步、或本地阅读时间新于上次同步）。
      *
-     * @param  string[]   $filenames 当前保留的书籍文件名
+     * @param  string[]           $filenames 当前保留的书籍文件名
      * @return array{0:int,1:int} [下载条数, 上传条数]
      */
     private function syncProgress(array $filenames, int $lastMs): array

@@ -18,9 +18,8 @@ use nova\framework\core\File;
 
 use nova\framework\core\Text;
 use nova\framework\http\Response;
+use nova\plugin\corn\schedule\TaskerManager;
 use nova\plugin\login\controller\BaseAPIController;
-
-use function nova\plugin\task\go;
 
 use nova\plugin\tpl\Pjax;
 
@@ -387,10 +386,9 @@ class Book extends BaseAPIController
             return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
-        $task = new AiIdentifyTask($ids);
-        go('AI 识别', static function () use ($task): void {
-            $task->onStart();
-        }, $task->getTimeOut());
+        TaskerManager::del('AI识别');
+
+        TaskerManager::add("", new AiIdentifyTask($ids), "AI识别");
 
         return Response::asJson([
             'code' => 200,
