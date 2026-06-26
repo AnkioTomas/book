@@ -48,43 +48,19 @@ window.pageOnLoad = function () {
         if (aiLoadingEl) { $(aiLoadingEl).closeLoading(); aiLoadingEl = null; }
     }
 
-    // AI 识别：让 AI 自动检索并直接写库，支持单本/批量
+    // AI 识别：提交后台任务，AI 自动检索并直接写库，进度在任务面板查看
     function aiIdentifyRun(books) {
         if (!books || !books.length) return;
         var ids = books.map(function (b) { return b.id; });
 
-        aiStop();
-        aiLoadingShow($('#bookTable')[0] || document.body, 'AI 准备中…');
-
-        aiSource = $.request.sse('/index/book/aiIdentify', {
-            params: { ids: JSON.stringify(ids) },
-            autoReconnect: false,
-            eventHandlers: {
-                chunk: function (data) {
-                    if (!data || typeof data !== 'object') return;
-                    if (data.type === 'error') {
-                        aiStop();
-                        $.toaster.error(data.text || 'AI 识别失败');
-                    } else {
-                        aiLoadingUpdate(data.text || 'AI 工作中…');
-                    }
-                },
-                result: function (data) {
-                    if (data && typeof data === 'object') {
-                        $.toaster.success('AI 识别完成：成功 ' + (data.ok || 0) + '，失败 ' + (data.fail || 0));
-                    }
-                },
-                done: function () {
-                    aiStop();
-                    if (cardView) cardView.reload();
-                }
-            },
-            onError: function () {
-                if (aiSource) {
-                    aiStop();
-                    $.toaster.error('AI 连接中断');
-                }
+        $.request.get('/index/book/aiIdentify', { ids: JSON.stringify(ids) }, function (res) {
+            if (res.code === 200) {
+                $.toaster.success(res.msg || '已提交后台 AI 识别任务');
+            } else {
+                $.toaster.error(res.msg || 'AI 识别提交失败');
             }
+        }, function () {
+            $.toaster.error('AI 识别提交失败');
         });
     }
 

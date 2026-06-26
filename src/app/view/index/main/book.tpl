@@ -1,9 +1,5 @@
 <title id="title">书籍列表 - {$title}</title>
 <style id="style">
-    .book-page {
-        padding: 16px;
-    }
-
     .book-toolbar {
         display: flex;
         justify-content: space-between;
@@ -42,32 +38,6 @@
         cursor: pointer;
     }
     
-    /* 拖拽上传覆盖层 */
-    .drag-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(var(--mdui-color-primary), 0.1);
-        backdrop-filter: blur(4px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        pointer-events: none;
-    }
-    
-    .drag-overlay.active {
-        display: flex;
-    }
-    
-    .drag-overlay-content {
-        background: rgba(var(--mdui-color-surface-container-highest));
-        border: 3px dashed rgba(var(--mdui-color-primary));
-        border-radius: 16px;
-        padding: 3rem;
-        text-align: center;
-        box-shadow: var(--mdui-elevation-level3);
-    }
-    
    #searchForm mdui-select::part(menu){
        max-height: 50vh;
        width: fit-content;
@@ -79,61 +49,41 @@
         width: 100%;
     }
 
-    #bookTable .book-card-shell {
-        position: relative;
+    /* 卡片内容区域 */
+    #bookTable .book-card-content {
+        display: block;
     }
 
+    /* 操作按钮 - 块级布局，右对齐 */
     #bookTable .book-actions {
-        position: absolute;
-        top: 0.5rem;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.15s ease;
-        z-index: 19;
-        padding-top: 3px;
-        left: 0;
-        right: 0;
-        margin-left: 0.5rem;
-        margin-right: 0.5rem;
-        border-radius: 0.5rem 0.5rem 0 0;
-        padding-bottom: 3px;
-        background: rgba(var(--mdui-color-background));
-
+        display: block;
+        text-align: right;
+        margin-top: 8px;
     }
 
+    /* 卡片悬停时显示操作按钮 */
     #bookTable .card-view-item:hover .book-actions,
     #bookTable .card-view-item.selected .book-actions {
-        opacity: 1;
-        pointer-events: auto;
+        display: block;
+    }
+
+    /* 移动端：操作按钮始终显示且居中 */
+    @media (hover: none), (pointer: coarse) {
+        #bookTable .book-actions {
+            display: block;
+            text-align: center;
+        }
     }
 
     @media (max-width: 768px) {
         .card-view-container {
             --card-min-width: 130px !important;
         }
-        .card-view-item{
-            padding: 0.2rem;
+        .card-view-item {
+            padding: 4px;
         }
-        .btn-download{
+        .btn-download {
             display: none;
-        }
-    }
-
-
-    @media (hover: none), (pointer: coarse) {
-        #bookTable .book-card-shell {
-            gap: 0.5rem;
-        }
-
-        #bookTable .book-actions {
-            position: static;
-            opacity: 1;
-            pointer-events: auto;
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            border-radius: 0;
-            justify-content: flex-end;
         }
     }
 </style>
@@ -160,6 +110,7 @@
                 <mdui-button slot="trigger" icon="more_vert" variant="outlined" end-icon="arrow_drop_down">批量</mdui-button>
                 <mdui-menu>
                     <mdui-menu-item id="btnBatchEdit" icon="edit_note">批量编辑</mdui-menu-item>
+                    <mdui-menu-item id="btnBatchAiIdentify" icon="auto_awesome">AI 识别</mdui-menu-item>
                     <mdui-menu-item id="btnBatchDelete" icon="delete_sweep">批量删除</mdui-menu-item>
                     <mdui-menu-item id="btnBatchScrape" icon="image">批量刮削封面</mdui-menu-item>
                     <mdui-menu-item id="btnBatchMarkRead" icon="task_alt">批量标记已读</mdui-menu-item>
@@ -192,6 +143,7 @@
                             class="flex-1"
                     ></mdui-text-field>
                     <mdui-button-icon variant="filled" icon="search" id="douban"></mdui-button-icon>
+                    <mdui-button-icon variant="tonal" icon="auto_awesome" id="aiFill"></mdui-button-icon>
                 </div>
 
                 <div class="col-xs12">
@@ -296,11 +248,7 @@
         </form>
     </mdui-dialog-form>
 
-    <mdui-dialog 
-        id="searchDialog" 
-        close-on-overlay-click
-    >
-    </mdui-dialog>
+    <douban-book-picker id="doubanBookPicker"></douban-book-picker>
 
     <!-- 批量编辑对话框 -->
     <mdui-dialog-form id="batchEditDialog" label="批量编辑书籍">
@@ -358,14 +306,12 @@
         <mdui-button slot="action" variant="filled" id="btnBatchSubmit">批量更新</mdui-button>
     </mdui-dialog-form>
 
-    <!-- 拖拽上传覆盖层 -->
-    <div id="dragOverlay" class="drag-overlay">
-        <div class="drag-overlay-content">
-            <mdui-icon name="upload" style="font-size: 64px; color: rgba(var(--mdui-color-primary));"></mdui-icon>
-            <div class="headline-medium mt-3">拖放文件到此处上传</div>
-            <div class="body-medium text-on-surface-variant mt-2">支持格式: EPUB, MOBI, AZW, AZW3, PDF, TXT</div>
-        </div>
-    </div>
+    <book-context-menu id="bookContextMenu"></book-context-menu>
+
+    <drag-upload
+        accept=".epub,.mobi,.azw,.azw3,.pdf,.txt"
+        hint="EPUB, MOBI, AZW, AZW3, PDF, TXT"
+    ></drag-upload>
 </div>
 
 

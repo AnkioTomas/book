@@ -37,28 +37,6 @@
         overflow: hidden;
     }
 
-    /* 最近添加：复用 CardView 的 grid 容器样式（.card-view-container + --card-min-width） */
-    #recentAdded book-card {
-        display: block;
-        width: 100%;
-    }
-    @media (max-width: 768px) {
-        .card-view-container {
-            --card-min-width: 140px !important;
-        }
-        .card-view-item{
-            padding: 0.5rem;
-        }
-    }
-    @media (max-width: 560px) {
-        .card-view-container {
-            --card-min-width: 100px !important;
-        }
-        .card-view-item{
-            padding: 0.2rem;
-        }
-    }
-
     @media (max-width: 768px) {
         .continue-layout {
             flex-direction: column;
@@ -128,28 +106,6 @@
         {/if}
     </div>
 
-    <h2 class="title-medium mb-2"  style="font-weight: bold">最近添加</h2>
-    {if $recentBooks}
-    <div id="recentAdded" class="card-view-container" style="--card-min-width: 180px;">
-        {foreach $recentBooks as $book}
-        <div class="card-view-item js-open-reader" data-file="{$book.filename}" data-title="{$book.bookName}">
-            <div class="card-content">
-                <div class="d-flex flex-col h-full p-2">
-                    <book-card
-                        cover="{$book.coverUrl}"
-                        title="{$book.bookName}"
-                        author="{$book.author}"
-                        description="添加于 {$book.formattedDate}"
-                        show-description
-                    ></book-card>
-                </div>
-            </div>
-        </div>
-        {/foreach}
-    </div>
-    {else}
-    <div class="body-medium text-on-surface-variant">暂无数据</div>
-    {/if}
 </div>
 
 <script id="script" src="/static/js/dashboard.js?v={$__v}"></script>
