@@ -28,18 +28,13 @@ use Throwable;
  * - 进度仲裁复用 .po 串内的 ts 与本地 timestamp，新者胜。
  * - 增量：远端 books.sync 文件 mtime 未变则跳过远端书目处理；进度仅下载 mtime 比上次同步更新的 .po；
  *   仅在本地或远端确有变化时才回写 books.sync。
- * - books.sync / .po 为移动端共享契约，结构不变；本地新增的 update_at 不写入 books.sync。
+ * - books.sync / .po 为移动端共享契约；写入完整 BookModel 字段（groupBooks 为数组、series/seriesNum 独立），
+ *   仅本地仲裁用的 update_at 不写入。
  */
 class SyncTask extends TaskerAbstract
 {
     private const STATE_LAST_MS = 'book.sync.last_ms';
     private const STATE_META_MTIME = 'book.sync.meta_mtime';
-
-    /** books.sync 仅输出移动端契约字段，避免污染共享文件。 */
-    private const REMOTE_FIELDS = [
-        'addTime', 'author', 'bookName', 'category', 'deviceId',
-        'downloadUrl', 'favorite', 'filename', 'groupBooks', 'groupName', 'rate',
-    ];
 
     public function getTimeOut(): int
     {
@@ -221,7 +216,6 @@ class SyncTask extends TaskerAbstract
     private function pullRemote(array $entry): BookModel
     {
         $book = new BookModel($entry);
-        $book->splitCategory2Series();
         $book->update_at = 0; // 来自远端，标记为本地未修改
         BookDao::getInstance()->insertModel($book, true);
         return $book;
@@ -320,16 +314,17 @@ class SyncTask extends TaskerAbstract
     }
 
     /**
-     * 序列化为 books.sync 条目（仅移动端契约字段，category 含系列前缀）。
+     * 序列化为 books.sync 条目。
+     *
+     * toArray(false) 跳过 Model::onToArray 的 serialize，使 groupBooks 保持为 JSON 数组
+     * （否则会被写成 "a:0:{}" 这类 PHP 序列化串，移动端无法解析）。
+     * series / seriesNum 作为独立字段输出，category 保持纯标签，与移动端契约一致。
+     * update_at 为本地同步仲裁字段，不写入共享文件。
      */
     private function toRemoteEntry(BookModel $book): array
     {
-        $book = $book->pushSeries2Category();
-        $full = $book->toArray();
-        $entry = [];
-        foreach (self::REMOTE_FIELDS as $field) {
-            $entry[$field] = $full[$field] ?? '';
-        }
+        $entry = $book->toArray(false);
+        unset($entry['update_at']);
         return $entry;
     }
 

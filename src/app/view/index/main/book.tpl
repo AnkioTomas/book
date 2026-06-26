@@ -173,37 +173,27 @@
                 </div>
 
             <div class="col-xs12 col-sm6">
-                <mdui-dropdown id="favoriteDropdown">
-                    <mdui-text-field
-
-                        slot="trigger"
+                <mdui-search-input
                         id="editFavorite"
-                        label="分类"
                         name="favorite"
-                        helper="单值，可选择或输入新值"
+                        label="分类"
+                        placeholder="可选择或输入新值"
+                        search-uri="/index/book/searchFavorite"
+                        min-length="1"
                         clearable
-                        icon="arrow_drop_down"
-                        end-icon
-                    ></mdui-text-field>
-                    <mdui-list id="favoriteList"></mdui-list>
-                </mdui-dropdown>
+                ></mdui-search-input>
             </div>
 
             <div class="col-xs12 col-sm6">
-                <mdui-dropdown id="categoryDropdown">
-                    <mdui-text-field
-
-                        slot="trigger"
+                <mdui-text-field
                         id="editCategory"
                         label="标签"
                         name="category"
+                        type="textarea"
+                        rows="3"
                         helper="多个标签用换行分隔"
                         clearable
-                        icon="arrow_drop_down"
-                        end-icon
-                    ></mdui-text-field>
-                    <mdui-list id="categoryList"></mdui-list>
-                </mdui-dropdown>
+                ></mdui-text-field>
             </div>
 
             <div class="col-xs12 col-sm8">

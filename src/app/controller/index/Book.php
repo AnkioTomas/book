@@ -136,6 +136,23 @@ class Book extends BaseAPIController
     }
 
     /**
+     * 搜索分类（favorite），供编辑对话框自动完成使用
+     * GET /book/searchFavorite?keyword=xxx
+     */
+    public function searchFavorite(): Response
+    {
+        $keyword = trim($this->request->get('keyword', ''));
+        $favorites = BookDao::getInstance()->getCategories();
+        if ($keyword !== '') {
+            $favorites = array_values(array_filter($favorites, static function (string $item) use ($keyword) {
+                return mb_stripos($item, $keyword) !== false;
+            }));
+        }
+
+        return Response::asJson(['code' => 200, 'msg' => 'success', 'data' => $favorites]);
+    }
+
+    /**
      * 获取阅读进度
      * GET /book/progress?filename=xxx.epub
      */

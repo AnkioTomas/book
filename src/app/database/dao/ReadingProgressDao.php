@@ -15,6 +15,19 @@ class ReadingProgressDao extends Dao
     }
 
     /**
+     * 取自指定毫秒时间戳之后有新阅读的进度（timestamp > $sinceMs）。
+     * 供同步任务「本地 → 远端」增量补偿使用。
+     *
+     * @return ReadingProgressModel[]
+     */
+    public function getUpdatedSince(int $sinceMs): array
+    {
+        return $this->select()
+            ->where(['timestamp > :ts', ':ts' => $sinceMs])
+            ->commit();
+    }
+
+    /**
      * @param  string[]               $filenames
      * @return ReadingProgressModel[]
      */

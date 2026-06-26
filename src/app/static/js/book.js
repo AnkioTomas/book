@@ -7,6 +7,7 @@ window.pageLoadFiles = [
     'Toaster',
     'CardView',
     'Form',
+    'SearchInput',
     "FileUploader",
     "DialogForm",
     'Layer',
@@ -231,6 +232,8 @@ window.pageOnLoad = function () {
             edit: function (book) {
                 editDialog.open();
                 editDialog.setValue(book);
+                var fav = document.getElementById('editFavorite');
+                if (fav) fav.setValue(book.favorite || '', book.favorite || '');
             },
             delete: function (book) {
                 confirm('确定要删除这本书籍吗？', '删除', function () { batchDelete([book]); });
@@ -265,10 +268,16 @@ window.pageOnLoad = function () {
         });
     }
 
+    function initFavoriteInput() {
+        var el = document.getElementById('editFavorite');
+        if (!el || el._favoriteBound) return;
+        el._favoriteBound = true;
+        el.renderItem = function (row) { return { key: String(row), value: String(row) }; };
+        el.addEventListener('input', function () { el.value = el.text; });
+    }
+
     function initAutocomplete() {
         [
-            { inputId: 'editCategory', dropdownId: 'categoryDropdown', listId: 'categoryList', options: filterOptions.categories || [] },
-            { inputId: 'editFavorite', dropdownId: 'favoriteDropdown', listId: 'favoriteList', options: filterOptions.favorites || [] },
             { inputId: 'editSeries', dropdownId: 'seriesDropdown', listId: 'seriesList', options: filterOptions.groupNames || [] }
         ].forEach(function (field) {
             var $input = $('#' + field.inputId);
@@ -518,6 +527,7 @@ window.pageOnLoad = function () {
         initBookContextMenu();
         bindEvents();
         initAutocomplete();
+        initFavoriteInput();
     });
 
     $.emitter.on('pjax:prevented', reload);
