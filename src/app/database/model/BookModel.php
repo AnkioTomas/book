@@ -35,6 +35,9 @@ class BookModel extends Model
     // 时间戳
     public int $addTime = 0;          // 添加时间戳(毫秒)
 
+    // 本地最后修改时间(毫秒)。仅本地用于同步 last-write-wins 仲裁，不写入 books.sync。
+    public int $update_at = 0;
+
     /**
      * {
      * "addTime": "1761286619609",
@@ -63,7 +66,7 @@ class BookModel extends Model
 
     public function getSchemaVersion(): int
     {
-        return 4;
+        return 5;
     }
 
     public function getUpgradeSql(): array
@@ -77,8 +80,14 @@ class BookModel extends Model
                 "ALTER TABLE `book` ADD COLUMN `isFinished` TINYINT(1) NOT NULL DEFAULT 0",
             ],
             "3_4" => [
-                "UPDATE `{table}` SET category = CASE WHEN IFNULL(TRIM(category), '') = '' THEN '已读' ELSE CONCAT(TRIM(category), CHAR(10), '已读') END WHERE COALESCE(isFinished, 0) = 1 AND NOT (CONCAT(CHAR(10), IFNULL(category, ''), CHAR(10)) LIKE CONCAT('%', CHAR(10), '已读', CHAR(10), '%'))",
-                "ALTER TABLE `{table}` DROP COLUMN `isFinished`",
+                "UPDATE {table} SET category = CASE WHEN IFNULL(TRIM(category), '') = '' THEN '已读' ELSE CONCAT(TRIM(category), CHAR(10), '已读') END WHERE COALESCE(isFinished, 0) = 1 AND NOT (CONCAT(CHAR(10), IFNULL(category, ''), CHAR(10)) LIKE CONCAT('%', CHAR(10), '已读', CHAR(10), '%'))",
+                "ALTER TABLE {table} DROP COLUMN `isFinished`",
+            ],
+            "4_5" => [
+                // {table} 会被框架替换为已带反引号的标识符，这里不要再手动加反引号
+                "ALTER TABLE {table} ADD COLUMN `update_at` BIGINT NOT NULL DEFAULT 0",
+                // 存量数据以 addTime 作为初始修改时间，首次同步倾向以本地为权威推送远端
+                "UPDATE {table} SET update_at = addTime WHERE update_at = 0",
             ],
         ];
     }

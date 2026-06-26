@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace app\database\dao;
 
 use app\database\model\BookModel;
-use app\utils\SyncBooks;
+use app\task\SyncTask;
 use nova\plugin\corn\schedule\TaskerManager;
 use nova\plugin\corn\schedule\TaskerTime;
 use nova\plugin\orm\object\Dao;
@@ -157,11 +157,11 @@ class BookDao extends Dao
     {
         TaskerManager::del("syncBooks");
         if ($force) {
-            go(function () {
-                (new SyncBooks())->onStart();
-            });
+            go("书库同步", function () {
+                (new SyncTask())->onStart();
+            }, 600);
         } else {
-            TaskerManager::add(TaskerTime::after(300), new SyncBooks(), "syncBooks");
+            TaskerManager::add(TaskerTime::after(300), new SyncTask(), "syncBooks");
         }
 
     }
