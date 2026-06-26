@@ -64,6 +64,3 @@
 [submodule "src/app/static/components/searchInput"]
 	path = src/app/static/components/searchInput
 	url = https://github.com/NovaPHPOrgUI/searchInput
-[submodule "src/nova/plugin/browser"]
-	path = src/nova/plugin/browser
-	url = https://github.com/NovaPHPOrg/nova-browser-mcp
