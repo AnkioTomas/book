@@ -272,7 +272,7 @@ if (url) {
     const saveProgress = () => {
         if (!title || !progressSnap) return
         const {frac, spine, page, percent} = progressSnap
-        return fetch('/admin/api/book/progressUpdate', {
+        return fetch('/index/book/progressUpdate', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
             body: new URLSearchParams({
@@ -314,7 +314,7 @@ if (url) {
             await view.goToFraction(Math.min(1, Math.max(0, frac)))
 
             if (!title) return
-            const res = await fetch('/admin/api/book/progress?filename=' + encodeURIComponent(title))
+            const res = await fetch('/index/book/progress?filename=' + encodeURIComponent(title))
             const j = await res.json().catch(() => ({}))
             if (j.code !== 200 || typeof j.data !== 'number' || Number.isNaN(j.data)) return
             let f = j.data
