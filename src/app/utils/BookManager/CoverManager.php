@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace app\utils\BookManager;
 
 use app\utils\Douban;
-use nova\framework\core\Context;
 use nova\framework\core\File;
 
 class CoverManager extends BaseManager
@@ -25,36 +24,6 @@ class CoverManager extends BaseManager
 
         $path = $this->moon . DS . "Cover" . DS . $this->normalizeFilename($filename) . "_2.png";
         return $this->client->upload($file, $path);
-    }
-
-    private function listAll(): array
-    {
-        $cacheName = "cover_list";
-        $cache = Context::instance()->cache;
-
-        // 1. 同步检查逻辑：如果是 WebDAV 更新，则主动清理缓存
-        if (SyncManager::getInstance()->isWebdavNewerThanDatabase()) {
-            $cache->delete($cacheName);
-        }
-
-        // 2. 尝试从缓存获取
-        $list = $cache->get($cacheName);
-        if (is_array($list)) {
-            return $list;
-        }
-
-        // 3. 获取远程数据
-        $dirPath = $this->moon . DS . "Cover";
-        $files = $this->client->listDir($dirPath);
-
-        // 4. 处理数据并转换
-        // 使用 array_column 替代 array_map，更高效
-        $list = $files ? array_column($files, 'name') : [];
-
-        // 5. 写入缓存 (建议设置合理的过期时间，例如 3600 秒)
-        $cache->set($cacheName, $list);
-
-        return $list;
     }
 
     public function getCover(string $filename): string

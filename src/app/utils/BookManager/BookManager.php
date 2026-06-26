@@ -45,15 +45,73 @@ class BookManager extends BaseManager
             return false;
         }
     }
-    public function list(): array
+
+    /**
+     * 列出远端书库目录下所有 epub/电子书文件名。
+     *
+     * 返回 null 表示无法获取（网络/认证/超时等），调用方必须据此中止任何删除操作，
+     * 绝不能把「无法确认」当成「文件不存在」。返回空数组表示目录确实为空。
+     *
+     * @return array<string>|null
+     */
+    public function listRemoteFilenames(): ?array
+    {
+        try {
+            $files = $this->client->listDir($this->path);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $names = [];
+        foreach ($files as $f) {
+            if (!empty($f['is_dir'])) {
+                continue;
+            }
+            if (!empty($f['name'])) {
+                $names[] = $f['name'];
+            }
+        }
+        return $names;
+    }
+    /**
+     * 下载并解析远端 books.sync 元数据。
+     *
+     * 返回 null 表示无法获取（下载失败/内容损坏），与「远端确实没有书目」严格区分，
+     * 调用方据此跳过元数据比对，绝不能把「无法确认」当成「空」去覆盖。
+     * 返回空数组表示远端书目确实为空。
+     *
+     * @return array<int,array>|null
+     */
+    public function list(): ?array
     {
         $path = $this->moon . "/books.sync";
         $sync = $this->runtime . "books.sync";
-        if ($this->client->download($path, $sync)) {
-            $data = file_get_contents($sync);
-            return Json::decode(zlib_decode($data), true);
+        if (!$this->client->download($path, $sync)) {
+            return null;
         }
-        return [];
+        $raw = zlib_decode((string)file_get_contents($sync));
+        if ($raw === false) {
+            return null;
+        }
+        $decoded = Json::decode($raw, true);
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /**
+     * 获取远端 books.sync 文件的最后修改时间（秒）。
+     * 用于增量同步：远端书目未变化时跳过下载与比对。
+     * 返回 null 表示文件不存在或无法获取。
+     */
+    public function getBookListMtime(): ?int
+    {
+        $path = $this->moon . "/books.sync";
+        try {
+            $info = $this->client->getResourceInfo($path);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        $mtime = $info['mtime'] ?? 0;
+        return $mtime > 0 ? (int)$mtime : null;
     }
 
     public function delete(string $filename)
