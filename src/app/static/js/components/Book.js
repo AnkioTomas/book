@@ -115,6 +115,19 @@ class BookCard extends HTMLElement {
 
         $.emitter.emit("imageLoader",this.shadowRoot);
     }
+
+    static formatRow(row) {
+        var cover = row.coverUrl
+            ? '/proxy/' + encodeURIComponent(row.coverUrl)
+            : '/webdav/' + encodeURIComponent(row.filename || "");
+        var readAttr = row.hasReadTag ? ' read="1"' : '';
+        return '<book-card'
+            + ' cover="' + $.escapeHtml(cover) + '"'
+            + ' title="' + $.escapeHtml(row.bookName || "未命名书籍") + '"'
+            + ' author="' + $.escapeHtml(row.author || "未知作者") + '"'
+            + ' description="' + $.escapeHtml(row.description || "") + '"' + readAttr
+            + '></book-card>';
+    }
 }
 
 customElements.define('book-card', BookCard);

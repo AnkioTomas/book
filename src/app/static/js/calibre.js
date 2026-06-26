@@ -3,12 +3,12 @@ window.pageLoadFiles = [
 ];
 
 window.pageOnLoad = function (loading) {
-    $.form.manage("/admin/api/calibre", "#form");
+    $.form.manage("/index/calibre/config", "#form");
 
     $('#btnTest').on('click', function () {
         const data = $.form.get('#form');
         $('#form').showLoading('正在连接 Calibre 服务...');
-        $.request.postForm('/admin/api/calibre/test', data,
+        $.request.postForm('/index/calibre/test', data,
             function (res) {
                 $('#form').closeLoading();
                 if (res.code === 200) {
