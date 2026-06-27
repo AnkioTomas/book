@@ -3,3 +3,5 @@ composer.lock
 /src/runtime
 src/config.php
 /dist
+.idea/
+.php-cs-fixer.cache
