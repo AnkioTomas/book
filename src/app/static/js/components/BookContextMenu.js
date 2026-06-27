@@ -12,6 +12,7 @@ class BookContextMenu extends HTMLElement {
                     <mdui-menu-item id="bookCtxDownload" data-action="download" icon="download">下载</mdui-menu-item>
                     <mdui-menu-item id="bookCtxEdit" data-action="edit" icon="edit">编辑</mdui-menu-item>
                     <mdui-menu-item id="bookCtxAiIdentify" data-action="aiIdentify" icon="auto_awesome">AI 识别</mdui-menu-item>
+                    <mdui-menu-item id="bookCtxAiClassify" data-action="aiClassify" icon="label">AI 分类</mdui-menu-item>
                     <mdui-menu-item id="bookCtxDelete" data-action="delete" icon="delete">删除</mdui-menu-item>
                     <mdui-divider></mdui-divider>
                     <mdui-menu-item id="bookCtxScrape" data-action="scrape" icon="image">刮削封面</mdui-menu-item>

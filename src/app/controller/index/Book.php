@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace app\controller\index;
 
-use app\ai\BookMetadataResolver;
+use app\ai\task\MetadataFillTask;
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
+use app\database\model\BookModel;
 use app\database\model\ReadingProgressModel;
+use app\task\AiClassifyTask;
 use app\task\AiIdentifyTask;
+use app\task\CoverScrapeTask;
 use app\utils\BookManager\BookManager;
-use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\ProgressManager;
-use app\utils\BookOrganizer\Parser;
 use nova\framework\core\Context;
 use nova\framework\core\File;
 
@@ -86,12 +87,7 @@ class Book extends BaseAPIController
      */
     public function batchRead(): Response
     {
-        $rawIds = $this->request->post('ids', '[]');
-        $ids = json_decode((string)$rawIds, true);
-        if (!is_array($ids)) {
-            $ids = [];
-        }
-        $ids = array_values(array_filter(array_map('intval', $ids), static fn ($id) => $id > 0));
+        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
         if ($ids === []) {
             return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
@@ -326,17 +322,7 @@ class Book extends BaseAPIController
             return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
         }
 
-        // 更新可编辑字段
-        $editableFields = ['bookName', 'author', 'description', 'category', 'series', 'seriesNum', 'favorite', 'rate','coverUrl'];
-        foreach ($editableFields as $field) {
-            if (isset($data[$field])) {
-                $book->$field = Text::parseType($book->$field, $data[$field]);
-            }
-        }
-        if (!empty($book->coverUrl)) {
-            Context::instance()->cache->set("coverUrl/{$book->coverUrl}", true);
-        }
-
+        $this->applyEditableFields($book, $data);
         $book->update_at = time() * 1000;
 
         if (BookDao::getInstance()->updateModel($book)) {
@@ -371,7 +357,7 @@ class Book extends BaseAPIController
 
             $send('progress', '开始检索…');
 
-            $out = (new BookMetadataResolver())->resolve($bookName, $author, function (string $msg) use ($send): void {
+            $out = (new MetadataFillTask())->fill($bookName, $author, function (string $msg) use ($send): void {
                 $send('progress', $msg);
             });
 
@@ -394,22 +380,41 @@ class Book extends BaseAPIController
      */
     public function aiIdentify(): Response
     {
-        $ids = json_decode((string)$this->request->get('ids', '[]'), true);
-        $ids = is_array($ids)
-            ? array_values(array_filter(array_map('intval', $ids), fn (int $i): bool => $i > 0))
-            : [];
-
+        $ids = $this->parseIds((string)$this->request->get('ids', '[]'));
         if ($ids === []) {
             return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
-        TaskerManager::del('AI识别');
+        $key = 'AI识别_'.substr(md5(implode('', $ids)), 8, 8);
 
-        TaskerManager::add("", new AiIdentifyTask($ids), "AI识别");
+        TaskerManager::del($key);
+
+        TaskerManager::add("", new AiIdentifyTask($ids), $key);
 
         return Response::asJson([
             'code' => 200,
             'msg'  => '已提交后台 AI 识别任务（' . count($ids) . ' 本），可在任务面板查看进度',
+        ]);
+    }
+
+    /**
+     * AI 分类：让助手自动判断分类和标签并直接写库，支持单本/批量。
+     * GET /book/aiClassify?ids=[1,2,3]
+     */
+    public function aiClassify(): Response
+    {
+        $ids = $this->parseIds((string)$this->request->get('ids', '[]'));
+        if ($ids === []) {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
+        }
+
+        $key = 'AI分类_' . substr(md5(implode('', $ids)), 8, 8);
+        TaskerManager::del($key);
+        TaskerManager::add('', new AiClassifyTask($ids), $key);
+
+        return Response::asJson([
+            'code' => 200,
+            'msg'  => '已提交后台 AI 分类任务（' . count($ids) . ' 本），可在任务面板查看进度',
         ]);
     }
 
@@ -419,20 +424,88 @@ class Book extends BaseAPIController
      */
     public function delete(): Response
     {
-        $id = intval($this->request->post('id', 0));
-
-        if ($id <= 0) {
-            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
+        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
+        if ($ids === []) {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
-        $book = BookDao::getInstance()->getById($id);
-        BookManager::getInstance()->delete($book->filename);
-        if (BookDao::getInstance()->deleteById($id)) {
-            BookDao::getInstance()->syncBooks();
-            return Response::asJson(['code' => 200, 'msg' => '删除成功']);
+        $dao = BookDao::getInstance();
+        $deleted = 0;
+        foreach ($ids as $id) {
+            $book = $dao->getById($id);
+            if ($book === null) {
+                continue;
+            }
+            BookManager::getInstance()->delete($book->filename);
+            if ($dao->deleteById($id)) {
+                $deleted++;
+            }
+        }
+        $dao->syncBooks();
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => "已删除 {$deleted} 本书籍",
+            'data' => ['count' => $deleted],
+        ]);
+    }
+
+    /**
+     * 批量更新：把相同字段套到选中的多本书
+     * POST /book/batchUpdate  ids=json array, 其余为可编辑字段
+     */
+    public function batchUpdate(): Response
+    {
+        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
+        if ($ids === []) {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
-        return Response::asJson(['code' => 500, 'msg' => '删除失败']);
+        $data = $this->request->post();
+        $dao = BookDao::getInstance();
+        $updated = 0;
+        foreach ($ids as $id) {
+            $book = $dao->getById($id);
+            if ($book === null) {
+                continue;
+            }
+            $this->applyEditableFields($book, $data);
+            $book->update_at = time() * 1000;
+            if ($dao->updateModel($book)) {
+                $updated++;
+            }
+        }
+        $dao->syncBooks();
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => "已更新 {$updated} 本书籍",
+            'data' => ['count' => $updated],
+        ]);
+    }
+
+    /** 解析 ids 数组参数，过滤为正整数 */
+    private function parseIds(string $raw): array
+    {
+        $ids = json_decode($raw, true);
+        if (!is_array($ids)) {
+            return [];
+        }
+        return array_values(array_filter(array_map('intval', $ids), static fn ($id) => $id > 0));
+    }
+
+    /** 把可编辑字段从请求数据写入书籍模型 */
+    private function applyEditableFields(BookModel $book, array $data): void
+    {
+        $editableFields = ['bookName', 'author', 'description', 'category', 'series', 'seriesNum', 'favorite', 'rate', 'coverUrl'];
+        foreach ($editableFields as $field) {
+            if (isset($data[$field])) {
+                $book->$field = Text::parseType($book->$field, $data[$field]);
+            }
+        }
+        if (!empty($book->coverUrl)) {
+            Context::instance()->cache->set("coverUrl/{$book->coverUrl}", true);
+        }
     }
 
     /**
@@ -442,21 +515,9 @@ class Book extends BaseAPIController
     public function sync(): Response
     {
 
-        $cache = Context::instance()->cache;
+        BookDao::getInstance()->syncBooks(true);
 
-        $msg = $cache->get('sync-books', null);
-
-        if ($msg == 'complete') {
-            Context::instance()->cache->delete('sync-books');
-            return Response::asJson(['code' => 200, 'msg' => '同步完成']);
-        }
-
-        if ($msg == null) {
-            BookDao::getInstance()->syncBooks(true);
-            $msg = "start sync";
-        }
-
-        return Response::asJson(['code' => 201, 'msg' => $msg]);
+        return Response::asJson(['code' => 201, 'msg' => '后台同步开始']);
 
     }
 
@@ -532,37 +593,18 @@ class Book extends BaseAPIController
      */
     public function scrapeCover(): Response
     {
-        $id = intval($this->request->post('id', 0));
-        if ($id <= 0) {
-            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
+        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
+        if ($ids === []) {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
-        $book = BookDao::getInstance()->getById($id);
-        if (!$book) {
-            return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
-        }
+        TaskerManager::del('封面刮削');
+        TaskerManager::add('', new CoverScrapeTask($ids), '封面刮削');
 
-        // 下载书籍到临时目录
-        $tempPath = RUNTIME_PATH . DS . 'temp' . DS . $book->filename;
-        if (!BookManager::getInstance()->downloadBook($book->filename, $tempPath)) {
-            return Response::asJson(['code' => 500, 'msg' => '下载书籍失败']);
-        }
-
-        // 提取封面
-        $coverPath = Parser::cover($tempPath, $book);
-
-        if (empty($coverPath)) {
-            File::del($tempPath);
-            return Response::asJson(['code' => 500, 'msg' => '提取封面失败']);
-        }
-
-        // 上传封面
-        if (!CoverManager::getInstance()->uploadCover($coverPath, $book->filename)) {
-            File::del($tempPath);
-            return Response::asJson(['code' => 500, 'msg' => '上传封面失败']);
-        }
-        File::del($tempPath);
-        return Response::asJson(['code' => 200, 'msg' => '刮削成功']);
+        return Response::asJson([
+            'code' => 200,
+            'msg'  => '已提交后台封面刮削任务（' . count($ids) . ' 本），可在任务面板查看进度',
+        ]);
     }
 
 }

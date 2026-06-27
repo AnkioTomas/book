@@ -111,6 +111,7 @@
                 <mdui-menu>
                     <mdui-menu-item id="btnBatchEdit" icon="edit_note">批量编辑</mdui-menu-item>
                     <mdui-menu-item id="btnBatchAiIdentify" icon="auto_awesome">AI 识别</mdui-menu-item>
+                    <mdui-menu-item id="btnBatchAiClassify" icon="label">AI 分类</mdui-menu-item>
                     <mdui-menu-item id="btnBatchDelete" icon="delete_sweep">批量删除</mdui-menu-item>
                     <mdui-menu-item id="btnBatchScrape" icon="image">批量刮削封面</mdui-menu-item>
                     <mdui-menu-item id="btnBatchMarkRead" icon="task_alt">批量标记已读</mdui-menu-item>

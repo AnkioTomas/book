@@ -28,26 +28,9 @@ window.pageOnLoad = function () {
     var $bookContextMenu = $('#bookContextMenu');
     var $doubanPicker = $('#doubanBookPicker');
     var $dragUpload = $('drag-upload');
-    var syncTimer = null;
-    var isDestroyed = false;
     var onContextAction = null;
     var aiSource = null;
-    var aiLoadingEl = null;
 
-    // 用 loading.js 在指定容器上显示/更新/关闭遮罩
-    function aiLoadingShow(el, text) {
-        aiLoadingEl = el;
-        $(el).showLoading(text || 'AI 工作中…');
-    }
-
-    function aiLoadingUpdate(text) {
-        if (aiLoadingEl) $(aiLoadingEl).updateLoading(text || 'AI 工作中…');
-    }
-
-    function aiStop() {
-        if (aiSource) { aiSource.close(); aiSource = null; }
-        if (aiLoadingEl) { $(aiLoadingEl).closeLoading(); aiLoadingEl = null; }
-    }
 
     // AI 识别：提交后台任务，AI 自动检索并直接写库，进度在任务面板查看
     function aiIdentifyRun(books) {
@@ -65,15 +48,30 @@ window.pageOnLoad = function () {
         });
     }
 
+    // AI 分类：提交后台任务，AI 自动判断分类和标签并写库
+    function aiClassifyRun(books) {
+        if (!books || !books.length) return;
+        var ids = books.map(function (b) { return b.id; });
+
+        $.request.get('/index/book/aiClassify', { ids: JSON.stringify(ids) }, function (res) {
+            if (res.code === 200) {
+                $.toaster.success(res.msg || '已提交后台 AI 分类任务');
+            } else {
+                $.toaster.error(res.msg || 'AI 分类提交失败');
+            }
+        }, function () {
+            $.toaster.error('AI 分类提交失败');
+        });
+    }
+
     function reload() {
-        if (isDestroyed) return;
         cardView.reload($.url.getAllParams(), true);
     }
 
     function requireSelected(warnMsg) {
         var selected = cardView.getSelectedRows();
         if (!selected || !selected.length) {
-            $.toaster.warning(warnMsg);
+            $.toaster.warn(warnMsg);
             return null;
         }
         return selected;
@@ -81,10 +79,6 @@ window.pageOnLoad = function () {
 
     function confirm(msg, title, onYes) {
         $.layer.confirm({ msg: msg, title: title, yes: onYes, no: function () {} });
-    }
-
-    function filterBookFiles(files) {
-        return DragUpload.filterFiles(files, BOOK_EXTENSIONS);
     }
 
     function openReader(row) {
@@ -101,83 +95,40 @@ window.pageOnLoad = function () {
         );
     }
 
-    function runSequential(books, options) {
-        var index = 0, ok = 0, fail = 0, total = books.length;
-
-        function next() {
-            if (index >= total) {
-                $("body").closeLoading();
-                options.onDone(ok, fail);
-                cardView.reload(true);
-                return;
-            }
-            if (options.onProgress) options.onProgress(index + 1, total);
-            options.request(books[index], function (success) {
-                success ? ok++ : fail++;
-                index++;
-                next();
-            });
-        }
-
-        $("body").showLoading(options.loadingText);
-        next();
+    function bookIds(books) {
+        return JSON.stringify(books.map(function (b) { return b.id; }));
     }
 
-    function sequentialPost(books, opts) {
-        runSequential(books, {
-            loadingText: opts.loadingText,
-            onProgress: opts.onProgress,
-            request: function (book, done) {
-                $.request.postForm(opts.url, opts.data(book), function (res) {
-                    done(res.code === 200);
-                }, function () { done(false); });
-            },
-            onDone: function (ok, fail) {
-                $.toaster[fail ? 'warn' : 'success'](opts.doneText(ok, fail));
+    // 批量请求：一次提交 ids，带 loading，完成后弹提示并刷新
+    function batchRequest(url, data, loadingText) {
+        $("body").showLoading(loadingText);
+        $.request.postForm(url, data, function (res) {
+            $("body").closeLoading();
+            if (res.code === 200) {
+                $.toaster.success(res.msg);
+                cardView.reload();
+            } else {
+                $.toaster.error(res.msg || '操作失败');
             }
+        }, function () {
+            $("body").closeLoading();
+            $.toaster.error('请求失败');
         });
     }
 
     function batchDelete(books) {
-        sequentialPost(books, {
-            url: '/index/book/delete',
-            data: function (book) { return { id: book.id }; },
-            loadingText: '正在删除 ' + books.length + ' 本书籍...',
-            doneText: function (ok, fail) { return '删除完成：' + ok + ' 成功，' + fail + ' 失败'; }
-        });
+        batchRequest('/index/book/delete', { ids: bookIds(books) }, '正在删除 ' + books.length + ' 本书籍...');
     }
 
+    // 刮削是慢 I/O，走后台任务，进度在任务面板查看
     function batchScrape(books) {
-        sequentialPost(books, {
-            url: '/index/book/scrapeCover',
-            data: function (book) { return { id: book.id }; },
-            loadingText: '正在刮削封面 (0/' + books.length + ')...',
-            onProgress: function (current, total) {
-                $("body").showLoading('正在刮削封面 (' + current + '/' + total + ')...');
-            },
-            doneText: function (ok, fail) { return '刮削完成：' + ok + ' 成功，' + fail + ' 失败'; }
+        $.request.postForm('/index/book/scrapeCover', { ids: bookIds(books) }, function (res) {
+            res.code === 200 ? $.toaster.success(res.msg) : $.toaster.error(res.msg || '刮削提交失败');
         });
     }
 
     function batchReadState(books, read) {
-        $("body").showLoading(read ? '正在标记已读…' : '正在标记未读…');
-        $.request.postForm(
-            '/index/book/batchRead',
-            { ids: JSON.stringify(books.map(function (b) { return b.id; })), read: read ? '1' : '0' },
-            function (res) {
-                $("body").closeLoading();
-                if (res.code === 200) {
-                    $.toaster.success(res.msg);
-                    cardView.reload(true);
-                } else {
-                    $.toaster.error(res.msg || '操作失败');
-                }
-            },
-            function () {
-                $("body").closeLoading();
-                $.toaster.error('请求失败');
-            }
-        );
+        batchRequest('/index/book/batchRead', { ids: bookIds(books), read: read ? '1' : '0' }, read ? '正在标记已读…' : '正在标记未读…');
     }
 
     function uploadBatch(files) {
@@ -192,12 +143,10 @@ window.pageOnLoad = function () {
 
         for (var i = 0; i < files.length; i++) {
             (function (file) {
-                var config = {
+                $.file._uploadWithChunks(file, {
                     uploadEndpoint: '/index/upload/upload',
                     uploadData: {},
-                    chunked: true,
                     chunkSize: 1024 * 1024 * 2,
-                    maxDirectSize: 10 * 1024 * 1024,
                     onSuccess: function (res) {
                         $.request.postForm("/index/upload/publish", {
                             name: res.data,
@@ -208,12 +157,7 @@ window.pageOnLoad = function () {
                         $.toaster.error(file.name + ': ' + (msg || '上传失败'));
                         onOneDone();
                     }
-                };
-                if (config.chunked || file.size > config.maxDirectSize) {
-                    $.file._uploadWithChunks(file, config);
-                } else {
-                    $.file._uploadDirect(file, config);
-                }
+                });
             })(files[i]);
         }
     }
@@ -226,7 +170,7 @@ window.pageOnLoad = function () {
         var actions = {
             download: function (book) {
                 var filename = String(book.filename || '').trim();
-                if (!filename) return $.toaster.warning('文件名缺失，无法下载');
+                if (!filename) return $.toaster.warn('文件名缺失，无法下载');
                 window.open('/index/book/file?filename=' + encodeURIComponent(filename), '_blank', 'noopener');
             },
             edit: function (book) {
@@ -240,7 +184,8 @@ window.pageOnLoad = function () {
             },
             scrape: function (book) { batchScrape([book]); },
             toggleRead: function (book) { batchReadState([book], !book.hasReadTag); },
-            aiIdentify: function (book) { aiIdentifyRun([book]); }
+            aiIdentify: function (book) { aiIdentifyRun([book]); },
+            aiClassify: function (book) { aiClassifyRun([book]); }
         };
 
         onContextAction = function (e) {
@@ -252,72 +197,18 @@ window.pageOnLoad = function () {
     }
 
     function syncWebdav() {
-        if (isDestroyed) return;
         $.request.postForm('/index/book/sync', {}, function (res) {
-            if (isDestroyed) return;
             if (res.code === 200) {
                 $.toaster.success(res.msg);
-                cardView.reload();
             } else if (res.code === 201) {
                 $.toaster.success(res.msg);
-                if (syncTimer) clearTimeout(syncTimer);
-                syncTimer = setTimeout(syncWebdav, 2000);
             } else {
                 $.toaster.error(res.msg);
             }
         });
     }
 
-    function initFavoriteInput() {
-        var el = document.getElementById('editFavorite');
-        if (!el || el._favoriteBound) return;
-        el._favoriteBound = true;
-        el.renderItem = function (row) { return { key: String(row), value: String(row) }; };
-        el.addEventListener('input', function () { el.value = el.text; });
-    }
 
-    function initAutocomplete() {
-        [
-            { inputId: 'editSeries', dropdownId: 'seriesDropdown', listId: 'seriesList', options: filterOptions.groupNames || [] }
-        ].forEach(function (field) {
-            var $input = $('#' + field.inputId);
-            var $dropdown = $('#' + field.dropdownId);
-            var $list = $('#' + field.listId);
-            if (!$input.length || !$dropdown.length || !$list.length || $input.data('autocompleteInit')) return;
-            $input.data('autocompleteInit', true);
-
-            function renderList(filterText) {
-                var filtered = field.options.filter(function (opt) {
-                    return opt.toLowerCase().includes((filterText || '').toLowerCase());
-                });
-                if (!filtered.length) {
-                    $list.html('<mdui-list-item disabled>无匹配选项</mdui-list-item>');
-                    return;
-                }
-                $list.html(filtered.map(function (opt) {
-                    return '<mdui-list-item data-value="' + $.escapeHtml(opt) + '">' + $.escapeHtml(opt) + '</mdui-list-item>';
-                }).join(''));
-            }
-
-            $list.on('click', '[data-value]', function () {
-                $input.val($(this).attr('data-value'));
-                $dropdown[0].open = false;
-            });
-
-            renderList();
-            $input.on('input', function () { renderList($input.val()); });
-            var endIcon = $input[0].shadowRoot && $input[0].shadowRoot.querySelector('[part="end-icon"]');
-            if (endIcon) {
-                $(endIcon).on('click', function (e) {
-                    e.stopPropagation();
-                    if (field.options.length) {
-                        renderList($input.val());
-                        $dropdown[0].open = !$dropdown[0].open;
-                    }
-                });
-            }
-        });
-    }
 
     function bindEvents() {
         var throttledSearch = $.throttle(reload, 1000);
@@ -337,7 +228,7 @@ window.pageOnLoad = function () {
             input.multiple = true;
             input.accept = BOOK_EXTENSIONS.join(',');
             input.onchange = function (e) {
-                if (e.target.files && e.target.files.length) uploadBatch(filterBookFiles(e.target.files));
+                if (e.target.files && e.target.files.length) uploadBatch(DragUpload.filterFiles(e.target.files, BOOK_EXTENSIONS));
             };
             input.click();
         });
@@ -375,6 +266,14 @@ window.pageOnLoad = function () {
             });
         });
 
+        $('#btnBatchAiClassify').on('click', function () {
+            var selected = requireSelected('请先选择要分类的书籍');
+            if (!selected) return;
+            confirm('确定让 AI 自动判断选中的 ' + selected.length + ' 本书籍的分类和标签吗？此操作会直接保存。', 'AI 分类', function () {
+                aiClassifyRun(selected);
+            });
+        });
+
         $('#btnBatchDelete').on('click', function () {
             var selected = requireSelected('请先选择要删除的书籍');
             if (!selected) return;
@@ -404,7 +303,7 @@ window.pageOnLoad = function () {
             $.toaster.success('已填充书籍信息');
         });
 
-        editDialog.submit('/index/book/update', function () { cardView.reload(); });
+        editDialog.submit('/index/book/update', function () { cardView.reload(false); });
 
         batchDialog.submit(null, function (formData) {
             var selected = requireSelected('没有选中的书籍');
@@ -419,16 +318,8 @@ window.pageOnLoad = function () {
             }
 
             batchDialog.close();
-            sequentialPost(selected, {
-                url: '/index/book/update',
-                data: function (book) { return Object.assign({}, book, batchData); },
-                loadingText: '正在批量更新 ' + selected.length + ' 本书籍...',
-                doneText: function (ok, fail) {
-                    return fail
-                        ? '批量更新完成：' + ok + ' 本成功，' + fail + ' 失败'
-                        : '批量更新完成：' + ok + ' 本成功';
-                }
-            });
+            batchData.ids = bookIds(selected);
+            batchRequest('/index/book/batchUpdate', batchData, '正在批量更新 ' + selected.length + ' 本书籍...');
         });
 
         $(editDialog).on("click", "#douban", function () {
@@ -449,8 +340,7 @@ window.pageOnLoad = function () {
             var bookName = $("#bookName").val().trim();
             if (!bookName) return $.toaster.error('请先输入书名');
 
-            aiStop();
-            aiLoadingShow(editDialog, 'AI 准备中…');
+            $(editDialog).showLoading('AI 准备中…');
 
             aiSource = $.request.sse('/index/book/aiFill', {
                 params: {
@@ -462,10 +352,11 @@ window.pageOnLoad = function () {
                     chunk: function (data) {
                         if (!data || typeof data !== 'object') return;
                         if (data.type === 'error') {
-                            aiStop();
+                            aiSource.close();
+                            $(editDialog).closeLoading();
                             $.toaster.error(data.text || 'AI 填充失败');
                         } else {
-                            aiLoadingUpdate(data.text || 'AI 工作中…');
+                            $(editDialog).updateLoading(data.text || 'AI 工作中…');
                         }
                     },
                     result: function (data) {
@@ -474,11 +365,13 @@ window.pageOnLoad = function () {
                             $.toaster.success('AI 已填充，请核对后保存');
                         }
                     },
-                    done: aiStop
+                    done: function () {
+                        $(editDialog).closeLoading();
+                    }
                 },
                 onError: function () {
                     if (aiSource) {
-                        aiStop();
+                        $(editDialog).closeLoading();
                         $.toaster.error('AI 连接中断');
                     }
                 }
@@ -526,16 +419,12 @@ window.pageOnLoad = function () {
 
         initBookContextMenu();
         bindEvents();
-        initAutocomplete();
-        initFavoriteInput();
     });
 
     $.emitter.on('pjax:prevented', reload);
 
     window.pageOnUnLoad = function () {
-        isDestroyed = true;
-        aiStop();
-        if (syncTimer) clearTimeout(syncTimer);
+        if (aiSource) { aiSource.close(); aiSource = null; }
         if (onContextAction) $bookContextMenu.off('action', onContextAction);
         if (cardView) cardView.destroy();
         if ($bookContextMenu.length) $bookContextMenu[0].destroy();
