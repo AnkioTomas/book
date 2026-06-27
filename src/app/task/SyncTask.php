@@ -43,6 +43,7 @@ class SyncTask extends TaskerAbstract
 
     public function onStart(): void
     {
+        TaskLogger::log('SyncTask onStart 进入');
         $cache = Context::instance()->cache;
         $lastMs = (int)$cache->get(self::STATE_LAST_MS, 0);
         $savedMetaMtime = (int)$cache->get(self::STATE_META_MTIME, 0);
@@ -50,6 +51,12 @@ class SyncTask extends TaskerAbstract
         // 本次同步的时间基准在开头定格：syncProgress 期间产生的本地新变更，
         // 其 update_at 落在 [nowMs, 结束] 之间，下次同步仍 > lastMs，不会被漏掉。
         $nowMs = time() * 1000;
+        TaskLogger::log(sprintf(
+            '增量基准：nowMs=%d，lastMs(上传水位)=%d，meta水位=%d',
+            $nowMs,
+            $lastMs,
+            $savedMetaMtime
+        ));
 
         $bookManager = BookManager::getInstance();
 
@@ -65,8 +72,15 @@ class SyncTask extends TaskerAbstract
         $fileSet = array_fill_keys($remoteFiles, true);
 
         // 2. 远端 books.sync 文件 mtime，判断远端书目是否变化（增量）。
+        TaskLogger::log('读取远端 books.sync mtime…');
         $metaMtime = $bookManager->getBookListMtime();
         $remoteMetaChanged = $metaMtime !== null && $metaMtime > $savedMetaMtime;
+        TaskLogger::log(sprintf(
+            '远端 books.sync mtime=%s，水位=%d → 远端书目变化=%s',
+            $metaMtime === null ? 'null(不可达)' : (string)$metaMtime,
+            $savedMetaMtime,
+            $remoteMetaChanged ? '是' : '否'
+        ));
 
         // 3. 本地书目。
         /** @var BookModel[] $localBooks */
@@ -92,6 +106,7 @@ class SyncTask extends TaskerAbstract
                 if (isset($fileSet[$filename])) {
                     continue;
                 }
+                TaskLogger::log('删除本地（远端已移除）：' . $filename);
                 $this->deleteLocal($book);
                 unset($localMap[$filename]);
                 $dirty = true;
@@ -111,9 +126,12 @@ class SyncTask extends TaskerAbstract
                 break;
             }
         }
+        TaskLogger::log('本地缺失远端文件：' . ($missing ? '有' : '无')
+            . ' → 是否下载 books.sync=' . (($remoteMetaChanged || $missing) ? '是' : '否'));
 
         $metaMap = [];
         if ($remoteMetaChanged || $missing) {
+            TaskLogger::log('下载远端 books.sync 做元数据比对…');
             $remoteList = $bookManager->list();
             if ($remoteList === null) {
                 TaskLogger::log('无法下载远端书目文件，跳过元数据比对（不影响裸文件补全）', 'warn');
@@ -124,6 +142,7 @@ class SyncTask extends TaskerAbstract
                         $metaMap[$fn] = $entry;
                     }
                 }
+                TaskLogger::log('远端书目解析 ' . count($metaMap) . ' 条元数据');
             }
         }
 
@@ -156,20 +175,32 @@ class SyncTask extends TaskerAbstract
 
         // 6. 本地新增/编辑（update_at > lastMs）需要推送到远端 books.sync。
         if (!$dirty) {
+            $maxUpdateAt = 0;
             foreach ($localMap as $book) {
+                if ($book->update_at > $maxUpdateAt) {
+                    $maxUpdateAt = $book->update_at;
+                }
                 if ($book->update_at > $lastMs) {
                     $dirty = true;
-                    break;
                 }
             }
+            TaskLogger::log(sprintf(
+                '本地编辑检测：max(update_at)=%d，lastMs=%d → 待推送=%s',
+                $maxUpdateAt,
+                $lastMs,
+                $dirty ? '有' : '无'
+            ));
         }
+        TaskLogger::log('回写判定：dirty=' . ($dirty ? '是' : '否')
+            . '，远端书目变化=' . ($remoteMetaChanged ? '是' : '否'));
 
-        // 7. 进度增量同步（双向）。
+        // 7. 进度增量同步（双向）。逐文件用远端 mtime 当版本号，无全局水位。
         TaskLogger::log('同步阅读进度…');
         [$progressDown, $progressUp] = $this->syncProgress(array_keys($localMap), $lastMs);
         TaskLogger::log('进度：下载 ' . $progressDown . ' 条，上传 ' . $progressUp . ' 条');
 
         // 8. 封面补传（沿用：本地标记过需要上传封面的书）。
+        TaskLogger::log('检查封面补传…');
         $covers = $this->syncCovers($localMap, $cache);
         TaskLogger::log('封面补传 ' . $covers . ' 张');
 
@@ -199,6 +230,7 @@ class SyncTask extends TaskerAbstract
 
         // 10. 更新增量状态。回写失败时不推进水位线，让本地变更在下一轮重新参与回写。
         if (!$writeOk) {
+            TaskLogger::log('回写未成功，本轮不推进 lastMs/meta 水位（下次重试）', 'warn');
             return;
         }
         // lastMs 用本轮开头定格的 nowMs，消除 syncProgress 期间的丢更新窗口。
@@ -207,8 +239,10 @@ class SyncTask extends TaskerAbstract
         if ($dirty || $remoteMetaChanged) {
             $newMeta = $bookManager->getBookListMtime();
             $cache->set(self::STATE_META_MTIME, $newMeta ?? $metaMtime ?? 0, 0);
+            TaskLogger::log(sprintf('推进水位：lastMs=%d，meta水位=%d', $nowMs, $newMeta ?? $metaMtime ?? 0));
         } else {
             $cache->set(self::STATE_META_MTIME, $metaMtime ?? $savedMetaMtime, 0);
+            TaskLogger::log(sprintf('推进水位：lastMs=%d，meta水位=%d（沿用）', $nowMs, $metaMtime ?? $savedMetaMtime));
         }
     }
 
@@ -248,50 +282,97 @@ class SyncTask extends TaskerAbstract
     }
 
     /**
-     * 进度增量同步：仅处理变化的 .po（远端 mtime 新于上次同步、或本地阅读时间新于上次同步）。
+     * 进度增量同步（双向）。
+     *
+     * 版本权威是文件 mtime，而非进度串里的 ts —— 实测移动端写 .po 时不更新串内 ts，
+     * 只刷新文件 mtime；用 ts 仲裁会永久平局漏下载。统一规则：
+     *   - 本地 timestamp 字段 = 该进度的「版本时刻(毫秒)」（本地阅读=阅读时刻；远端下载=mtime*1000）。
+     *   - 下载：远端 mtime*1000 > 本地 timestamp 即拉取，raw 存远端原串（保留真实位置）。
+     *   - 上传：本地 timestamp > 远端 mtime*1000 即上传 raw（保留各端契约串）。
+     * 逐文件比对，无全局水位，避免「处理过未入库却推高水位」造成的自锁。
      *
      * @param  string[]           $filenames 当前保留的书籍文件名
+     * @param  int                $lastMs    本地上传水位（毫秒，本地时钟）
      * @return array{0:int,1:int} [下载条数, 上传条数]
      */
     private function syncProgress(array $filenames, int $lastMs): array
     {
         $kept = array_fill_keys($filenames, true);
         $progressManager = ProgressManager::getInstance();
+        TaskLogger::log('列举远端进度目录(.po)…');
         $poMap = $progressManager->listRemoteProgress();
+        if ($poMap === null) {
+            TaskLogger::log('无法列出远端进度目录（网络/认证失败），本轮跳过进度下载', 'warn');
+        } else {
+            TaskLogger::log('远端进度 ' . count($poMap) . ' 个');
+        }
 
         $down = 0;
         $up = 0;
+        // 本轮各 .po 的远端版本(mtime*1000)，供上传方向仲裁。
+        $remoteVer = [];
 
-        // 远端 → 本地：仅下载 mtime 更新的 .po。
+        $skipNotInBooks = 0;
+        $skipNotNewer = 0;
+        $skipEmpty = 0;
+
+        // 远端 → 本地：远端 mtime*1000 比本地 timestamp 新才下载。
         if ($poMap !== null) {
             foreach ($poMap as $filename => $mtimeSec) {
-                if (!isset($kept[$filename]) || $mtimeSec * 1000 <= $lastMs) {
+                if (!isset($kept[$filename])) {
+                    $skipNotInBooks++;
                     continue;
                 }
+                $remoteVerMs = $mtimeSec * 1000;
+                $remoteVer[$filename] = $remoteVerMs;
+
+                $local = ReadingProgressDao::getInstance()->getByFilename($filename);
+                $localTs = $local === null ? 0 : $local->timestamp;
+                if ($remoteVerMs <= $localTs) {
+                    $skipNotNewer++;
+                    continue;
+                }
+
+                TaskLogger::log('拉取远端进度 ' . $filename . '（mtime=' . $mtimeSec . '）…');
                 $raw = $progressManager->getProgressText($filename);
                 if (!$raw) {
+                    $skipEmpty++;
+                    TaskLogger::log('  下载为空/失败，跳过', 'warn');
                     continue;
                 }
+
                 $remote = ReadingProgressModel::fromString($raw);
                 $remote->filename = $filename;
-                $local = ReadingProgressDao::getInstance()->getByFilename($filename);
-                if ($local === null || $remote->timestamp > $local->timestamp) {
-                    ReadingProgressDao::getInstance()->insertModel($remote, true);
-                    $down++;
-                }
+                // 版本时刻用文件 mtime（毫秒），可靠且单调；raw 保留远端原串。
+                $remote->timestamp = $remoteVerMs;
+                ReadingProgressDao::getInstance()->insertModel($remote, true);
+                $down++;
+                TaskLogger::log(sprintf('  入库：远端mtime*1000=%d > 本地ts=%d，位置=%s', $remoteVerMs, $localTs, $remote->raw));
             }
+            TaskLogger::log(sprintf(
+                '进度下载汇总：入库 %d，不在书目 %d，远端不更新 %d，空内容 %d',
+                $down,
+                $skipNotInBooks,
+                $skipNotNewer,
+                $skipEmpty
+            ));
         }
 
-        // 本地 → 远端：仅上传上次同步后有新阅读的进度。
+        // 本地 → 远端：本地版本比远端 mtime*1000 新才上传，发送 raw 保留原始契约串。
         $localNew = ReadingProgressDao::getInstance()->getUpdatedSince($lastMs);
+        TaskLogger::log(sprintf('本地待上传候选 %d 条（timestamp > lastMs=%d）', count($localNew), $lastMs));
         foreach ($localNew as $p) {
             if (!isset($kept[$p->filename])) {
                 continue;
             }
-            $remoteMs = isset($poMap[$p->filename]) ? $poMap[$p->filename] * 1000 : 0;
-            if ($p->timestamp > $remoteMs) {
-                if ($progressManager->uploadProgressText($p->filename, $p->toString())) {
+            $remoteVerMs = $remoteVer[$p->filename] ?? 0;
+            if ($p->timestamp > $remoteVerMs) {
+                $payload = $p->raw !== '' ? $p->raw : $p->toString();
+                TaskLogger::log(sprintf('上传进度 %s（本地ts=%d > 远端mtime*1000=%d）…', $p->filename, $p->timestamp, $remoteVerMs));
+                if ($progressManager->uploadProgressText($p->filename, $payload)) {
                     $up++;
+                } else {
+                    TaskLogger::log('  上传失败', 'warn');
                 }
             }
         }
@@ -313,13 +394,17 @@ class SyncTask extends TaskerAbstract
                 continue;
             }
             try {
+                TaskLogger::log('补传封面 ' . $book->filename . '（下载豆瓣→上传 WebDAV）…');
                 $file = Douban::download($book->coverUrl);
                 if ($file && CoverManager::getInstance()->uploadCover($file, $book->filename)) {
                     $cache->delete("coverUrl/{$book->coverUrl}");
                     $count++;
+                } else {
+                    TaskLogger::log('  封面下载或上传失败', 'warn');
                 }
             } catch (Throwable $e) {
                 Logger::warning('[SyncTask] 封面上传失败 ' . $book->filename . ': ' . $e->getMessage());
+                TaskLogger::log('  封面异常：' . $e->getMessage(), 'warn');
             }
         }
         return $count;
@@ -343,12 +428,14 @@ class SyncTask extends TaskerAbstract
 
     public function onStop(): void
     {
+        TaskLogger::log('SyncTask onStop（任务结束回调）');
         Context::instance()->cache->set('sync-books', 'complete');
     }
 
     public function onAbort(Throwable $e): void
     {
         Logger::error('[SyncTask] 同步异常中止: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        TaskLogger::log('SyncTask 异常中止：' . $e->getMessage(), 'error');
         Context::instance()->cache->set('sync-books', 'complete');
     }
 }
