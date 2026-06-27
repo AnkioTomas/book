@@ -28,8 +28,8 @@ use Throwable;
  * - 进度仲裁复用 .po 串内的 ts 与本地 timestamp，新者胜。
  * - 增量：远端 books.sync 文件 mtime 未变则跳过远端书目处理；进度仅下载 mtime 比上次同步更新的 .po；
  *   仅在本地或远端确有变化时才回写 books.sync。
- * - books.sync / .po 为移动端共享契约；写入完整 BookModel 字段（groupBooks 为数组、series/seriesNum 独立），
- *   仅本地仲裁用的 update_at 不写入。
+ * - books.sync / .po 为移动端共享契约；写入完整 BookModel 字段（groupBooks 为 JSON 数组，
+ *   系列信息以 <系列>#编号# 前缀编码在 category 中），仅本地仲裁用的 update_at 不写入。
  */
 class SyncTask extends TaskerAbstract
 {
@@ -174,6 +174,9 @@ class SyncTask extends TaskerAbstract
         TaskLogger::log('封面补传 ' . $covers . ' 张');
 
         // 9. 回写 books.sync —— 仅在确有变化时（增量）。
+        // writeOk 门控增量水位线推进：上传没成功就绝不能把本地变更标记为「已同步」，
+        // 否则 lastMs 推进后这些变更 update_at <= lastMs，将被永久跳过并丢失。
+        $writeOk = true;
         if ($dirty || $remoteMetaChanged) {
             TaskLogger::log('回写 books.sync（' . count($localMap) . ' 条）');
             $payload = [];
@@ -181,16 +184,24 @@ class SyncTask extends TaskerAbstract
                 $payload[] = $this->toRemoteEntry($book);
             }
             try {
-                $bookManager->updateBookList($payload);
+                $writeOk = $bookManager->updateBookList($payload);
             } catch (Throwable $e) {
+                $writeOk = false;
                 Logger::error('[SyncTask] 回写 books.sync 失败: ' . $e->getMessage());
                 TaskLogger::log('回写 books.sync 失败: ' . $e->getMessage(), 'error');
+            }
+            if (!$writeOk) {
+                TaskLogger::log('回写 books.sync 上传未成功，保留本地变更，下次重试', 'warn');
             }
         } else {
             TaskLogger::log('无变化，跳过回写');
         }
 
-        // 10. 更新增量状态。lastMs 用本轮开头定格的 nowMs，消除 syncProgress 期间的丢更新窗口。
+        // 10. 更新增量状态。回写失败时不推进水位线，让本地变更在下一轮重新参与回写。
+        if (!$writeOk) {
+            return;
+        }
+        // lastMs 用本轮开头定格的 nowMs，消除 syncProgress 期间的丢更新窗口。
         $cache->set(self::STATE_LAST_MS, $nowMs, 0);
         // books.sync 的 mtime：回写过才重新获取（远端已变），否则沿用本轮开头读到的值，省一次远端往返。
         if ($dirty || $remoteMetaChanged) {
@@ -216,6 +227,7 @@ class SyncTask extends TaskerAbstract
     private function pullRemote(array $entry): BookModel
     {
         $book = new BookModel($entry);
+        $book->splitCategory2Series();
         $book->update_at = 0; // 来自远端，标记为本地未修改
         BookDao::getInstance()->insertModel($book, true);
         return $book;
@@ -323,6 +335,7 @@ class SyncTask extends TaskerAbstract
      */
     private function toRemoteEntry(BookModel $book): array
     {
+        $book->pushSeries2Category();
         $entry = $book->toArray(false);
         unset($entry['update_at']);
         return $entry;
