@@ -25,9 +25,6 @@
 [submodule "src/nova/plugin/device"]
     path = src/nova/plugin/device
     url = https://github.com/NovaPHPOrg/nova-device
-[submodule "src/nova/plugin/ip"]
-    path = src/nova/plugin/ip
-    url = https://github.com/NovaPHPOrg/nova-ip
 [submodule "src/nova/plugin/orm"]
     path = src/nova/plugin/orm
     url = https://github.com/NovaPHPOrg/nova-orm
