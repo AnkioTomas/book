@@ -289,7 +289,8 @@ framework/utils/Request.js,
 framework/theme/ThemeSwitcher.js,
 framework/language/NodeUtils.js,
 framework/language/TranslateUtils.js,
-framework/language/Language.js
+framework/language/Language.js,
+framework/utils/Layer.js
 &type=js&v={$__v}"></script>
 <script>
     (function () {
