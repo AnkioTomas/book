@@ -93,19 +93,33 @@
 
 ---
 
+## 部署教程
+
+按你的环境选择对应文档（**二选一**）：
+
+| 环境 | 文档 | 说明 |
+| --- | --- | --- |
+| Windows 本机 / Windows 服务器 | [phpEnv 安装教程](docs/install-phpenv.md) | 从 [phpenv.cn](https://www.phpenv.cn/download.html) 下载集成环境 |
+| Linux 服务器 | [1Panel 安装教程](docs/install-1panel.md) | 通过 1Panel 面板创建 PHP 运行环境与网站 |
+| Linux 服务器 | [宝塔面板安装教程](docs/install-baota.md) | 通过宝塔面板（BT Panel）部署 LNMP 与网站 |
+
+下面「通用安装步骤」适用于 **已具备 PHP 8.3 + MySQL + Nginx/Apache** 的环境（手动 LNMP、其他面板等也可参考）。
+
+---
+
 ## 部署形态
 
-本系统是一个普通 PHP 项目，**核心服务不强制 Docker**，但配套依赖建议容器化：
+本系统是一个普通 PHP 项目，**核心服务不强制 Docker**，但配套依赖可选容器化：
 
 ### 必需
 
-| 服务 | 用途 | 推荐镜像 |
-| --- | --- | --- |
-| MySQL / MariaDB | 业务数据库 | `mysql:8.0` 或 `mariadb:11` |
-| PHP-FPM | 运行 PHP 8.3 | `php:8.3-fpm` |
-| Nginx | 静态资源 + 反向代理到 PHP-FPM | `nginx:alpine` |
+| 服务 | 用途 |
+| --- | --- |
+| MySQL / MariaDB | 业务数据库 |
+| PHP >= 8.3 | 运行后端 |
+| Nginx / Apache | Web 服务器，需 URL 重写 |
 
-> 用 1Panel / 宝塔 / Docker Compose 直接装现成 LNMP 也可以，本质就是一个 PHP 8.3 + MySQL 的环境。
+> 用 phpEnv、1Panel、宝塔等面板部署均可，本质就是 PHP 8.3 + MySQL 环境。详见上方部署教程。
 
 ### 可选
 
@@ -126,7 +140,7 @@
 
 ---
 
-## 安装步骤
+## 通用安装步骤
 
 ### 1. 拉代码
 
@@ -316,7 +330,7 @@ server {
 - 检查网络是否能访问 AI 服务商的 API 地址
 
 **数据库连不上：**
-- Docker 部署时 `db.host` 必须是容器名（如 `mysql`），不能写 `localhost`
+- 主机名以面板/环境显示为准（phpEnv 本机常用 `127.0.0.1`；1Panel 容器化 MySQL 可能是 `mysql` 或 `127.0.0.1`）
 - 确认账号有 `book` 库的全部权限
 
 ---
