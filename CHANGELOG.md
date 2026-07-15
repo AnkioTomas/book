@@ -1,5 +1,14 @@
 # 更新日志
 
+## [1.0.6] - 2026-07-11
+
+### 修复
+
+- 修复 Windows 部署下 `/static/bundle` 合并 JS 时，`realpath()` 返回的反斜杠路径被写入 `loadedResources` 字符串，导致 `\utils` 等片段触发 `Invalid Unicode escape sequence`、安装页与前端脚本整体加载失败的问题
+- 修复 bundle 注入的 `loadedResources` 键与 `Loader.js` URL 路径格式不一致（`\theme` → `\t` 等转义），导致资源缓存键静默失效、重复加载的问题
+
+---
+
 ## [1.0.5] - 2026-06-27
 
 ### 新功能
