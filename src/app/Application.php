@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace app;
 
 use app\task\SyncTask;
-use app\utils\Installer;
 use nova\framework\App;
 use nova\framework\event\EventManager;
 
@@ -28,8 +27,6 @@ class Application extends App
 {
     public function onFrameworkStart(): void
     {
-        Installer::register();
-
         $adminRoute = ['index', 'main'];
         EventManager::trigger('admin.router', $adminRoute);
 
