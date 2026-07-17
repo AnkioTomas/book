@@ -32,9 +32,9 @@ return [
                 'db.host' => [
                     'title' => '数据库主机',
                     'type' => 'input',
-                    'default' => 'runtime/book.db',
+                    'default' => 'localhost',
                     'required' => true,
-                    'desc' => 'MySQL 主机地址 或 SQLite 数据文件路径',
+                    'desc' => 'MySQL 主机地址 , SQLite忽略',
                 ],
                 'db.port' => [
                     'title' => '数据库端口',
