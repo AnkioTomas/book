@@ -12,12 +12,14 @@ RUN chmod +x /usr/local/bin/install-php-extensions && \
 WORKDIR /app
 
 # Copy project files
-COPY . /app/
+COPY src/ /app/
 
 # Setup permissions
-RUN chown -R www-data:www-data /app \
-    && chmod -R 755 /app/runtime
+RUN mkdir -p /app/runtime \
+      && chown -R www-data:www-data /app \
+      && chmod -R 755 /app/runtime \
+      && chmod +x /app/nova/plugin/workerman/workerman.sh
 
-EXPOSE 8080
+EXPOSE 9528
 
-CMD ["php", "nova.phar", "serve", "start"]
+CMD ["sh","/app/nova/plugin/workerman/workerman.sh","start"]

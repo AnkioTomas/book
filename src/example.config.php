@@ -13,9 +13,10 @@ return array(
     'version' => '1.0.2',
     'framework_start' =>
     array(
-        0 => 'nova\\plugin\\login\\LoginManager',
-        1 => 'nova\\plugin\\tpl\\Handler',
-        2 => 'nova\\plugin\\task\\TaskPanelManager',
+        0 => 'nova\\plugin\\installer\\InstallerManager',
+        1 => 'nova\\plugin\\login\\LoginManager',
+        2 => 'nova\\plugin\\tpl\\Handler',
+        3 => 'nova\\plugin\\task\\TaskPanelManager',
         4 => 'nova\\plugin\\corn\\CornManager',
         5 => 'nova\\plugin\\ai\\AiPluginManager',
         6 => 'nova\\plugin\\webdav\\WebdavManager',

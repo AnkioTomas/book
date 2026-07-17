@@ -2,7 +2,6 @@
     "name": "book",
     "description": "A Nova project",
     "version": "1.0.6",
-    "type": "project",
     "license": "MIT",
     "authors": [
         {
@@ -27,12 +26,6 @@
         "mbstring",
         "pcntl",
         "pdo",
-        "redis",
-    ],
-    "scripts": {
-        "build:sfx:linux": "curl -sS https://dl.static-php.dev/static-php-cli/spc-bin/nightly/spc-linux-x86_64 -o spc && chmod +x spc && ./spc download curl,gd,mbstring,pcntl,pdo,redis,swoole && ./spc build curl,gd,mbstring,pcntl,pdo,redis,swoole --build-micro",
-        "build:sfx:mac": "curl -sS https://dl.static-php.dev/static-php-cli/spc-bin/nightly/spc-macos-aarch64 -o spc && chmod +x spc && ./spc download curl,gd,mbstring,pcntl,pdo,redis,swoole && ./spc build curl,gd,mbstring,pcntl,pdo,redis,swoole --build-micro",
-        "build:sfx:windows": "powershell -Command \"Invoke-WebRequest -Uri 'https://dl.static-php.dev/static-php-cli/spc-bin/nightly/spc-windows-x64.exe' -OutFile 'spc.exe'\" && spc.exe download curl,gd,mbstring,pcntl,pdo,redis,swoole && spc.exe build curl,gd,mbstring,pcntl,pdo,redis,swoole --build-micro",
-        "build:sfx:docker": "docker run --rm -v $(pwd):/app -w /app crazywhalecc/static-php-cli spc download curl,gd,mbstring,pcntl,pdo,redis,swoole && docker run --rm -v $(pwd):/app -w /app crazywhalecc/static-php-cli spc build curl,gd,mbstring,pcntl,pdo,redis,swoole --build-micro"
-    }
+        "redis"
+        ]
 }

@@ -62,5 +62,8 @@
     path = src/app/static/components/searchInput
     url = https://github.com/NovaPHPOrgUI/searchInput
 [submodule "src/nova/plugin/workerman"]
-	path = src/nova/plugin/workerman
-	url = https://github.com/NovaPHPOrg/nova-workerman
+    path = src/nova/plugin/workerman
+    url = https://github.com/NovaPHPOrg/nova-workerman
+[submodule "src/nova/plugin/installer"]
+	path = src/nova/plugin/installer
+	url = https://github.com/NovaPHPOrg/installer.git
