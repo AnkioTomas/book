@@ -10,7 +10,7 @@ return [
     'agreement' => "欢迎使用本系统！\n请仔细阅读并同意以下条款：\n1. 本软件按原样提供，不提供任何形式的担保。\n2. 您可以自由修改和分发，但需保留版权信息。",
     'env' => [
         'php' => '8.3.0',
-        'extensions' => ['curl', 'gd', 'mbstring', 'pcntl', 'pdo'],
+        'extensions' => ['curl', 'gd', 'mbstring', 'pdo'],
         'optional_extensions' => ['redis'],
         'pdo_drivers' => ['sqlite', 'mysql'],
         'writable' => ['runtime'],
