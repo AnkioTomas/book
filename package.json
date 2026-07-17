@@ -1,7 +1,7 @@
 {
     "name": "book",
     "description": "A Nova project",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "license": "MIT",
     "authors": [
         {
@@ -24,7 +24,6 @@
         "curl",
         "gd",
         "mbstring",
-        "pcntl",
         "pdo",
         "redis"
         ]
