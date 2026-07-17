@@ -73,6 +73,8 @@ date.timezone = Asia/Shanghai
 
 ## 五、创建 MySQL 数据库
 
+> 安装向导默认可用 **SQLite**，不想装 MySQL 可跳过本节。
+
 ### 方式 A：1Panel 已有 MySQL 应用
 
 1. **应用商店** 安装 **MySQL** 或 **MariaDB**（若尚未安装）。
@@ -120,7 +122,17 @@ date.timezone = Asia/Shanghai
 
 ### 6.2 上传代码
 
-**方式 A：Git（推荐）**
+**方式 A：标准发布包（推荐）**
+
+下载 `book-<版本>.zip`，上传到网站 `index` 目录并解压。已含框架代码，**无需** `git submodule`。
+
+```bash
+cd /opt/1panel/www/sites/book/index
+cp example.config.php config.php   # 若解压后直接是应用根
+# 或：cp src/example.config.php src/config.php  （Git 布局）
+```
+
+**方式 B：Git**
 
 进入 1Panel 网站目录（**网站 → 配置 → 网站目录 → 打开**），在终端或 SSH 中：
 
@@ -132,30 +144,32 @@ git submodule update --init --recursive
 cp src/example.config.php src/config.php
 ```
 
-**方式 B：本地上传**
+**方式 C：本地上传自打包**
 
 1. 本地打包项目（含 submodule 内容）。
 2. 1Panel 文件管理器上传到网站 `index` 目录并解压。
-3. SSH 执行 `cp src/example.config.php src/config.php`。
+3. SSH 执行对应的 `cp ... config.php`。
+
+> 也可用 Docker 整站部署，见 [Docker 安装教程](install-docker.md)。
 
 ### 6.3 设置运行目录
 
-Book 的 Web 入口在 `src/public`，必须单独指定：
+Book 的 Web 入口在 `public/`，必须单独指定：
 
 1. **网站 → 配置 → 网站目录**。
-2. **运行目录** 设为：`/src/public`（相对网站根目录）。
+2. **运行目录**：
+   - 标准 zip 解压到网站根：`/public`
+   - Git / 仓库布局：`/src/public`
 3. **运行用户/组**：保持默认（通常为 `1000:1000`），若出现写入失败再按面板提示调整。
 4. 点击 **保存并重载**。
 
-目录结构应类似：
+标准 zip 目录示例：
 
 ```
 /opt/1panel/www/sites/book/index/
-├── src/
-│   ├── public/          ← 运行目录指向这里
-│   ├── runtime/         ← 需可写
-│   ├── config.php
-│   └── ...
+├── public/              ← 运行目录
+├── runtime/             ← 需可写
+├── config.php
 └── ...
 ```
 
@@ -165,9 +179,9 @@ Book 的 Web 入口在 `src/public`，必须单独指定：
 
 ```bash
 cd /opt/1panel/www/sites/book/index
-mkdir -p src/runtime src/uploads
-chown -R 1000:1000 src/runtime src/uploads
-chmod -R 755 src/runtime src/uploads
+mkdir -p runtime uploads             # Git 布局用 src/runtime src/uploads
+chown -R 1000:1000 runtime uploads
+chmod -R 755 runtime uploads
 ```
 
 若上传或安装报权限错误，按 1Panel 网站目录页显示的用户/组调整 `chown`。
@@ -199,11 +213,11 @@ chmod -R 755 src/runtime src/uploads
 
    | 项目 | 填写说明 |
    | --- | --- |
-   | 数据库主机 | 1Panel 数据库详情中的 **主机**（常见为 `127.0.0.1` 或 `mysql`，以面板显示为准） |
-   | 数据库端口 | 面板显示的端口（默认 `3306`） |
-   | 数据库账号 | `book` |
-   | 数据库密码 | 第五节设置的密码 |
-   | 数据库库名 | `book` |
+   | 数据库类型 | SQLite（默认）或 MySQL |
+   | 数据库主机 | MySQL：以 1Panel **数据库 → 连接信息** 为准；SQLite 忽略 |
+   | 数据库端口 | MySQL 默认 `3306`；SQLite 忽略 |
+   | 数据库账号 / 密码 | MySQL 用第五节账号；SQLite 可留空 |
+   | 数据库库名 | MySQL 填 `book`；SQLite 保持默认 |
    | WebDAV 地址 | 与静读天下 App 一致，如 `https://dav.jianguoyun.com/dav/` |
    | WebDAV 账号 / 密码 | 与 App 端相同（坚果云用应用密码） |
    | 系统名称 | 随意 |
@@ -246,7 +260,7 @@ docker compose up -d
 
 **访问首页 404**
 
-- **运行目录** 是否为 `/src/public`。
+- **运行目录** 是否为 `/public`（标准 zip）或 `/src/public`（Git）。
 - 伪静态是否已保存并重载 OpenResty。
 
 **502 / 504**

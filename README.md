@@ -84,42 +84,54 @@
 
 | 组件 | 版本 / 说明 |
 | --- | --- |
-| PHP | >= 8.3，需要 `mbstring`、`pdo_mysql`、`curl`、`gd`、`zip`、`fileinfo` |
-| MySQL / MariaDB | MySQL >= 5.7 或 MariaDB >= 10.2，字符集 `utf8mb4` |
-| Web 服务器 | Nginx 或 Apache（必须支持 URL 重写） |
+| PHP | >= 8.3，需要 `mbstring`、`pdo`、`curl`、`gd`、`zip`、`fileinfo`；MySQL 部署另需 `pdo_mysql`，SQLite 部署另需 `pdo_sqlite` |
+| 数据库 | **SQLite**（Docker / Windows 绿色包默认）或 **MySQL >= 5.7 / MariaDB >= 10.2**（`utf8mb4`） |
+| Web 服务器 | Nginx 或 Apache（必须支持 URL 重写）；Docker 包用内置 Workerman，Windows 绿色包自带 Nginx |
 | WebDAV | 坚果云 / Nextcloud / 群晖 / 阿里云盘网关，任选其一 |
 | 静读天下 App | Android，支持 WebDAV 同步的版本即可 |
-| Docker（可选） | 仅当需要 MOBI/AZW 格式转换、封面提取时使用 |
+| Docker（可选） | 整站 Docker 部署，或仅跑 Calibre `ebook-service` 做 MOBI/AZW 封面提取 |
+
+---
+
+## 发布包说明
+
+`dist/`（或 GitHub Release）提供三种包，**按场景选一个**：
+
+| 包名 | 场景 | 说明 |
+| --- | --- | --- |
+| `book-<版本>-windows.zip` | Windows 本机开箱即用 | 内置 PHP 8.3 + Nginx（TinyPHP），双击 `start.bat` → `http://localhost` |
+| `book-<版本>-docker.zip` | 已有 Docker | 含 `Dockerfile` + `compose`，`docker compose up -d` → `http://localhost:9528` |
+| `book-<版本>.zip` | 已有 LNMP / 面板 | 标准 PHP 源码，配合 1Panel / 宝塔 / phpEnv 等 |
+
+Docker / Windows 绿色包默认走 **SQLite**，不必另装 MySQL。标准包可按安装向导选 SQLite 或 MySQL。
 
 ---
 
 ## 部署教程
 
-按你的环境选择对应文档（**二选一**）：
-
 | 环境 | 文档 | 说明 |
 | --- | --- | --- |
-| Windows 本机 / Windows 服务器 | [phpEnv 安装教程](docs/install-phpenv.md) | 从 [phpenv.cn](https://www.phpenv.cn/download.html) 下载集成环境 |
-| Linux 服务器 | [1Panel 安装教程](docs/install-1panel.md) | 通过 1Panel 面板创建 PHP 运行环境与网站 |
-| Linux 服务器 | [宝塔面板安装教程](docs/install-baota.md) | 通过宝塔面板（BT Panel）部署 LNMP 与网站 |
+| Windows 绿色包 | [Windows 绿色包教程](docs/install-windows.md) | 下载 `book-*-windows.zip`，解压后双击 `start.bat` |
+| Docker | [Docker 安装教程](docs/install-docker.md) | 下载 `book-*-docker.zip`，`docker compose up -d` |
+| Windows + phpEnv | [phpEnv 安装教程](docs/install-phpenv.md) | 从 [phpenv.cn](https://www.phpenv.cn/download.html) 自建环境，可用标准 zip |
+| Linux 服务器 | [1Panel 安装教程](docs/install-1panel.md) | 通过 1Panel 创建 PHP 运行环境与网站 |
+| Linux 服务器 | [宝塔面板安装教程](docs/install-baota.md) | 通过宝塔面板部署 LNMP 与网站 |
 
-下面「通用安装步骤」适用于 **已具备 PHP 8.3 + MySQL + Nginx/Apache** 的环境（手动 LNMP、其他面板等也可参考）。
+下面「通用安装步骤」适用于 **标准 zip / 源码** 且 **已具备 PHP 8.3 + 数据库 + Nginx/Apache** 的环境。绿色包与 Docker 包请直接看对应文档，不必走 Git 拉代码流程。
 
 ---
 
 ## 部署形态
 
-本系统是一个普通 PHP 项目，**核心服务不强制 Docker**，但配套依赖可选容器化：
-
-### 必需
+### 必需（标准部署）
 
 | 服务 | 用途 |
 | --- | --- |
-| MySQL / MariaDB | 业务数据库 |
+| SQLite 或 MySQL / MariaDB | 业务数据库 |
 | PHP >= 8.3 | 运行后端 |
 | Nginx / Apache | Web 服务器，需 URL 重写 |
 
-> 用 phpEnv、1Panel、宝塔等面板部署均可，本质就是 PHP 8.3 + MySQL 环境。详见上方部署教程。
+> Windows 绿色包 / Docker 包已自带运行时，按对应教程启动即可。
 
 ### 可选
 
@@ -142,7 +154,15 @@
 
 ## 通用安装步骤
 
-### 1. 拉代码
+> Windows 绿色包 / Docker 包请直接看对应文档。以下针对 **标准 zip** 或 **Git 源码**。
+
+### 1. 获取代码
+
+**方式 A：标准发布包（推荐）**
+
+下载 `book-<版本>.zip`，解压到网站目录。包内即 `src/` 内容（已含 submodule），无需再 `git submodule`。
+
+**方式 B：Git**
 
 ```bash
 git clone <repository-url> book
@@ -150,9 +170,10 @@ cd book
 git submodule update --init --recursive
 ```
 
-### 2. 创建数据库
+### 2. 准备数据库
 
-登录 MySQL，建一个空库 + 一个专用账号：
+- **SQLite（默认）**：无需预建库，安装向导会自动生成。
+- **MySQL / MariaDB**：事先建空库 + 账号：
 
 ```sql
 CREATE DATABASE `book` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -165,11 +186,14 @@ FLUSH PRIVILEGES;
 
 ### 3. 准备配置文件
 
+Git 源码需复制模板；标准 zip 解压后同样有 `example.config.php`：
+
 ```bash
 cp src/example.config.php src/config.php
 ```
 
-> `config.php` 已被 `.gitignore` 排除，不会被提交。后续配置由安装向导自动写入。
+> 标准 zip 解压后若目录即应用根（无外层 `src/`），则：`cp example.config.php config.php`。  
+> `config.php` 已被 `.gitignore` 排除。后续配置由安装向导自动写入。
 
 ### 4. 配置 Nginx
 
@@ -205,7 +229,8 @@ server {
 
 在安装向导中填写：
 
-- **数据库连接**：主机、端口、账号、密码、库名
+- **数据库类型**：SQLite（默认）或 MySQL / MariaDB
+- **数据库连接**：选 MySQL 时填主机、端口、账号、密码、库名；选 SQLite 时可忽略主机账号
 - **WebDAV 配置**：服务器地址、账号、密码、设备 ID
 - **系统名称**：显示在页面标题的名称
 
@@ -330,7 +355,8 @@ server {
 - 检查网络是否能访问 AI 服务商的 API 地址
 
 **数据库连不上：**
-- 主机名以面板/环境显示为准（phpEnv 本机常用 `127.0.0.1`；1Panel 容器化 MySQL 可能是 `mysql` 或 `127.0.0.1`）
+- 优先确认安装向导选的是 SQLite 还是 MySQL
+- MySQL 主机名以面板/环境显示为准（phpEnv 本机常用 `127.0.0.1`；1Panel 容器化 MySQL 可能是 `mysql` 或 `127.0.0.1`）
 - 确认账号有 `book` 库的全部权限
 
 ---
@@ -356,8 +382,10 @@ book/
 │   ├── example.config.php      # 配置模板，复制为 config.php 使用
 │   └── config.php              # 实际配置（.gitignore 排除）
 ├── tests/                      # 测试目录
-├── dist/                       # 发布包
-├── docs/                       # 文档资源
+├── dist/                       # 发布包：标准 zip / docker zip / windows zip
+├── docs/                       # 部署文档与截图
+├── Dockerfile                  # Docker 整站镜像（Workerman :9528）
+├── docker-compose.yml
 ├── nginx.conf                  # Nginx rewrite 参考
 ├── package.json                # 项目元信息
 ├── nova.phar                   # CLI 工具

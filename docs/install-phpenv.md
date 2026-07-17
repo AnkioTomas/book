@@ -1,7 +1,9 @@
 # Windows 部署教程（phpEnv）
 
-> 适用场景：在 **Windows 本机或 Windows 服务器** 上快速搭建 PHP + MySQL + Nginx/Apache 环境。  
+> 适用场景：在 **Windows 本机或 Windows 服务器** 上用 phpEnv 自建 PHP + MySQL + Nginx/Apache。  
 > 官方下载：[https://www.phpenv.cn/download.html](https://www.phpenv.cn/download.html)
+
+> **更省事**：若只想本机试用、不想装面板，直接用 [Windows 绿色包](install-windows.md)（`book-*-windows.zip`）。
 
 > **注意**：这里的 phpEnv 是 Windows 图形化集成环境，**不是** GitHub 上同名的命令行工具 `phpenv`。
 
@@ -64,6 +66,19 @@
 
 ## 四、拉取项目代码
 
+**方式 A：标准发布包（推荐）**
+
+下载 `book-<版本>.zip`，解压到例如 `D:\www\book`。已含框架，无需 submodule。
+
+```bat
+cd D:\www\book
+copy example.config.php config.php
+```
+
+网站根目录指向解压后的 `public`（见第六节）。
+
+**方式 B：Git**
+
 打开 phpEnv 自带的终端，或系统 CMD / PowerShell：
 
 ```bash
@@ -78,12 +93,14 @@ cp src/example.config.php src/config.php
 
 确保以下目录存在且可写（Windows 下一般默认可写）：
 
-- `src/runtime` — 缓存、日志、初始管理员密码
-- `src/uploads` — 上传临时文件（首次访问会自动创建）
+- `runtime`（Git 布局为 `src/runtime`）— 缓存、日志、初始管理员密码
+- `uploads`（Git 布局为 `src/uploads`）— 上传临时文件（首次访问会自动创建）
 
 ---
 
 ## 五、创建 MySQL 数据库
+
+> 安装向导默认可用 **SQLite**，可不建 MySQL。需要 MySQL 时再执行本节。
 
 ### 方式 A：phpEnv 内置 phpMyAdmin
 
@@ -114,11 +131,11 @@ cp src/example.config.php src/config.php
    | 字段 | 示例值 |
    | --- | --- |
    | 域名 | `book.local`（本地开发）或你的真实域名 |
-   | 网站目录 | `D:\www\book\src\public` |
+   | 网站目录 | 标准 zip：`D:\www\book\public`；Git：`D:\www\book\src\public` |
    | PHP 版本 | **PHP 8.3** |
    | Web 服务器 | Nginx |
 
-   **网站根目录必须指向 `src/public`**，不是项目根目录 `book/`。
+   **网站根目录必须指向 `public`**，不是项目根目录。
 
 3. 保存后，phpEnv 会自动写入 hosts（如 `127.0.0.1 book.local`）。
 
@@ -157,11 +174,11 @@ Book 使用 Nova 框架的单入口路由，必须配置重写规则。
 
    | 项目 | 填写说明 |
    | --- | --- |
-   | 数据库主机 | `127.0.0.1` |
-   | 数据库端口 | `3306` |
-   | 数据库账号 | `book` |
-   | 数据库密码 | 第五节设置的密码 |
-   | 数据库库名 | `book` |
+   | 数据库类型 | SQLite（默认）或 MySQL |
+   | 数据库主机 | MySQL 填 `127.0.0.1`；SQLite 忽略 |
+   | 数据库端口 | MySQL 填 `3306`；SQLite 忽略 |
+   | 数据库账号 / 密码 | MySQL 用第五节账号；SQLite 可留空 |
+   | 数据库库名 | MySQL 填 `book`；SQLite 保持默认 |
    | WebDAV 地址 | 与静读天下 App 完全一致，如 `https://dav.jianguoyun.com/dav/` |
    | WebDAV 账号 | 坚果云填邮箱 |
    | WebDAV 密码 | 坚果云填 **应用密码**（不是登录密码） |
@@ -197,7 +214,7 @@ Book 使用 Nova 框架的单入口路由，必须配置重写规则。
 
 **打开网站 404 / No input file specified**
 
-- 确认网站根目录是 `...\book\src\public`，不是 `...\book`。
+- 确认网站根目录是 `...\book\public`（标准 zip）或 `...\book\src\public`（Git），不是项目根。
 - 确认 URL 重写规则已保存并重启 Web 服务。
 
 **502 Bad Gateway**

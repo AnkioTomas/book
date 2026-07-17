@@ -1,5 +1,20 @@
 # 更新日志
 
+## [1.0.7] - 2026-07-17
+
+### 新功能
+
+- **Docker 发布包**：`dist/book-*-docker.zip`，含 `Dockerfile` + `docker-compose.yml`，Workerman 监听 `9528`，开箱可用 SQLite
+- **Windows 绿色包**：`dist/book-*-windows.zip`，内置 TinyPHP（PHP 8.3 + Nginx），解压后双击 `start.bat` 即可访问 `http://localhost`
+- **标准发布包**：`dist/book-*.zip`，纯 PHP 源码，供已有 LNMP / 面板环境部署
+
+### 改进
+
+- 安装向导默认数据库改为 SQLite，可选 MySQL / MariaDB（Docker / Windows 绿色包无需另装数据库）
+- 更新 README 与部署文档，补充三种发布包的选型与安装说明
+
+---
+
 ## [1.0.6] - 2026-07-11
 
 ### 修复

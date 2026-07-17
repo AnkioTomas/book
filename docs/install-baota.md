@@ -82,6 +82,8 @@ bash install_lts.sh
 
 ## 四、创建数据库
 
+> 安装向导默认可用 **SQLite**，不想装 MySQL 可跳过本节。
+
 1. 左侧 **数据库** → **添加数据库**。
 
    | 字段 | 建议值 |
@@ -116,7 +118,20 @@ bash install_lts.sh
 
 ### 6.1 上传代码
 
-**方式 A：Git（推荐）**
+**方式 A：标准发布包（推荐）**
+
+下载 `book-<版本>.zip`（`dist/` 或 Release），上传到网站根目录并解压。该包已是应用源码（含框架），**无需** `git submodule`。
+
+解压后若文件直接落在网站根（可见 `public/`、`example.config.php`）：
+
+```bash
+cd /www/wwwroot/book.example.com
+cp example.config.php config.php
+```
+
+若解压后多了一层目录，把内容挪到网站根，或按实际路径调整「运行目录」。
+
+**方式 B：Git**
 
 SSH 进入网站根目录：
 
@@ -127,42 +142,46 @@ git submodule update --init --recursive
 cp src/example.config.php src/config.php
 ```
 
-**方式 B：宝塔文件管理器**
+**方式 C：宝塔文件管理器自打包**
 
 1. 本地打包项目（确保 submodule 内容已包含）。
 2. **文件** → 进入 `/www/wwwroot/book.example.com` → 上传并解压。
-3. SSH 或终端执行 `cp src/example.config.php src/config.php`。
+3. SSH 或终端执行 `cp src/example.config.php src/config.php`（或标准包的 `cp example.config.php config.php`）。
+
+> 也可用 Docker 整站部署，见 [Docker 安装教程](install-docker.md)。
 
 ### 6.2 设置运行目录（必做）
 
-Book 的 Web 入口在 `src/public`：
+Book 的 Web 入口在 `public/`：
 
 1. **网站** → 对应站点 → **设置**。
-2. **网站目录** → **运行目录** 选择 **`/src/public`**。
+2. **网站目录** → **运行目录**：
+   - Git / 仓库布局：选 **`/src/public`**
+   - 标准 zip 解压到网站根：选 **`/public`**
 3. 取消勾选「防跨站攻击(open_basedir)」若导致无法读写（仅当报 open_basedir 错误时）。
 4. 保存。
 
-最终目录结构：
+标准 zip 目录示例：
 
 ```
 /www/wwwroot/book.example.com/
-├── src/
-│   ├── public/       ← 运行目录
-│   ├── runtime/      ← 需可写
-│   ├── config.php
-│   └── ...
+├── public/           ← 运行目录
+├── runtime/          ← 需可写
+├── config.php
 └── ...
 ```
 
+Git 布局则多一层 `src/`，运行目录为 `/src/public`。
+
 ### 6.3 目录权限
 
-SSH 执行（域名目录按实际替换）：
+SSH 执行（路径按实际布局替换）：
 
 ```bash
 cd /www/wwwroot/book.example.com
-mkdir -p src/runtime src/uploads
-chown -R www:www src/runtime src/uploads
-chmod -R 755 src/runtime src/uploads
+mkdir -p runtime uploads          # Git 布局则用 src/runtime src/uploads
+chown -R www:www runtime uploads
+chmod -R 755 runtime uploads
 ```
 
 宝塔默认 Web 用户为 `www`，若写入失败可在 **网站目录** 页查看并统一所有者。
@@ -215,18 +234,18 @@ if (!-e $request_filename) {
 
    | 项目 | 填写说明 |
    | --- | --- |
-   | 数据库主机 | `127.0.0.1` |
-   | 数据库端口 | `3306` |
-   | 数据库账号 | `book` |
-   | 数据库密码 | 第四节设置的密码 |
-   | 数据库库名 | `book` |
+   | 数据库类型 | SQLite（默认，可不建库）或 MySQL |
+   | 数据库主机 | MySQL 填 `127.0.0.1`；SQLite 忽略 |
+   | 数据库端口 | MySQL 填 `3306`；SQLite 忽略 |
+   | 数据库账号 / 密码 | MySQL 用第四节账号；SQLite 可留空 |
+   | 数据库库名 | MySQL 填 `book`；SQLite 保持默认即可 |
    | WebDAV 地址 | 与静读天下 App 一致，如 `https://dav.jianguoyun.com/dav/` |
    | WebDAV 账号 / 密码 | 与 App 端相同（坚果云用应用密码） |
    | 系统名称 | 随意 |
 
 4. 安装成功后会显示：
    - 管理员：`admin`
-   - 随机初始密码（同时写入 `src/runtime/admin_password.txt`）
+   - 随机初始密码（同时写入 `runtime/admin_password.txt`，Git 布局为 `src/runtime/admin_password.txt`）
 5. 登录后立即 **修改密码**。
 
 ---
@@ -262,7 +281,7 @@ if (!-e $request_filename) {
 
 **404 / No input file specified**
 
-- **运行目录** 是否为 `/src/public`。
+- **运行目录** 是否为 `/public`（标准 zip）或 `/src/public`（Git）。
 - 伪静态是否已保存；PHP 版本是否为 8.3。
 
 **502 Bad Gateway**
