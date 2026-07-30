@@ -165,7 +165,7 @@ class SyncTask extends TaskerAbstract
                 }
                 $dirty = true;
             } elseif ($remoteMetaChanged && $entry !== null && $local->update_at <= $lastMs) {
-                $localMap[$filename] = $this->pullRemote($entry);
+                $localMap[$filename] = $this->pullRemote($entry, $local);
                 $dirty = true;
                 $pulled++;
             }
@@ -257,11 +257,18 @@ class SyncTask extends TaskerAbstract
 
     /**
      * 用远端 books.sync 条目覆盖/新建本地记录（按 filename upsert）。
+     *
+     * coverUrl 不在移动端 books.sync 契约里，用远端条目重建模型时它会回落成空串，
+     * 再被 upsert 全字段写回，本地封面地址就没了。它是纯本地字段，本地非空即为权威；
+     * 本地为空才回退到远端值，兼容旧版本已经写进 books.sync 的存量数据。
      */
-    private function pullRemote(array $entry): BookModel
+    private function pullRemote(array $entry, ?BookModel $local = null): BookModel
     {
         $book = new BookModel($entry);
         $book->splitCategory2Series();
+        if ($local !== null && $local->coverUrl !== '') {
+            $book->coverUrl = $local->coverUrl;
+        }
         $book->update_at = 0; // 来自远端，标记为本地未修改
         BookDao::getInstance()->insertModel($book, true);
         return $book;
@@ -416,13 +423,14 @@ class SyncTask extends TaskerAbstract
      * toArray(false) 跳过 Model::onToArray 的 serialize，使 groupBooks 保持为 JSON 数组
      * （否则会被写成 "a:0:{}" 这类 PHP 序列化串，移动端无法解析）。
      * series / seriesNum 作为独立字段输出，category 保持纯标签，与移动端契约一致。
-     * update_at 为本地同步仲裁字段，不写入共享文件。
+     * update_at 为本地同步仲裁字段，id 为本地自增主键，都不属于共享契约，不写入。
+     * coverUrl 仍然写出，作为本地库损坏时的兜底副本。
      */
     private function toRemoteEntry(BookModel $book): array
     {
         $book->pushSeries2Category();
         $entry = $book->toArray(false);
-        unset($entry['update_at']);
+        unset($entry['update_at'], $entry['id']);
         return $entry;
     }
 

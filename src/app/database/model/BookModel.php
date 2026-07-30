@@ -64,6 +64,19 @@ class BookModel extends Model
         ];
     }
 
+    /**
+     * 这三个字段是标识符不是展示文本，读库时不能做 HTML 转义。
+     *
+     * filename 同时是同步比对的主键：转义后 "A & B.epub" 变成 "A &amp; B.epub"，
+     * 与 WebDAV 列出的真实文件名对不上，同步会先判定「远端已删除」清掉本地记录，
+     * 再判定「本地缺失」重建一条空壳，每轮循环一次。
+     * 输出侧本来就有转义（模板 {$var} 走 htmlspecialchars，前端走 $.escapeHtml），不存在 XSS 缺口。
+     */
+    public function getNoEscape(): array
+    {
+        return ['filename', 'coverUrl', 'downloadUrl'];
+    }
+
     public function getSchemaVersion(): int
     {
         return 5;
