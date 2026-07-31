@@ -63,6 +63,9 @@
 
 
 </mdui-layout>
+{if isset($__template_file) && $__template_file}
+    <template id="page">{include file=$__template_file}</template>
+{/if}
 <script id="script"></script>
 {include file="publicScript.tpl"}
 </body>

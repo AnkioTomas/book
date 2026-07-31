@@ -65,5 +65,5 @@
     path = src/nova/plugin/workerman
     url = https://github.com/NovaPHPOrg/nova-workerman
 [submodule "src/nova/plugin/installer"]
-	path = src/nova/plugin/installer
-	url = https://github.com/NovaPHPOrg/nova-installer
+    path = src/nova/plugin/installer
+    url = https://github.com/NovaPHPOrg/nova-installer
