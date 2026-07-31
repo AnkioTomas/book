@@ -52,9 +52,6 @@
 [submodule "src/nova/plugin/corn"]
     path = src/nova/plugin/corn
     url = https://github.com/NovaPHPOrg/nova-corn
-[submodule "src/app/static/components/cron"]
-    path = src/app/static/components/cron
-    url = https://github.com/NovaPHPOrgUI/cron.git
 [submodule "src/nova/plugin/ai"]
     path = src/nova/plugin/ai
     url = https://github.com/NovaPHPOrg/nova-ai
@@ -67,3 +64,6 @@
 [submodule "src/nova/plugin/installer"]
     path = src/nova/plugin/installer
     url = https://github.com/NovaPHPOrg/nova-installer
+[submodule "src/app/static/components/menu"]
+	path = src/app/static/components/menu
+	url = https://github.com/NovaPHPOrgUI/menu

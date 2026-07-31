@@ -297,8 +297,6 @@
         <mdui-button slot="action" variant="filled" id="btnBatchSubmit">批量更新</mdui-button>
     </mdui-dialog-form>
 
-    <book-context-menu id="bookContextMenu"></book-context-menu>
-
     <drag-upload
         accept=".epub,.mobi,.azw,.azw3,.pdf,.txt"
         hint="EPUB, MOBI, AZW, AZW3, PDF, TXT"

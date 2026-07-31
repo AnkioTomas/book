@@ -13,8 +13,8 @@ window.pageLoadFiles = [
     'Layer',
     '/js/components/Book.js',
     '/js/components/DoubanBookPicker.js',
-    '/js/components/BookContextMenu.js',
-    '/js/components/DragUpload.js'
+    'ContextMenu',
+    'DragUpload'
 ];
 
 window.pageOnLoad = function () {
@@ -25,10 +25,9 @@ window.pageOnLoad = function () {
     var filterOptions = {};
     var editDialog = $('#bookEditDialog')[0];
     var batchDialog = $('#batchEditDialog')[0];
-    var $bookContextMenu = $('#bookContextMenu');
     var $doubanPicker = $('#doubanBookPicker');
     var $dragUpload = $('drag-upload');
-    var onContextAction = null;
+    var bookCtxCleanup = null;
     var aiSource = null;
 
 
@@ -162,38 +161,92 @@ window.pageOnLoad = function () {
         }
     }
 
+    function showBookMenu(book, x, y) {
+        $.menu({
+            x: x,
+            y: y,
+            actions: [
+                {
+                    text: '下载',
+                    icon: 'download',
+                    action: function () {
+                        var filename = String(book.filename || '').trim();
+                        if (!filename) return $.toaster.warn('文件名缺失，无法下载');
+                        window.open('/index/book/file?filename=' + encodeURIComponent(filename), '_blank', 'noopener');
+                    }
+                },
+                {
+                    text: '编辑',
+                    icon: 'edit',
+                    action: function () {
+                        editDialog.open();
+                        editDialog.setValue(book);
+                        var fav = document.getElementById('editFavorite');
+                        if (fav) fav.setValue(book.favorite || '', book.favorite || '');
+                    }
+                },
+                { text: 'AI 识别', icon: 'auto_awesome', action: function () { aiIdentifyRun([book]); } },
+                { text: 'AI 分类', icon: 'label', action: function () { aiClassifyRun([book]); } },
+                {
+                    text: '删除',
+                    icon: 'delete',
+                    danger: true,
+                    action: function () {
+                        confirm('确定要删除这本书籍吗？', '删除', function () { batchDelete([book]); });
+                    }
+                },
+                { type: 'divider' },
+                { text: '刮削封面', icon: 'image', action: function () { batchScrape([book]); } },
+                {
+                    text: book.hasReadTag ? '标记未读' : '标记已读',
+                    icon: book.hasReadTag ? 'radio_button_unchecked' : 'task_alt',
+                    action: function () { batchReadState([book], !book.hasReadTag); }
+                }
+            ]
+        });
+    }
+
     function initBookContextMenu() {
-        $bookContextMenu[0].bind(cardView.cardsContainer, function (index) {
-            return cardView.getRow(index);
+        var $cards = $(cardView.cardsContainer);
+        var $root = $(cardView.cardsContainer.closest('#container') || cardView.cardsContainer);
+        var pressTimer = null;
+
+        function bookFromItem($item) {
+            var index = $item.attr('data-index');
+            if (index === undefined || index === '') return null;
+            return cardView.getRow(Number(index));
+        }
+
+        $cards.on('contextmenu.bookCtx', '.card-view-item', function (e) {
+            var book = bookFromItem($(this));
+            if (!book) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var oe = e.originalEvent || e;
+            showBookMenu(book, oe.clientX, oe.clientY);
         });
 
-        var actions = {
-            download: function (book) {
-                var filename = String(book.filename || '').trim();
-                if (!filename) return $.toaster.warn('文件名缺失，无法下载');
-                window.open('/index/book/file?filename=' + encodeURIComponent(filename), '_blank', 'noopener');
-            },
-            edit: function (book) {
-                editDialog.open();
-                editDialog.setValue(book);
-                var fav = document.getElementById('editFavorite');
-                if (fav) fav.setValue(book.favorite || '', book.favorite || '');
-            },
-            delete: function (book) {
-                confirm('确定要删除这本书籍吗？', '删除', function () { batchDelete([book]); });
-            },
-            scrape: function (book) { batchScrape([book]); },
-            toggleRead: function (book) { batchReadState([book], !book.hasReadTag); },
-            aiIdentify: function (book) { aiIdentifyRun([book]); },
-            aiClassify: function (book) { aiClassifyRun([book]); }
-        };
+        $cards.on('touchstart.bookCtx', '.card-view-item', function () {
+            var $item = $(this);
+            pressTimer = setTimeout(function () {
+                var book = bookFromItem($item);
+                if (!book) return;
+                var el = $item.find('book-card')[0] || $item[0];
+                var r = el.getBoundingClientRect();
+                showBookMenu(book, r.left + r.width / 2, r.top + r.height / 2);
+            }, 500);
+        });
 
-        onContextAction = function (e) {
-            var detail = (e.originalEvent || e).detail;
-            var fn = actions[detail.action];
-            if (fn) fn(detail.book);
+        $root.on('touchend.bookCtx touchmove.bookCtx', function () {
+            clearTimeout(pressTimer);
+        });
+
+        bookCtxCleanup = function () {
+            clearTimeout(pressTimer);
+            $cards.off('.bookCtx');
+            $root.off('.bookCtx');
+            if (window.contextMenuInstance) window.contextMenuInstance.destroy();
         };
-        $bookContextMenu.on('action', onContextAction);
     }
 
     function syncWebdav() {
@@ -425,9 +478,8 @@ window.pageOnLoad = function () {
 
     window.pageOnUnLoad = function () {
         if (aiSource) { aiSource.close(); aiSource = null; }
-        if (onContextAction) $bookContextMenu.off('action', onContextAction);
+        if (bookCtxCleanup) bookCtxCleanup();
         if (cardView) cardView.destroy();
-        if ($bookContextMenu.length) $bookContextMenu[0].destroy();
         if ($dragUpload.length) $dragUpload[0].destroy();
         if ($doubanPicker.length) $doubanPicker[0].destroy();
         $('#searchForm, [id^="btn"]').off();
