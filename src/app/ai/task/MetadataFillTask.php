@@ -55,6 +55,14 @@ class MetadataFillTask extends AiTask
         if (isset($out['favorite']) && !in_array($out['favorite'], self::CATEGORIES, true)) {
             unset($out['favorite']);
         }
+        if (isset($out['rate']) && $out['rate'] !== '') {
+            $rate = (float)$out['rate'];
+            // 豆瓣是十分制；若模型误把十分制原样写入，先 ÷2 再钳到 0-5
+            if ($rate > 5) {
+                $rate = (int)floor($rate / 2);
+            }
+            $out['rate'] = (string)max(0, min(5, (int)round($rate)));
+        }
         return $out;
     }
 
@@ -89,7 +97,8 @@ class MetadataFillTask extends AiTask
             . "用 search_douban 检索，必要时用 fetch_url 补全，在多个候选里挑选最匹配的一条。"
             . "最终只输出一个 JSON 对象，不要任何额外文字、解释或 Markdown 代码块，字段为："
             . "bookName(书名), author(作者), description(简介), publisher(出版社), publishYear(出版年), "
-            . "isbn, pages(页数), price(价格), coverUrl(封面图URL), rate(0-5 整数评分), "
+            . "isbn, pages(页数), price(价格), coverUrl(封面图URL), "
+            . "rate(本系统五星评分，整数，最低0最高5，满分只有5分；豆瓣是十分制，必须先÷2再取整写入，禁止直接写豆瓣原始分), "
             . "favorite(图书分类，必须从以下固定分类中选且只能选一个：" . implode('/', self::CATEGORIES) . "), "
             . "category(标签，多个用换行符\\n分隔，例如 科幻\\n经典；不要包含「已读」等阅读状态)。"
             . "请根据书籍内容自动判断分类与标签。未知字段填空字符串。";

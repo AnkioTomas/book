@@ -141,7 +141,7 @@ class BookTools extends Instance
             '分类: ' . ($b->getCategoryName() ?: '-'),
             '标签: ' . implode(',', $b->getTags()),
             '系列: ' . ($b->series ?: '-') . ($b->series ? " #{$b->seriesNum}" : ''),
-            '评分: ' . $b->rate,
+            '评分: ' . $b->rate . '/5',
             '文件: ' . $b->filename,
             '已读: ' . ($b->hasFinishedTag() ? '是' : '否'),
             '简介: ' . ($b->description ?: '-'),

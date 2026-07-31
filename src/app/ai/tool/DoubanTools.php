@@ -80,7 +80,7 @@ class DoubanTools extends Instance
             '出版社' => $book['publisher'] ?? '',
             '出版年' => $book['year'] ?? '',
             'ISBN' => $book['isbn'] ?? '',
-            '评分' => $book['rating'] ?? '',
+            '豆瓣评分(满分10)' => $book['rating'] ?? '',
             '页数' => $book['pages'] ?? '',
             '丛书' => $book['series'] ?? '',
             '标签' => $tagStr,
