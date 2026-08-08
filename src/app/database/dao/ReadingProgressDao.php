@@ -51,4 +51,13 @@ class ReadingProgressDao extends Dao
         }
         ReadingProgressDao::getInstance()->update()->where(['filename' => $progress->filename])->set($array)->commit();
     }
+
+    /** 书籍相对路径重命名时同步改进度主键。 */
+    public function renameFilename(string $from, string $to): void
+    {
+        if ($from === '' || $to === '' || $from === $to) {
+            return;
+        }
+        $this->update()->where(['filename' => $from])->set(['filename' => $to])->commit();
+    }
 }

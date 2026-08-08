@@ -19,18 +19,17 @@ use Throwable;
 class Organizer
 {
     /**
-     * 预览：不碰远端，只算 from → to。
-     *
      * @param  BookModel[]                                                            $books
-     * @param  array<string,true>|null                                                $taken 额外占用路径；null 时用传入书籍的当前 filename 集合
+     * @param  array<string,true>|null                                                $taken
      * @return list<array{id:int,bookName:string,from:string,to:string,changed:bool}>
      */
     public static function preview(array $books, ?array $taken = null): array
     {
+        $bm = BookManager::getInstance();
         if ($taken === null) {
             $taken = [];
             foreach ($books as $b) {
-                $rel = BookManager::getInstance()->normalizeBookPath($b->filename);
+                $rel = $bm->normalizeBookPath($b->filename);
                 if ($rel !== '') {
                     $taken[$rel] = true;
                 }
@@ -39,9 +38,8 @@ class Organizer
 
         $rows = [];
         foreach ($books as $book) {
-            $from = BookManager::getInstance()->normalizeBookPath($book->filename);
+            $from = $bm->normalizeBookPath($book->filename);
             $desired = Namer::targetPath($book);
-            // 自身旧路径不算冲突
             $pool = $taken;
             unset($pool[$from]);
             $to = Namer::resolveConflict($desired, $pool);
@@ -59,9 +57,7 @@ class Organizer
     }
 
     /**
-     * 执行单本整理。
-     *
-     * @param  array<string,true>                                           $taken 运行中占用集合（会被更新）
+     * @param  array<string,true>                                           $taken
      * @return array{ok:bool,from:string,to:string,skipped:bool,msg:string}
      */
     public static function organizeOne(BookModel $book, array &$taken): array
@@ -69,7 +65,13 @@ class Organizer
         $bm = BookManager::getInstance();
         $from = $bm->normalizeBookPath($book->filename);
         if ($from === '') {
-            return ['ok' => false, 'from' => '', 'to' => '', 'skipped' => false, 'msg' => '无效文件名'];
+            return [
+                'ok' => false,
+                'from' => '',
+                'to' => '',
+                'skipped' => false,
+                'msg' => '无效文件名（' . ($book->filename === '' ? '文件名为空' : $book->filename) . '）',
+            ];
         }
 
         $desired = Namer::targetPath($book);
@@ -82,44 +84,40 @@ class Organizer
             return ['ok' => true, 'from' => $from, 'to' => $to, 'skipped' => true, 'msg' => '已在目标路径'];
         }
 
-        // 远端再确认目标未被他人占用
-        if ($bm->bookExists($to)) {
-            $n = 2;
-            $dir = dirname($to);
-            $ext = pathinfo($to, PATHINFO_EXTENSION);
-            $stem = pathinfo($to, PATHINFO_FILENAME);
-            $prefix = ($dir === '.' || $dir === '') ? '' : $dir . '/';
-            while ($bm->bookExists($prefix . $stem . ' (' . $n . ').' . $ext)) {
-                $n++;
-                if ($n > 9999) {
-                    return ['ok' => false, 'from' => $from, 'to' => $to, 'skipped' => false, 'msg' => '目标冲突无法消解'];
-                }
-            }
-            $to = $prefix . $stem . ' (' . $n . ').' . $ext;
-        }
-
         try {
             if (!$bm->bookExists($from)) {
                 return ['ok' => false, 'from' => $from, 'to' => $to, 'skipped' => false, 'msg' => '远端源文件不存在'];
+            }
+
+            if ($bm->bookExists($to)) {
+                $n = 2;
+                $dir = dirname($to);
+                $ext = pathinfo($to, PATHINFO_EXTENSION);
+                $stem = pathinfo($to, PATHINFO_FILENAME);
+                $prefix = ($dir === '.' || $dir === '') ? '' : $dir . '/';
+                while ($bm->bookExists($prefix . $stem . ' (' . $n . ').' . $ext)) {
+                    $n++;
+                    if ($n > 9999) {
+                        return ['ok' => false, 'from' => $from, 'to' => $to, 'skipped' => false, 'msg' => '目标冲突无法消解'];
+                    }
+                }
+                $to = $prefix . $stem . ' (' . $n . ').' . $ext;
             }
 
             if (!$bm->moveBook($from, $to, false)) {
                 return ['ok' => false, 'from' => $from, 'to' => $to, 'skipped' => false, 'msg' => 'WebDAV MOVE 书文件失败'];
             }
 
-            // sidecar：basename 变了才需要搬；失败只记日志，书已经挪过去了不能回滚半吊子
-            $srcKey = $bm->sidecarKey($from);
-            $dstKey = $bm->sidecarKey($to);
-            if ($srcKey !== $dstKey) {
+            if ($bm->sidecarKey($from) !== $bm->sidecarKey($to)) {
                 try {
                     CoverManager::getInstance()->moveCover($from, $to, false);
                 } catch (Throwable $e) {
-                    Logger::warning('[Organizer] moveCover failed: ' . $e->getMessage());
+                    Logger::warning('[Organizer] moveCover: ' . $e->getMessage());
                 }
                 try {
                     ProgressManager::getInstance()->moveProgress($from, $to, false);
                 } catch (Throwable $e) {
-                    Logger::warning('[Organizer] moveProgress failed: ' . $e->getMessage());
+                    Logger::warning('[Organizer] moveProgress: ' . $e->getMessage());
                 }
             }
 

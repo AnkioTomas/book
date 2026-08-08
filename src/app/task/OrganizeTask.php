@@ -31,16 +31,12 @@ class OrganizeTask extends TaskerAbstract
     {
         $dao = BookDao::getInstance();
         $books = $dao->getByIds($this->ids);
-
         $total = count($books);
         TaskLogger::log("开始整理源文件，共 {$total} 本");
 
-        // 占用集合：当前库全部相对路径，避免与未选中书籍撞名
         $taken = [];
-        /** @var \app\database\model\BookModel[] $all */
-        $all = $dao->select()->commit();
         $bm = BookManager::getInstance();
-        foreach ($all as $b) {
+        foreach ($dao->select()->commit() as $b) {
             $rel = $bm->normalizeBookPath($b->filename);
             if ($rel !== '') {
                 $taken[$rel] = true;
@@ -52,7 +48,6 @@ class OrganizeTask extends TaskerAbstract
         $fail = 0;
 
         foreach (array_values($books) as $index => $book) {
-            // 每本重新读库，避免长任务中字段过期；id 不变
             $fresh = $dao->getById((int)$book->id);
             if ($fresh === null) {
                 $fail++;

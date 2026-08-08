@@ -282,7 +282,8 @@ class SyncTask extends TaskerAbstract
     {
         $book = new BookModel();
         $book->filename = $filename;
-        $book->bookName = preg_replace('/\.[^.]+$/', '', $filename);
+        $book->bookName = preg_replace('/\.[^.]+$/', '', basename($filename)) ?: basename($filename);
+        $book->downloadUrl = BookManager::getInstance()->downloadUrlFor($filename);
         $book->update_at = 0; // 视为远端来源，避免被当作本地编辑
         BookDao::getInstance()->insertModel($book, true);
         return $book;
@@ -304,8 +305,17 @@ class SyncTask extends TaskerAbstract
      */
     private function syncProgress(array $filenames, int $lastMs): array
     {
-        $kept = array_fill_keys($filenames, true);
         $progressManager = ProgressManager::getInstance();
+        // .po sidecar 按 basename 存；书文件可能是「分类/文件名」。建立 sidecar → 完整相对路径。
+        $sidecarToFull = [];
+        foreach ($filenames as $full) {
+            $key = $progressManager->sidecarKey($full);
+            if ($key !== '') {
+                $sidecarToFull[$key] = $full;
+            }
+        }
+        $keptFull = array_fill_keys($filenames, true);
+
         TaskLogger::log('列举远端进度目录(.po)…');
         $poMap = $progressManager->listRemoteProgress();
         if ($poMap === null) {
@@ -316,7 +326,7 @@ class SyncTask extends TaskerAbstract
 
         $down = 0;
         $up = 0;
-        // 本轮各 .po 的远端版本(mtime*1000)，供上传方向仲裁。
+        // 本轮各 .po 的远端版本(mtime*1000)，key 为 sidecar basename。
         $remoteVer = [];
 
         $skipNotInBooks = 0;
@@ -325,23 +335,24 @@ class SyncTask extends TaskerAbstract
 
         // 远端 → 本地：远端 mtime*1000 比本地 timestamp 新才下载。
         if ($poMap !== null) {
-            foreach ($poMap as $filename => $mtimeSec) {
-                if (!isset($kept[$filename])) {
+            foreach ($poMap as $sidecar => $mtimeSec) {
+                $full = $sidecarToFull[$sidecar] ?? null;
+                if ($full === null) {
                     $skipNotInBooks++;
                     continue;
                 }
                 $remoteVerMs = $mtimeSec * 1000;
-                $remoteVer[$filename] = $remoteVerMs;
+                $remoteVer[$sidecar] = $remoteVerMs;
 
-                $local = ReadingProgressDao::getInstance()->getByFilename($filename);
+                $local = ReadingProgressDao::getInstance()->getByFilename($full);
                 $localTs = $local === null ? 0 : $local->timestamp;
                 if ($remoteVerMs <= $localTs) {
                     $skipNotNewer++;
                     continue;
                 }
 
-                TaskLogger::log('拉取远端进度 ' . $filename . '（mtime=' . $mtimeSec . '）…');
-                $raw = $progressManager->getProgressText($filename);
+                TaskLogger::log('拉取远端进度 ' . $full . '（mtime=' . $mtimeSec . '）…');
+                $raw = $progressManager->getProgressText($full);
                 if (!$raw) {
                     $skipEmpty++;
                     TaskLogger::log('  下载为空/失败，跳过', 'warn');
@@ -349,7 +360,7 @@ class SyncTask extends TaskerAbstract
                 }
 
                 $remote = ReadingProgressModel::fromString($raw);
-                $remote->filename = $filename;
+                $remote->filename = $full;
                 // 版本时刻用文件 mtime（毫秒），可靠且单调；raw 保留远端原串。
                 $remote->timestamp = $remoteVerMs;
                 ReadingProgressDao::getInstance()->insertModel($remote, true);
@@ -369,10 +380,11 @@ class SyncTask extends TaskerAbstract
         $localNew = ReadingProgressDao::getInstance()->getUpdatedSince($lastMs);
         TaskLogger::log(sprintf('本地待上传候选 %d 条（timestamp > lastMs=%d）', count($localNew), $lastMs));
         foreach ($localNew as $p) {
-            if (!isset($kept[$p->filename])) {
+            if (!isset($keptFull[$p->filename])) {
                 continue;
             }
-            $remoteVerMs = $remoteVer[$p->filename] ?? 0;
+            $sidecar = $progressManager->sidecarKey($p->filename);
+            $remoteVerMs = $remoteVer[$sidecar] ?? 0;
             if ($p->timestamp > $remoteVerMs) {
                 $payload = $p->raw !== '' ? $p->raw : $p->toString();
                 TaskLogger::log(sprintf('上传进度 %s（本地ts=%d > 远端mtime*1000=%d）…', $p->filename, $p->timestamp, $remoteVerMs));

@@ -74,20 +74,39 @@ class CoverManager extends BaseManager
 
     private function missKey(string $filename): string
     {
-        return 'cover.miss/' . md5($filename);
+        return 'cover.miss/' . md5($this->sidecarKey($filename));
+    }
+
+    /**
+     * 封面 sidecar 跟随 basename；书文件进分类子目录后仍用 basename 寻址。
+     */
+    public function moveCover(string $from, string $to, bool $overwrite = false): bool
+    {
+        $srcKey = $this->sidecarKey($from);
+        $dstKey = $this->sidecarKey($to);
+        if ($srcKey === '' || $dstKey === '' || $srcKey === $dstKey) {
+            return true;
+        }
+        $this->dropCache($from);
+        $this->dropCache($to);
+        $src = $this->moon . '/Cover/' . $srcKey . '_2.png';
+        $dst = $this->moon . '/Cover/' . $dstKey . '_2.png';
+        return $this->client->move($src, $dst, $overwrite);
     }
 
     private function remotePath(string $filename): string
     {
         // WebDAV 路径永远用 /，禁止 DS（Windows 上是 \，坚果云会拒）
-        return $this->moon . '/Cover/' . $this->normalizeFilename($filename) . '_2.png';
+        $key = $this->sidecarKey($filename);
+        return $this->moon . '/Cover/' . $key . '_2.png';
     }
 
     private function cacheFile(string $filename): string
     {
         $path = RUNTIME_PATH . DS . "images" . DS;
         File::mkdir($path);
-        return $path . md5($filename) . ".png";
+        // 缓存键用 sidecar basename，与远端 Cover 身份一致
+        return $path . md5($this->sidecarKey($filename)) . ".png";
     }
 
     /**

@@ -12,8 +12,10 @@ use app\database\model\ReadingProgressModel;
 use app\task\AiClassifyTask;
 use app\task\AiIdentifyTask;
 use app\task\CoverScrapeTask;
+use app\task\OrganizeTask;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\ProgressManager;
+use app\utils\BookOrganizer\Organizer;
 use nova\framework\core\Context;
 use nova\framework\core\File;
 
@@ -254,7 +256,8 @@ class Book extends BaseAPIController
 
         $cacheDir = RUNTIME_PATH . DS . 'reader';
         File::mkDir($cacheDir);
-        $localPath = $cacheDir . DS . basename($filename);
+        // 相对路径可能同 basename，用完整 filename 哈希避免缓存撞车
+        $localPath = $cacheDir . DS . md5($filename) . '.' . $ext;
 
         foreach (scandir($cacheDir) as $file) {
             if ($file === '.' || $file === '..') {
@@ -271,7 +274,7 @@ class Book extends BaseAPIController
             }
         }
 
-        return Response::asFile($localPath, $filename);
+        return Response::asFile($localPath, basename($filename));
     }
 
     public function reader(): Response
@@ -415,6 +418,73 @@ class Book extends BaseAPIController
         return Response::asJson([
             'code' => 200,
             'msg'  => '已提交后台 AI 分类任务（' . count($ids) . ' 本），可在任务面板查看进度',
+        ]);
+    }
+
+    /**
+     * 整理源文件预览：按分类分子目录 + 重命名，不改远端。
+     * POST /book/organizePreview  ids=json array
+     */
+    public function organizePreview(): Response
+    {
+        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
+        if ($ids === []) {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
+        }
+
+        $dao = BookDao::getInstance();
+        $books = $dao->getByIds($ids);
+        if ($books === []) {
+            return Response::asJson(['code' => 400, 'msg' => '未找到书籍']);
+        }
+
+        // 占用集合含全库，避免预览与未选中书籍撞名
+        $taken = [];
+        $bm = BookManager::getInstance();
+        foreach ($dao->select()->commit() as $b) {
+            $rel = $bm->normalizeBookPath($b->filename);
+            if ($rel !== '') {
+                $taken[$rel] = true;
+            }
+        }
+
+        $rows = Organizer::preview($books, $taken);
+        $changed = 0;
+        foreach ($rows as $row) {
+            if ($row['changed']) {
+                $changed++;
+            }
+        }
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'success',
+            'data' => [
+                'items' => $rows,
+                'changed' => $changed,
+                'total' => count($rows),
+            ],
+        ]);
+    }
+
+    /**
+     * 整理源文件：入队后台任务。
+     * POST /book/organize  ids=json array
+     */
+    public function organize(): Response
+    {
+        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
+        if ($ids === []) {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
+        }
+
+        $key = '整理源文件_' . substr(md5(implode(',', $ids)), 8, 8);
+        TaskerManager::del($key);
+        TaskerManager::add('', new OrganizeTask($ids), $key);
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => '已提交后台整理任务（' . count($ids) . ' 本），可在任务面板查看进度',
         ]);
     }
 

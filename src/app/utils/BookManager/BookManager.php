@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\utils\BookManager;
 
 use nova\framework\core\File;
+use nova\framework\core\Logger;
 use nova\framework\json\Json;
 
 class BookManager extends BaseManager
@@ -20,24 +21,42 @@ class BookManager extends BaseManager
 
     public function deleteBook(string $filename): bool
     {
-        $path = $this->path . '/' . $this->normalizeFilename($filename);
+        $path = $this->bookRemotePath($filename);
+        if ($path === '') {
+            return false;
+        }
         return $this->client->delete($path);
     }
 
     public function uploadBook(string $file, string $filename): bool
     {
-        return $this->client->upload($file, $this->path . '/' . $this->normalizeFilename($filename));
+        $path = $this->bookRemotePath($filename);
+        if ($path === '') {
+            return false;
+        }
+        $dir = dirname($path);
+        if ($dir !== $this->path && $dir !== '.' && $dir !== '/') {
+            $this->client->mkcol($dir);
+        }
+        return $this->client->upload($file, $path);
     }
 
     public function downloadBook(string $filename, string $localPath): bool
     {
+        $path = $this->bookRemotePath($filename);
+        if ($path === '') {
+            return false;
+        }
         File::mkDir(dirname($localPath));
-        return $this->client->download($this->path . '/' . $this->normalizeFilename($filename), $localPath);
+        return $this->client->download($path, $localPath);
     }
 
     public function bookExists(string $filename): bool
     {
-        $path = $this->path . '/' . $this->normalizeFilename($filename);
+        $path = $this->bookRemotePath($filename);
+        if ($path === '') {
+            return false;
+        }
         try {
             $this->client->getResourceInfo($path);
             return true;
@@ -47,8 +66,29 @@ class BookManager extends BaseManager
     }
 
     /**
-     * 列出远端书库目录下所有 epub/电子书文件名。
+     * 移动/重命名远端书文件（含子目录）。目标父目录不存在时先 mkcol。
+     */
+    public function moveBook(string $from, string $to, bool $overwrite = false): bool
+    {
+        $src = $this->bookRemotePath($from);
+        $dst = $this->bookRemotePath($to);
+        if ($src === '' || $dst === '' || $src === $dst) {
+            return false;
+        }
+        $dir = dirname($dst);
+        if ($dir !== $this->path && $dir !== '.' && $dir !== '/') {
+            if (!$this->client->mkcol($dir)) {
+                Logger::warning("[BookManager] mkcol failed: {$dir}");
+                return false;
+            }
+        }
+        return $this->client->move($src, $dst, $overwrite);
+    }
+
+    /**
+     * 列出远端书库目录下所有电子书相对路径（相对 /Apps/Books）。
      *
+     * 递归进入分类子目录，跳过 .Moon+。
      * 返回 null 表示无法获取（网络/认证/超时等），调用方必须据此中止任何删除操作，
      * 绝不能把「无法确认」当成「文件不存在」。返回空数组表示目录确实为空。
      *
@@ -56,23 +96,44 @@ class BookManager extends BaseManager
      */
     public function listRemoteFilenames(): ?array
     {
+        $names = $this->listRemoteFilenamesUnder($this->path, '');
+        return $names;
+    }
+
+    /**
+     * @return array<string>|null null = 不可达
+     */
+    private function listRemoteFilenamesUnder(string $absDir, string $relPrefix): ?array
+    {
         try {
-            $files = $this->client->listDir($this->path);
+            $files = $this->client->listDir($absDir);
         } catch (\Throwable $e) {
             return null;
         }
 
         $names = [];
         foreach ($files as $f) {
-            if (!empty($f['is_dir'])) {
+            $name = (string)($f['name'] ?? '');
+            if ($name === '' || $name === '.Moon+' || str_starts_with($name, '.')) {
                 continue;
             }
-            if (!empty($f['name'])) {
-                $names[] = $f['name'];
+            $rel = $relPrefix === '' ? $name : $relPrefix . '/' . $name;
+            if (!empty($f['is_dir'])) {
+                $childAbs = rtrim($absDir, '/') . '/' . $name;
+                $child = $this->listRemoteFilenamesUnder($childAbs, $rel);
+                if ($child === null) {
+                    return null;
+                }
+                foreach ($child as $c) {
+                    $names[] = $c;
+                }
+                continue;
             }
+            $names[] = $rel;
         }
         return $names;
     }
+
     /**
      * 下载并解析远端 books.sync 元数据。
      *

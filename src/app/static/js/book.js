@@ -245,7 +245,8 @@ window.pageOnLoad = function () {
             clearTimeout(pressTimer);
             $cards.off('.bookCtx');
             $root.off('.bookCtx');
-            if (window.contextMenuInstance) window.contextMenuInstance.destroy();
+            // 只关菜单，不 destroy 全局单例：pjax 回来时 ContextMenu.js 不会重跑
+            if (window.contextMenuInstance) window.contextMenuInstance.hide();
         };
     }
 
@@ -345,6 +346,52 @@ window.pageOnLoad = function () {
         $('#btnBatchMarkRead, #btnBatchMarkUnread').on('click', function () {
             var selected = requireSelected('请先选择要标记的书籍');
             if (selected) batchReadState(selected, this.id === 'btnBatchMarkRead');
+        });
+
+        $('#btnOrganize').on('click', function () {
+            var selected = requireSelected('请先选择要整理的书籍');
+            if (!selected) return;
+            $("body").showLoading('正在预览整理方案…');
+            $.request.postForm('/index/book/organizePreview', { ids: bookIds(selected) }, function (res) {
+                $("body").closeLoading();
+                if (res.code !== 200) {
+                    return $.toaster.error(res.msg || '预览失败');
+                }
+                var data = res.data || {};
+                var items = data.items || [];
+                var changed = data.changed || 0;
+                if (!changed) {
+                    return $.toaster.info('选中书籍已在目标路径，无需整理');
+                }
+                var lines = items.filter(function (it) { return it.changed; }).slice(0, 30).map(function (it) {
+                    return '<div style="margin:4px 0;font-size:12px;word-break:break-all;">'
+                        + '<div style="opacity:.7;">' + $('<div>').text(it.from).html() + '</div>'
+                        + '<div>→ ' + $('<div>').text(it.to).html() + '</div></div>';
+                }).join('');
+                if (changed > 30) {
+                    lines += '<div style="margin-top:8px;opacity:.7;">…还有 ' + (changed - 30) + ' 本未列出</div>';
+                }
+                confirm(
+                    '将按分类分子目录并重命名 <b>' + changed + '</b> 本（共选 ' + items.length + ' 本）。'
+                    + '<br><small class="text-on-surface-variant">会改动 WebDAV 上的文件路径，请确认静读天下能识别子目录后再执行。</small>'
+                    + '<div style="max-height:240px;overflow:auto;margin-top:10px;text-align:left;">' + lines + '</div>',
+                    '整理源文件',
+                    function () {
+                        $.request.postForm('/index/book/organize', { ids: bookIds(selected) }, function (r) {
+                            if (r.code === 200) {
+                                $.toaster.success(r.msg || '已提交整理任务');
+                            } else {
+                                $.toaster.error(r.msg || '提交失败');
+                            }
+                        }, function () {
+                            $.toaster.error('提交失败');
+                        });
+                    }
+                );
+            }, function () {
+                $("body").closeLoading();
+                $.toaster.error('预览请求失败');
+            });
         });
 
         $dragUpload.on('files', function (e) {
@@ -466,7 +513,7 @@ window.pageOnLoad = function () {
             events: { onCardClick: openReader },
             empty_msg: "暂无书籍数据",
             page: true,
-            pageSizes: [24, 48, 96],
+            pageSizes: [24, 48, 96, 192, 384, 768],
             selectable: true
         });
 

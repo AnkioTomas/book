@@ -43,18 +43,64 @@ class BaseManager extends Instance
     }
 
     /**
-     * 规范化文件名：去掉首尾空白，剥掉误带的路径前缀，百分号替换。
-     * 不做「美化重命名」——远端文件名是契约，乱改会找不到书。
+     * 规范化书籍相对路径：允许「文件名」或「分类/文件名」。
+     * 只拒绝路径段 `..`，不拦文件名里的 `...`（Z-Library 截断很常见）。
+     */
+    public function normalizeBookPath(string $filename): string
+    {
+        $filename = trim(str_replace(['\\', '%'], ['/', '-'], $filename), '/');
+        if ($filename === '') {
+            return '';
+        }
+
+        $parts = [];
+        foreach (explode('/', $filename) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                return '';
+            }
+            $parts[] = $part;
+        }
+        if ($parts === []) {
+            return '';
+        }
+        if (count($parts) > 2) {
+            $parts = array_slice($parts, -2);
+        }
+        return implode('/', $parts);
+    }
+
+    /** Moon+ Cover/Cache 键：basename。 */
+    public function sidecarKey(string $filename): string
+    {
+        $path = $this->normalizeBookPath($filename);
+        return $path === '' ? '' : basename($path);
+    }
+
+    /**
+     * @deprecated 用 normalizeBookPath 或 sidecarKey
      */
     public function normalizeFilename(string $filename): string
     {
-        $filename = trim($filename);
-        // 若误传入带分隔符的路径，只保留末段；分隔符统一按 URL 语义处理
-        $filename = str_replace('\\', '/', $filename);
-        if (str_contains($filename, '/')) {
-            $filename = basename($filename);
-        }
-        return str_replace('%', '-', $filename);
+        return $this->sidecarKey($filename);
     }
 
+    public function bookRemotePath(string $filename): string
+    {
+        $rel = $this->normalizeBookPath($filename);
+        return $rel === '' ? '' : $this->path . '/' . $rel;
+    }
+
+    public function downloadUrlFor(string $filename): string
+    {
+        $rel = $this->normalizeBookPath($filename);
+        return $rel === '' ? '' : '[WebDav]' . $this->path . '/' . $rel;
+    }
+
+    public function getClient(): SimpleWebDAVClient
+    {
+        return $this->client;
+    }
 }
