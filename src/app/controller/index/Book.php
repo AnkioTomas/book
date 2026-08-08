@@ -222,8 +222,9 @@ class Book extends BaseAPIController
         ReadingProgressDao::getInstance()->insertModel($progress, true);
         ProgressManager::getInstance()->uploadProgressText($filename, $progress->toString());
 
-        if ($frac >= 0.99) {
-
+        // $frac 已是 0–100；$frac >= 99 即阅读进度 ≥ 99%
+        if (BookDao::getInstance()->markFinishedByProgress($filename, $frac)) {
+            BookDao::getInstance()->syncBooks();
         }
 
         return Response::asJson([

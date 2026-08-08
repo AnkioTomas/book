@@ -196,8 +196,16 @@ class SyncTask extends TaskerAbstract
 
         // 7. 进度增量同步（双向）。逐文件用远端 mtime 当版本号，无全局水位。
         TaskLogger::log('同步阅读进度…');
-        [$progressDown, $progressUp] = $this->syncProgress(array_keys($localMap), $lastMs);
-        TaskLogger::log('进度：下载 ' . $progressDown . ' 条，上传 ' . $progressUp . ' 条');
+        [$progressDown, $progressUp, $finishedMarked] = $this->syncProgress($localMap, $lastMs);
+        TaskLogger::log(sprintf(
+            '进度：下载 %d 条，上传 %d 条，≥99%% 标记已读 %d 本',
+            $progressDown,
+            $progressUp,
+            $finishedMarked
+        ));
+        if ($finishedMarked > 0) {
+            $dirty = true;
+        }
 
         // 8. 封面补传（沿用：本地标记过需要上传封面的书）。
         TaskLogger::log('检查封面补传…');
@@ -298,13 +306,15 @@ class SyncTask extends TaskerAbstract
      *   - 下载：远端 mtime*1000 > 本地 timestamp 即拉取，raw 存远端原串（保留真实位置）。
      *   - 上传：本地 timestamp > 远端 mtime*1000 即上传 raw（保留各端契约串）。
      * 逐文件比对，无全局水位，避免「处理过未入库却推高水位」造成的自锁。
+     * 进度 ≥ 99% 时给对应书籍打上「已读」，并写回 $localMap 供本轮 books.sync 回写。
      *
-     * @param  string[]           $filenames 当前保留的书籍文件名
-     * @param  int                $lastMs    本地上传水位（毫秒，本地时钟）
-     * @return array{0:int,1:int} [下载条数, 上传条数]
+     * @param  BookModel[]               $localMap 当前保留书目（按 filename 索引，引用传入）
+     * @param  int                       $lastMs   本地上传水位（毫秒，本地时钟）
+     * @return array{0:int,1:int,2:int} [下载条数, 上传条数, 新标记已读本数]
      */
-    private function syncProgress(array $filenames, int $lastMs): array
+    private function syncProgress(array &$localMap, int $lastMs): array
     {
+        $filenames = array_keys($localMap);
         $progressManager = ProgressManager::getInstance();
         // .po sidecar 按 basename 存；书文件可能是「分类/文件名」。建立 sidecar → 完整相对路径。
         $sidecarToFull = [];
@@ -396,7 +406,24 @@ class SyncTask extends TaskerAbstract
             }
         }
 
-        return [$down, $up];
+        // 扫一遍保留书目的进度：≥99% 自动打「已读」（覆盖本轮下载与历史未打标数据）。
+        $marked = 0;
+        $allProgress = ReadingProgressDao::getInstance()->getByFilenames(array_keys($keptFull));
+        foreach ($allProgress as $p) {
+            $updated = BookDao::getInstance()->markFinishedByProgress(
+                $p->filename,
+                $p->percent,
+                $localMap[$p->filename] ?? null
+            );
+            if ($updated === null) {
+                continue;
+            }
+            $localMap[$p->filename] = $updated;
+            $marked++;
+            TaskLogger::log(sprintf('进度 %.2f%% ≥ 99%%，标记已读：%s', $p->percent, $p->filename));
+        }
+
+        return [$down, $up, $marked];
     }
 
     /**

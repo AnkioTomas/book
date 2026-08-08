@@ -187,6 +187,30 @@ class BookDao extends Dao
         return $this->find(null, ['filename' => $filename]);
     }
 
+    /**
+     * 进度达到 99% 时自动打上「已读」。已有标签则不动。
+     *
+     * @param  float          $percent 0–100 刻度（与 ReadingProgressModel::$percent 一致）
+     * @param  BookModel|null $book    已加载的书籍，避免重复查询
+     * @return BookModel|null 实际写入后的书籍；未变更返回 null
+     */
+    public function markFinishedByProgress(string $filename, float $percent, ?BookModel $book = null): ?BookModel
+    {
+        if ($filename === '' || $percent < 99.0) {
+            return null;
+        }
+        $book ??= $this->getByFileName($filename);
+        if ($book === null || $book->hasFinishedTag()) {
+            return null;
+        }
+        $book->markFinished(true);
+        $book->update_at = time() * 1000;
+        if (!$this->updateModel($book)) {
+            return null;
+        }
+        return $book;
+    }
+
     public function syncBooks($force = false): void
     {
         TaskerManager::del("syncBooks");
