@@ -74,6 +74,40 @@ class BookDao extends Dao
     }
 
     /**
+     * 按 id 批量查询，顺序与入参一致；不存在的 id 跳过。
+     *
+     * @param  int[]       $ids
+     * @return BookModel[]
+     */
+    public function getByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $ids),
+            static fn (int $id) => $id > 0
+        )));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->select()
+            ->where(['id in (:ids)', ':ids' => implode(',', $ids)])
+            ->commit();
+
+        $byId = [];
+        foreach ($rows as $book) {
+            $byId[(int)$book->id] = $book;
+        }
+
+        $ordered = [];
+        foreach ($ids as $id) {
+            if (isset($byId[$id])) {
+                $ordered[] = $byId[$id];
+            }
+        }
+        return $ordered;
+    }
+
+    /**
      * 按 $addTimes 批量查询，减少循环中的 N+1 数据库请求。
      *
      * @param  int[]       $addTimes
