@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的 tag（例如 v1.0.8）；留空则用最新 tag'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: zip, mbstring
+          coverage: none
+
+      - name: Resolve version
+        id: ver
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+            if [ -z "$TAG" ]; then
+              TAG="$(git tag -l 'v*' --sort=-v:refname | head -n1)"
+            fi
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          case "$TAG" in
+            v*) ;;
+            *) TAG="v${TAG}" ;;
+          esac
+          if [ -z "$TAG" ] || ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "tag not found: ${TAG:-<empty>}" >&2
+            exit 1
+          fi
+          git checkout --force "$TAG"
+          git submodule update --init --recursive
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >>"$GITHUB_OUTPUT"
+          echo "version=$VERSION" >>"$GITHUB_OUTPUT"
+          echo "Publishing $TAG ($VERSION)"
+
+      - name: Generate changelog
+        run: |
+          set -euo pipefail
+          chmod +x scripts/gen-changelog.sh
+          PREV="$(git describe --tags --abbrev=0 "${{ steps.ver.outputs.tag }}^" 2>/dev/null || true)"
+          if [ -n "$PREV" ]; then
+            scripts/gen-changelog.sh "$PREV" "${{ steps.ver.outputs.tag }}" > RELEASE_NOTES.md
+          else
+            scripts/gen-changelog.sh "" "${{ steps.ver.outputs.tag }}" > RELEASE_NOTES.md
+          fi
+          echo "----- RELEASE NOTES -----"
+          cat RELEASE_NOTES.md
+
+      - name: Build packages with nova.phar
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${{ steps.ver.outputs.version }}" | php nova.phar build all
+          ls -lh dist/book-${{ steps.ver.outputs.version }}*.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ contains(steps.ver.outputs.tag, '-') || contains(steps.ver.outputs.tag, 'alpha') || contains(steps.ver.outputs.tag, 'beta') || contains(steps.ver.outputs.tag, 'rc') }}
+          files: |
+            dist/book-${{ steps.ver.outputs.version }}.zip
+            dist/book-${{ steps.ver.outputs.version }}-docker.zip
+            dist/book-${{ steps.ver.outputs.version }}-windows.zip
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
