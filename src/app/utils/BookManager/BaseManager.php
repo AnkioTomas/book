@@ -43,15 +43,18 @@ class BaseManager extends Instance
     }
 
     /**
-     * 规范化文件名（跨平台可用 + URL 友好，简化版）。
+     * 规范化文件名：去掉首尾空白，剥掉误带的路径前缀，百分号替换。
+     * 不做「美化重命名」——远端文件名是契约，乱改会找不到书。
      */
     public function normalizeFilename(string $filename): string
     {
-        // 1. 基础清理：去空格、路径符号转横线
-        $filename = str_replace(['%'], '-', trim($filename));
-
-        // 6. 直接返回
-        return $filename;
+        $filename = trim($filename);
+        // 若误传入带分隔符的路径，只保留末段；分隔符统一按 URL 语义处理
+        $filename = str_replace('\\', '/', $filename);
+        if (str_contains($filename, '/')) {
+            $filename = basename($filename);
+        }
+        return str_replace('%', '-', $filename);
     }
 
 }

@@ -24,7 +24,7 @@ class ProgressManager extends BaseManager
     public function getProgressText(string $filename): string
     {
 
-        $remotePath = $this->moon . DS . "Cache" . DS . $filename . ".po";
+        $remotePath = $this->moon . '/Cache/' . $filename . '.po';
 
         $localPath = $this->progress . md5($filename) . ".po";
 
@@ -43,7 +43,7 @@ class ProgressManager extends BaseManager
             return false;
         }
 
-        $remotePath = $this->moon . DS . "Cache" . DS . $filename . ".po";
+        $remotePath = $this->moon . '/Cache/' . $filename . '.po';
 
         $localPath = $this->progress . md5($filename) . ".po";
         File::write($localPath, $content);
@@ -64,7 +64,7 @@ class ProgressManager extends BaseManager
      */
     public function listRemoteProgress(): ?array
     {
-        $dir = $this->moon . DS . "Cache";
+        $dir = $this->moon . '/Cache';
         try {
             $files = $this->client->listDir($dir);
         } catch (\Throwable $e) {
@@ -88,7 +88,7 @@ class ProgressManager extends BaseManager
 
     public function deleteProgress(string $filename): void
     {
-        $remotePath = $this->moon . DS . "Cache" . DS . $filename . ".po";
+        $remotePath = $this->moon . '/Cache/' . $filename . '.po';
         try {
             $this->client->delete($remotePath);
         } catch (\RuntimeException $exception) {

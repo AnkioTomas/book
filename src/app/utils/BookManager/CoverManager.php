@@ -79,7 +79,8 @@ class CoverManager extends BaseManager
 
     private function remotePath(string $filename): string
     {
-        return $this->moon . DS . "Cover" . DS . $this->normalizeFilename($filename) . "_2.png";
+        // WebDAV 路径永远用 /，禁止 DS（Windows 上是 \，坚果云会拒）
+        return $this->moon . '/Cover/' . $this->normalizeFilename($filename) . '_2.png';
     }
 
     private function cacheFile(string $filename): string
