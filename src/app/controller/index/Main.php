@@ -247,7 +247,18 @@ class Main extends BaseViewController
             ];
         }
 
-        $p = 'series|favorite|category|seriesNum';
+        $authors = [];
+        foreach (BookDao::getInstance()->getAuthors() as $item) {
+            $authors[] = [
+                'title' => $item,
+                'icon' => 'person',
+                'url' => $bookBase . '?author=' . rawurlencode($item),
+                'pjax' => true,
+                'match' => '^/index/main/book\?([^#]*&)?author=' . preg_quote(rawurlencode($item), '/') . '(&|$)',
+            ];
+        }
+
+        $p = 'series|favorite|category|author|seriesNum';
         $rule = '^/index/main/book/?(?:$|\?(?!(?:' . $p . ')=)(?!.*[?&](?:' . $p . ')=)[^#]*)(?:#.*)?$';
 
         return [
@@ -275,6 +286,12 @@ class Main extends BaseViewController
                 'icon' => 'sell',
                 'pjax' => true,
                 'sub' => $tags,
+            ],
+            [
+                'title' => '作者',
+                'icon' => 'person',
+                'pjax' => true,
+                'sub' => $authors,
             ],
         ];
     }

@@ -30,7 +30,7 @@ class Book extends BaseAPIController
 {
     /**
      * 获取书籍列表（支持分页、搜索、筛选）
-     * GET /book/list?page=1&pageSize=20&search=xxx&series=xxx&category=xxx&favorite=xxx
+     * GET /book/list?page=1&pageSize=20&search=xxx&series=xxx&category=xxx&favorite=xxx&author=xxx&finished=1|0
      */
     public function list(): Response
     {
@@ -41,8 +41,9 @@ class Book extends BaseAPIController
         $category = trim($this->request->get('category', ''));
         $favorite = trim($this->request->get('favorite', ''));
         $finished = trim($this->request->get('finished', ''));
+        $author = trim($this->request->get('author', ''));
 
-        $result = BookDao::getInstance()->getList($page, $limit, $search, $series, $category, $favorite, $finished);
+        $result = BookDao::getInstance()->getList($page, $limit, $search, $series, $category, $favorite, $finished, $author);
         $books = $result['list'];
         $filenames = [];
         foreach ($books as $book) {
@@ -128,7 +129,8 @@ class Book extends BaseAPIController
             'data' => [
                 'groupNames' => BookDao::getInstance()->getSeriesNames(),
                 'categories' => BookDao::getInstance()->getTags(),
-                'favorites' => BookDao::getInstance()->getCategories()
+                'favorites' => BookDao::getInstance()->getCategories(),
+                'authors' => BookDao::getInstance()->getAuthors(),
             ]
         ]);
     }
@@ -573,6 +575,10 @@ class Book extends BaseAPIController
             if (isset($data[$field])) {
                 $book->$field = Text::parseType($book->$field, $data[$field]);
             }
+        }
+        // 标签经 setTags 规范化：「已读」置顶、去重去空
+        if (isset($data['category'])) {
+            $book->setTags($book->getTags());
         }
         if (!empty($book->coverUrl)) {
             Context::instance()->cache->set("coverUrl/{$book->coverUrl}", true);

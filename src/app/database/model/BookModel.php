@@ -168,11 +168,29 @@ class BookModel extends Model
     }
 
     /**
-     * 写入标签集；自动去重去空，并保留原有的系列前缀（不破坏 series/seriesNum 的存储位置）。
+     * 写入标签集；去重去空，「已读」固定排在第一位。
      */
     public function setTags(array $tags): self
     {
-        $this->category = implode("\n", $tags);
+        $clean = [];
+        $hasFinished = false;
+        foreach ($tags as $tag) {
+            $tag = trim((string)$tag);
+            if ($tag === '') {
+                continue;
+            }
+            if ($tag === self::TAG_FINISHED) {
+                $hasFinished = true;
+                continue;
+            }
+            if (!in_array($tag, $clean, true)) {
+                $clean[] = $tag;
+            }
+        }
+        if ($hasFinished) {
+            array_unshift($clean, self::TAG_FINISHED);
+        }
+        $this->category = implode("\n", $clean);
         return $this;
     }
 
@@ -186,15 +204,18 @@ class BookModel extends Model
 
     /**
      * 「已读 / 未读」仅维护标签行「已读」，不再使用 isFinished 字段。
+     * 标记已读时「已读」始终位于标签第一位。
      */
     public function markFinished(bool $finished = true): self
     {
         $tags = $this->getTags();
         $has = in_array(self::TAG_FINISHED, $tags, true);
-        if ($finished && !$has) {
-            $tags[] = self::TAG_FINISHED;
+        if ($finished) {
+            if (!$has) {
+                $tags[] = self::TAG_FINISHED;
+            }
             $this->setTags($tags);
-        } elseif (!$finished && $has) {
+        } elseif ($has) {
             $this->setTags(array_values(array_filter(
                 $tags,
                 fn ($t) => $t !== self::TAG_FINISHED

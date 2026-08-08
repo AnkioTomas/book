@@ -21,12 +21,13 @@ class BookDao extends Dao
      * @param  int    $limit    每页数量
      * @param  string $search   搜索关键词（书名、作者）
      * @param  string $series   系列筛选
-     * @param  string $category 分类筛选
-     * @param  string $favorite 收藏筛选
-     * @param  string $finished 已读完筛选
+     * @param  string $category 标签筛选（category 字段）
+     * @param  string $favorite 分类筛选（favorite 字段）
+     * @param  string $finished 已读筛选：1=已读，0=未读
+     * @param  string $author   作者筛选（精确匹配）
      * @return array  ['total' => int, 'list' => BookModel[]]
      */
-    public function getList(int $page = 1, int $limit = 20, string $search = '', string $series = '', string $category = '', string $favorite = '', string $finished = ''): array
+    public function getList(int $page = 1, int $limit = 20, string $search = '', string $series = '', string $category = '', string $favorite = '', string $finished = '', string $author = ''): array
     {
         $where = [];
 
@@ -43,18 +44,30 @@ class BookDao extends Dao
             $orderBy = "seriesNum";
         }
 
-        // 筛选：分类（模糊匹配）
+        // 筛选：标签（模糊匹配）
         if (!empty($category)) {
             $where[] = "category LIKE '%:category%'";
             $where[':category'] = $category;
         }
 
-        // 筛选：收藏
+        // 筛选：分类
         if (!empty($favorite)) {
             if ($favorite === 'empty') {
                 $favorite = '';
             }
             $where['favorite'] = $favorite;
+        }
+
+        // 筛选：作者
+        if ($author !== '') {
+            $where['author'] = $author;
+        }
+
+        // 筛选：已读（标签行「已读」）
+        if ($finished === '1') {
+            $where[] = "CONCAT(CHAR(10), IFNULL(category, ''), CHAR(10)) LIKE CONCAT('%', CHAR(10), '已读', CHAR(10), '%')";
+        } elseif ($finished === '0') {
+            $where[] = "NOT (CONCAT(CHAR(10), IFNULL(category, ''), CHAR(10)) LIKE CONCAT('%', CHAR(10), '已读', CHAR(10), '%'))";
         }
 
         $result = $this->getAll([], $where, $page, $limit, $orderBy);
@@ -145,7 +158,7 @@ class BookDao extends Dao
     }
 
     /**
-     * 获取所有分类（去重）
+     * 获取所有标签（去重）。「已读」固定排在第一位，其余按原出现顺序。
      */
     public function getTags(): array
     {
@@ -153,23 +166,32 @@ class BookDao extends Dao
                        ->where(['category != ""'])
                        ->commit(object: false);
 
-        // category可能包含多个分类，需要拆分
-        // 使用关联数组去重，O(1)复杂度
-        $categories = [];
+        // category 可能包含多个标签，需要拆分
+        $tags = [];
+        $hasFinished = false;
         foreach ($result as $row) {
             $parts = preg_split('/[\n\s]+/', trim($row['category']));
             foreach ($parts as $part) {
                 $clean = trim($part);
-                if ($clean !== '') {
-                    $categories[$clean] = true;
+                if ($clean === '') {
+                    continue;
                 }
+                if ($clean === BookModel::TAG_FINISHED) {
+                    $hasFinished = true;
+                    continue;
+                }
+                $tags[$clean] = true;
             }
         }
-        return array_keys($categories);
+        $list = array_keys($tags);
+        if ($hasFinished) {
+            array_unshift($list, BookModel::TAG_FINISHED);
+        }
+        return $list;
     }
 
     /**
-     * 获取所有收藏夹标签（去重）
+     * 获取所有分类（去重）
      */
     public function getCategories(): array
     {
@@ -180,6 +202,19 @@ class BookDao extends Dao
 
         // GROUP BY已经保证唯一性，直接提取列值
         return array_column($result, 'favorite');
+    }
+
+    /**
+     * 获取所有作者（去重）
+     */
+    public function getAuthors(): array
+    {
+        $result = $this->select('author')
+                       ->where(['author <> ""'])
+                       ->groupBy('author')
+                       ->commit(object: false);
+
+        return array_column($result, 'author');
     }
 
     public function getByFileName(string $filename): ?BookModel
