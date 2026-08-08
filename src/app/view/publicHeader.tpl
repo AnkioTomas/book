@@ -1,9 +1,3 @@
-<style id="hiddenBody">
-    body{
-        display: none!important;
-    }
-</style>
-
 <link rel="stylesheet" href="/static/bundle?file=framework/icons/fonts.css,framework/libs/mdui.css,framework/base.css,framework/utils/Loading.css,framework/pjax/nprogress.css,framework/layout.css&type=css&v={$__v}">
 
 <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png?v={$__v}"/>

@@ -19,6 +19,3 @@ framework/pjax/nprogress.js,
 framework/pjax/PjaxUtils.js,
 framework/layout.js,
 &type=js&v={$__v}"></script>
-<script>
-    document.querySelector("#hiddenBody").remove();
-</script>
