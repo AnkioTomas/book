@@ -1,6 +1,4 @@
 <script src="/static/bundle?file=
-framework/libs/vhcheck.min.js,
-framework/libs/mdui.global.min.js,
 framework/bootloader.js,
 framework/utils/Loading.js,
 framework/utils/Logger.js,
