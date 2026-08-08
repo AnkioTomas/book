@@ -117,6 +117,7 @@
                     <mdui-menu-item id="btnBatchMarkRead" icon="task_alt">批量标记已读</mdui-menu-item>
                     <mdui-menu-item id="btnBatchMarkUnread" icon="radio_button_unchecked">批量标记未读</mdui-menu-item>
                     <mdui-divider></mdui-divider>
+                    <mdui-menu-item id="btnOrganize" icon="folder_copy">整理源文件</mdui-menu-item>
                     <mdui-menu-item id="btnRemoveDuplicates" icon="content_copy">删除重复</mdui-menu-item>
                 </mdui-menu>
             </mdui-dropdown>
@@ -305,4 +306,4 @@
 
 
 
-<script id="script" src="/static/js/book.js"></script>
+<script id="script" src="/static/js/book.js?v={$__v}"></script>

@@ -67,4 +67,4 @@
     </div>
 </div>
 
-<script id="script" src="/static/js/calibre.js"></script>
+<script id="script" src="/static/js/calibre.js?v={$__v}"></script>

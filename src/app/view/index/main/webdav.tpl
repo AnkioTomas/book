@@ -58,4 +58,4 @@
     </div>
 </div>
 
-<script id="script" src="/static/js/webdav.js"></script>
+<script id="script" src="/static/js/webdav.js?v={$__v}"></script>
