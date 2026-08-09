@@ -67,3 +67,9 @@
 [submodule "src/app/static/components/menu"]
     path = src/app/static/components/menu
     url = https://github.com/NovaPHPOrgUI/menu
+[submodule "src/nova/plugin/update"]
+    path = src/nova/plugin/update
+    url = https://github.com/NovaPHPOrg/nova-update
+[submodule "src/app/static/components/markdown"]
+    path = src/app/static/components/markdown
+    url = https://github.com/NovaPHPOrgUI/markdown

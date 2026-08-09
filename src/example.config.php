@@ -10,7 +10,7 @@ return array(
     array(
         0 => '0.0.0.0',
     ),
-    'version' => '1.0.2',
+    'version' => '1.0.9',
     'framework_start' =>
     array(
         0 => 'nova\\plugin\\installer\\InstallerManager',
@@ -20,6 +20,14 @@ return array(
         4 => 'nova\\plugin\\corn\\CornManager',
         5 => 'nova\\plugin\\ai\\AiPluginManager',
         6 => 'nova\\plugin\\webdav\\WebdavManager',
+        7 => 'nova\\plugin\\update\\UpdateManager',
+    ),
+    'update' =>
+    array(
+        'repo' => 'AnkioTomas/book',
+        'name' => 'book',
+        'asset' => '{name}-{version}.zip',
+        'token' => '',
     ),
     'db' =>
     array(

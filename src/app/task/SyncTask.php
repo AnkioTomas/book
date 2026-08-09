@@ -308,8 +308,8 @@ class SyncTask extends TaskerAbstract
      * 逐文件比对，无全局水位，避免「处理过未入库却推高水位」造成的自锁。
      * 进度 ≥ 99% 时给对应书籍打上「已读」，并写回 $localMap 供本轮 books.sync 回写。
      *
-     * @param  BookModel[]               $localMap 当前保留书目（按 filename 索引，引用传入）
-     * @param  int                       $lastMs   本地上传水位（毫秒，本地时钟）
+     * @param  BookModel[]              $localMap 当前保留书目（按 filename 索引，引用传入）
+     * @param  int                      $lastMs   本地上传水位（毫秒，本地时钟）
      * @return array{0:int,1:int,2:int} [下载条数, 上传条数, 新标记已读本数]
      */
     private function syncProgress(array &$localMap, int $lastMs): array
