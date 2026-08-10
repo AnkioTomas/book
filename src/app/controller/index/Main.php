@@ -198,6 +198,11 @@ class Main extends BaseViewController
         return $this->viewResponse->asTpl();
     }
 
+    public function token(): Response
+    {
+        return $this->viewResponse->asTpl();
+    }
+
     public function book(): Response
     {
         return $this->viewResponse->asTpl();
@@ -322,6 +327,12 @@ class Main extends BaseViewController
                 'title' => 'Calibre配置',
                 'url' => '/index/main/calibre',
                 'icon' => 'auto_stories',
+                'pjax' => true,
+            ],
+            [
+                'title' => '设备令牌',
+                'url' => '/index/main/token',
+                'icon' => 'vpn_key',
                 'pjax' => true,
             ],
         ];

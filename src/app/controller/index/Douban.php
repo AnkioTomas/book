@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace app\controller\index;
 
+use app\controller\ApiController;
 use app\database\dao\BookDao;
 use app\utils\BookManager\CoverManager;
 use app\utils\Douban as DoubanUtil;
 use app\utils\DoubanSearch;
 use nova\framework\http\Response;
-use nova\plugin\login\controller\BaseAPIController;
 
 /**
  * 豆瓣图书搜索控制器。
  *
  * 搜索逻辑统一收敛到 app\utils\DoubanSearch，控制器只负责 HTTP 入出参。
  */
-class Douban extends BaseAPIController
+class Douban extends ApiController
 {
     /**
      * 搜索豆瓣图书

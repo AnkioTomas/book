@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\controller\index;
 
 use app\ai\task\MetadataFillTask;
+use app\controller\ApiController;
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
 use app\database\model\BookModel;
@@ -17,16 +18,15 @@ use app\utils\BookManager\BookManager;
 use app\utils\BookManager\ProgressManager;
 use app\utils\BookOrganizer\Organizer;
 use nova\framework\core\Context;
-use nova\framework\core\File;
 
+use nova\framework\core\File;
 use nova\framework\core\Text;
 use nova\framework\http\Response;
 use nova\plugin\corn\schedule\TaskerManager;
-use nova\plugin\login\controller\BaseAPIController;
 
 use nova\plugin\tpl\Pjax;
 
-class Book extends BaseAPIController
+class Book extends ApiController
 {
     /**
      * 获取书籍列表（支持分页、搜索、筛选）
@@ -71,6 +71,7 @@ class Book extends BaseAPIController
                 $row['progressRaw'] = $progress->raw;
                 $row['progressText'] = $progress->percentText . '%';
                 $row['progressPercent'] = $progress->percent;
+                $row['progressTimestamp'] = $progress->timestamp;
             }
             $row['hasReadTag'] = $book->hasFinishedTag();
             $rows[] = $row;
@@ -81,6 +82,61 @@ class Book extends BaseAPIController
             'msg' => 'success',
             'data' => $rows,
             'count' => $result['total']
+        ]);
+    }
+
+    /**
+     * 最近阅读（按进度 timestamp 倒序）
+     * GET /book/recent?limit=8
+     */
+    public function recent(): Response
+    {
+        $limit = max(1, min(50, intval($this->request->get('limit', 8))));
+        $progressList = ReadingProgressDao::getInstance()->getRecent($limit);
+        $filenames = [];
+        foreach ($progressList as $progress) {
+            if ($progress->filename !== '') {
+                $filenames[] = $progress->filename;
+            }
+        }
+        $bookMap = [];
+        foreach (BookDao::getInstance()->getByFilenames($filenames) as $book) {
+            $bookMap[$book->filename] = $book;
+        }
+
+        $rows = [];
+        foreach ($progressList as $progress) {
+            if ($progress->filename === '') {
+                continue;
+            }
+            $book = $bookMap[$progress->filename] ?? null;
+            if ($book === null) {
+                $rows[] = [
+                    'filename' => $progress->filename,
+                    'bookName' => $progress->filename,
+                    'author' => '',
+                    'progressRaw' => $progress->raw,
+                    'progressText' => $progress->percentText . '%',
+                    'progressPercent' => $progress->percent,
+                    'progressTimestamp' => $progress->timestamp,
+                    'hasReadTag' => false,
+                ];
+                continue;
+            }
+            $row = $book->toArray();
+            $row['progressRaw'] = $progress->raw;
+            $row['progressText'] = $progress->percentText . '%';
+            $row['progressPercent'] = $progress->percent;
+            $row['progressTimestamp'] = $progress->timestamp;
+            $row['hasReadTag'] = $book->hasFinishedTag();
+            $rows[] = $row;
+        }
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'success',
+            'data' => $rows,
+            'count' => count($rows),
         ]);
     }
 
