@@ -52,7 +52,7 @@
                 <br/>
                 明文令牌<strong>只在创建时显示一次</strong>，丢失请撤销后重建。
                 探测 <code>GET /index/auth/ping</code>，封面
-                <code>GET /webdav/{filename}</code>
+                <code>GET /webdav/&lt;filename&gt;</code>
             </div>
         </div>
 
