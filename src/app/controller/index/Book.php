@@ -111,16 +111,6 @@ class Book extends ApiController
             }
             $book = $bookMap[$progress->filename] ?? null;
             if ($book === null) {
-                $rows[] = [
-                    'filename' => $progress->filename,
-                    'bookName' => $progress->filename,
-                    'author' => '',
-                    'progressRaw' => $progress->raw,
-                    'progressText' => $progress->percentText . '%',
-                    'progressPercent' => $progress->percent,
-                    'progressTimestamp' => $progress->timestamp,
-                    'hasReadTag' => false,
-                ];
                 continue;
             }
             $row = $book->toArray();
