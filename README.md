@@ -31,6 +31,7 @@
 - **Web 端上传**：拖拽 / 多选，大文件分片，支持 EPUB / MOBI / AZW / AZW3 / PDF / TXT，上传后自动入库并发布到 WebDAV
 - **在线阅读器**（Foliate.js）：支持 EPUB / MOBI / AZW / AZW3 / PDF
 - **阅读进度同步**：与静读天下共享同一份进度文件，双向 last-write-wins 仲裁
+- **设备令牌**：长期 Bearer Token，供 KOReader 等客户端调用 Book API（不直连 WebDAV）
 - **Web 安装向导**：首次部署通过浏览器填表完成配置，无需手动编辑配置文件
 
 ---

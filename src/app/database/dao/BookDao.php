@@ -223,6 +223,21 @@ class BookDao extends Dao
     }
 
     /**
+     * @param  string[]    $filenames
+     * @return BookModel[]
+     */
+    public function getByFilenames(array $filenames): array
+    {
+        $filenames = array_values(array_unique(array_filter($filenames, static fn ($f) => $f !== '')));
+        if ($filenames === []) {
+            return [];
+        }
+        return $this->select()
+            ->where(['filename in (:in)', ':in' => implode(',', $filenames)])
+            ->commit();
+    }
+
+    /**
      * 进度达到 99% 时自动打上「已读」。已有标签则不动。
      *
      * @param  float          $percent 0–100 刻度（与 ReadingProgressModel::$percent 一致）

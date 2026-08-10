@@ -42,6 +42,20 @@ class ReadingProgressDao extends Dao
             ->commit();
     }
 
+    /**
+     * 最近阅读：按进度 timestamp 倒序。
+     *
+     * @return ReadingProgressModel[]
+     */
+    public function getRecent(int $limit = 8): array
+    {
+        $limit = max(1, min(50, $limit));
+        return $this->select()
+            ->orderBy('timestamp', 'DESC')
+            ->limit($limit)
+            ->commit();
+    }
+
     public function updateItem(ReadingProgressModel $progress)
     {
         $array = $progress->toArray();
