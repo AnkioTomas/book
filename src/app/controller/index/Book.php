@@ -141,6 +141,27 @@ class Book extends ApiController
     }
 
     /**
+     * 书库计数：总数 / 已读 / 未读
+     * GET /index/book/stats
+     */
+    public function stats(): Response
+    {
+        $dao = BookDao::getInstance();
+        $total = (int)$dao->getList(1, 1)['total'];
+        $finished = (int)$dao->getList(1, 1, '', '', '', '', '1')['total'];
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'success',
+            'data' => [
+                'total' => $total,
+                'finished' => $finished,
+                'unread' => max(0, $total - $finished),
+            ],
+        ]);
+    }
+
+    /**
      * 批量标记已读 / 未读（仅增删标签「已读」）
      * POST /book/batchRead  ids=json array, read=1|0
      */
