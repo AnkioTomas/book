@@ -78,4 +78,49 @@ class PageStatDao extends Dao
         }
         $this->delete()->where(['device_id' => $deviceId])->commit();
     }
+
+    /** 删除某书全部阅读记录。 */
+    public function deleteByFilename(string $filename): void
+    {
+        $filename = self::normalizeFilename($filename);
+        if ($filename === '') {
+            return;
+        }
+        $this->delete()->where(['book_filename' => $filename])->commit();
+    }
+
+    /**
+     * 将 from 的全部记录改绑到 to（库内路径）。
+     * 目标键已存在则合并 duration，再删旧行。
+     */
+    public function remapFilename(string $from, string $to): int
+    {
+        $from = self::normalizeFilename($from);
+        $to = self::normalizeFilename($to);
+        if ($from === '' || $to === '' || $from === $to) {
+            return 0;
+        }
+        $rows = $this->getByFilename($from);
+        $n = 0;
+        foreach ($rows as $row) {
+            /** @var PageStatModel|null $existing */
+            $existing = $this->find(null, [
+                'device_id' => $row->device_id,
+                'book_filename' => $to,
+                'page' => $row->page,
+                'start_time' => $row->start_time,
+            ]);
+            if ($existing !== null) {
+                $existing->duration += $row->duration;
+                $existing->total_pages = max($existing->total_pages, $row->total_pages);
+                $this->updateModel($existing);
+                $this->deleteModel($row);
+            } else {
+                $row->book_filename = $to;
+                $this->updateModel($row);
+            }
+            $n++;
+        }
+        return $n;
+    }
 }

@@ -31,19 +31,20 @@
     .cal-cell.is-selected { outline-color: rgb(var(--mdui-color-secondary)); }
     .cal-cell .meta { font-size: .65rem; opacity: .85; line-height: 1.1; }
     .day-meta { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+    .insight-book-cover { width: 32px; height: 44px; border-radius: 4px; overflow: hidden; vertical-align: middle; }
+    .remap-pick-row { cursor: pointer; border-bottom: 1px solid rgba(var(--mdui-color-outline), .12); }
+    .remap-pick-row:hover { background: rgba(var(--mdui-color-primary), .06); }
+    .remap-pick-list { max-height: 360px; overflow: auto; }
 </style>
 
 <div id="container" class="container h-fit py-3">
-    <h2 class="title-medium font-bold m-0 mb-3">多维统计</h2>
-
     <div id="insight-empty" class="d-none">
         <mdui-card class="p-3 rounded-lg mb-3">
-            <div class="body-small text-on-surface-variant">暂无多维统计数据。请用 KOReader Book 插件上报（以 filename 为键）后再查看。</div>
+            <div class="body-small text-on-surface-variant">暂无多维统计数据。请用 KOReader Book 插件上报或以表格右上角导入静读天下备份。</div>
         </mdui-card>
     </div>
 
     <section class="mb-4">
-        <h3 class="title-small mb-2 font-semibold">阅读</h3>
         <div id="insight-reading">
             <mdui-card class="p-3 rounded-lg">
                 <div class="body-small text-on-surface-variant">加载中…</div>
@@ -51,8 +52,7 @@
         </div>
     </section>
 
-    <section>
-        <h3 class="title-small mb-2 font-semibold">日历</h3>
+    <section class="mb-4">
         <div class="cal-layout">
             <mdui-card class="p-3 rounded-lg">
                 <div class="cal-nav d-flex items-center justify-between mb-3">
@@ -67,23 +67,23 @@
                 <div class="cal-grid" id="cal-grid"></div>
             </mdui-card>
             <mdui-card class="p-3 rounded-lg">
-                <div class="d-flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <div class="title-small font-semibold" id="cal-day-title">选择日期</div>
-                    <div class="d-flex items-center gap-1">
-                        <input type="file" id="moon-import-file" accept=".mrpro,application/zip" hidden>
-                        <mdui-button id="moon-import-btn" variant="tonal" icon="upload_file">
-                            导入静读天下
-                        </mdui-button>
-                    </div>
-                </div>
-                <div class="body-small text-on-surface-variant mb-2" id="moon-import-hint">
-                    选择 .mrpro 备份；按天导入阅读时长（会替换此前静读天下导入的数据）
-                </div>
+                <div class="title-small font-semibold mb-2" id="cal-day-title">选择日期</div>
                 <div id="cal-day-list">
                     <div class="body-small text-on-surface-variant">点击日历中的日期查看当日书籍</div>
                 </div>
             </mdui-card>
         </div>
+    </section>
+
+    <section>
+        <div class="d-flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <mdui-text-field id="insight-book-search" label="搜索阅读书籍" variant="outlined" icon="search" class="flex-1" style="min-width:180px;max-width:320px"></mdui-text-field>
+            <div class="d-flex items-center gap-1">
+                <input type="file" id="moon-import-file" accept=".mrpro,application/zip" hidden>
+                <mdui-button id="moon-import-btn" variant="tonal" icon="upload_file">导入静读天下</mdui-button>
+            </div>
+        </div>
+        <div id="dataTable" class="table-card w-100"></div>
     </section>
 </div>
 

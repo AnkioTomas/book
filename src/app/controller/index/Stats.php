@@ -22,7 +22,10 @@ use Throwable;
  * POST /index/stats/importMoon  (.mrpro 文件上传)
  * GET  /index/stats/summary
  * GET  /index/stats/insight
+ * GET  /index/stats/books
  * GET  /index/stats/book?filename=
+ * POST /index/stats/remap
+ * POST /index/stats/removeBook
  */
 class Stats extends ApiController
 {
@@ -232,6 +235,125 @@ class Stats extends ApiController
     }
 
     /**
+     * GET /index/stats/books
+     * DataTable：page_stat 中出现过的书（聚合）。
+     */
+    public function books(): Response
+    {
+        $page = max(1, (int)$this->request->get('page', 1));
+        $pageSize = max(1, min(100, (int)$this->request->get('pageSize', 20)));
+        $search = trim((string)$this->request->get('search', ''));
+
+        $pageStats = PageStatDao::getInstance()->getAllRows();
+        /** @var array<string, array{filename: string, duration: int, records: int, lastRead: int}> $agg */
+        $agg = [];
+        foreach ($pageStats as $s) {
+            $fn = $s->book_filename;
+            if ($fn === '') {
+                continue;
+            }
+            if (!isset($agg[$fn])) {
+                $agg[$fn] = [
+                    'filename' => $fn,
+                    'duration' => 0,
+                    'records' => 0,
+                    'lastRead' => 0,
+                ];
+            }
+            $agg[$fn]['duration'] += $s->duration;
+            $agg[$fn]['records']++;
+            $agg[$fn]['lastRead'] = max($agg[$fn]['lastRead'], $s->start_time);
+        }
+
+        $meta = $this->bookMetaFor(array_keys($agg));
+        $rows = [];
+        foreach ($agg as $fn => $a) {
+            $m = $meta[$fn];
+            $title = $m['title'];
+            $authors = $m['authors'];
+            if ($search !== '') {
+                $hay = mb_strtolower($title . ' ' . $authors . ' ' . $fn);
+                if (!str_contains($hay, mb_strtolower($search))) {
+                    continue;
+                }
+            }
+            $rows[] = [
+                'filename' => $fn,
+                'title' => $title,
+                'authors' => $authors,
+                'coverUrl' => $m['coverUrl'],
+                'inLibrary' => $m['inLibrary'],
+                'duration' => $a['duration'],
+                'durationText' => ReadingStats::formatDuration($a['duration']),
+                'records' => $a['records'],
+                'lastRead' => $a['lastRead'],
+                'lastReadText' => $a['lastRead'] > 0 ? date('Y-m-d H:i', $a['lastRead']) : '—',
+            ];
+        }
+
+        usort($rows, static fn ($a, $b) => $b['lastRead'] <=> $a['lastRead']);
+        $total = count($rows);
+        $slice = array_slice($rows, ($page - 1) * $pageSize, $pageSize);
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'ok',
+            'data' => $slice,
+            'count' => $total,
+        ]);
+    }
+
+    /**
+     * POST /index/stats/remap
+     * body: { from, to } — 将阅读记录改绑到书库书籍
+     */
+    public function remap(): Response
+    {
+        $body = $this->jsonBody();
+        $from = PageStatDao::normalizeFilename((string)($body['from'] ?? $this->request->post('from', '')));
+        $to = PageStatDao::normalizeFilename((string)($body['to'] ?? $this->request->post('to', '')));
+        if ($from === '' || $to === '') {
+            return Response::asJson(['code' => 400, 'msg' => '缺少 from 或 to', 'data' => []]);
+        }
+
+        $lib = BookDao::getInstance()->resolveByFilename($to);
+        if ($lib === null) {
+            return Response::asJson(['code' => 400, 'msg' => '目标书不在书库中', 'data' => []]);
+        }
+        $to = $lib->filename;
+
+        $n = PageStatDao::getInstance()->remapFilename($from, $to);
+        return Response::asJson([
+            'code' => 200,
+            'msg' => $n > 0 ? "已改绑 {$n} 条记录" : '没有需要改绑的记录',
+            'data' => ['from' => $from, 'to' => $to, 'count' => $n],
+        ]);
+    }
+
+    /**
+     * POST /index/stats/removeBook
+     * body: { filename } — 删除该书全部阅读记录
+     */
+    public function removeBook(): Response
+    {
+        $body = $this->jsonBody();
+        $filename = PageStatDao::normalizeFilename((string)($body['filename'] ?? $this->request->post('filename', '')));
+        if ($filename === '') {
+            return Response::asJson(['code' => 400, 'msg' => '缺少 filename', 'data' => []]);
+        }
+
+        $dao = PageStatDao::getInstance();
+        $before = count($dao->getByFilename($filename));
+        $dao->deleteByFilename($filename);
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => $before > 0 ? "已删除 {$before} 条阅读记录" : '没有可删记录',
+            'data' => ['filename' => $filename, 'count' => $before],
+        ]);
+    }
+
+    /**
      * POST /index/stats/importMoon
      * multipart: file = *.mrpro（静读天下备份 zip）
      * 日粒度写入 page_stat；同设备旧数据整表替换。
@@ -399,7 +521,7 @@ class Stats extends ApiController
 
     /**
      * @param  string[] $filenames
-     * @return array<string, array{title: string, authors: string, coverUrl: string}>
+     * @return array<string, array{title: string, authors: string, coverUrl: string, inLibrary: bool}>
      */
     private function bookMetaFor(array $filenames): array
     {
@@ -419,6 +541,7 @@ class Stats extends ApiController
                     'title' => $lib->bookName !== '' ? $lib->bookName : $fn,
                     'authors' => $lib->author,
                     'coverUrl' => '/webdav/' . rawurlencode($lib->filename),
+                    'inLibrary' => true,
                 ];
                 continue;
             }
@@ -428,6 +551,7 @@ class Stats extends ApiController
                 'title' => $title !== '' ? $title : $fn,
                 'authors' => '',
                 'coverUrl' => '/webdav/' . rawurlencode($fn),
+                'inLibrary' => false,
             ];
         }
         return $out;

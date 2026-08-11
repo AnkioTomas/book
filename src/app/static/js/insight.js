@@ -1,276 +1,346 @@
 /**
- * 多维统计：拉取 /index/stats/insight，渲染阅读 KPI + 日历 + 静读天下导入
+ * 多维统计
  * @file insight.js
  */
+window.pageLoadFiles = ['Toaster', 'DataTable', 'Layer', 'Request'];
 
-window.pageLoadFiles = ['Toaster'];
+window.pageOnLoad = function () {
+    var table = new DataTable('#dataTable');
+    var perDay = {};
+    var ym = '';
+    var selected = '';
 
-window.pageOnLoad = () => {
-    bindMoonImport();
-    loadInsight();
-};
+    function pad(n) {
+        return n < 10 ? '0' + n : '' + n;
+    }
 
-function loadInsight() {
-    $.request.get('/index/stats/insight', {}, function (res) {
-        if (!res || res.code !== 200) {
-            $.toaster.error((res && res.msg) || '加载失败');
-            renderReadingEmpty('加载失败');
+    function reloadAll() {
+        table.reload({ search: $('#insight-book-search')[0].value || '' });
+        loadInsight();
+    }
+
+    // —— KPI / 图表 ——
+    function loadInsight() {
+        $.request.get('/index/stats/insight', {}, function (res) {
+            if (!res || res.code !== 200) {
+                $.toaster.error((res && res.msg) || '加载失败');
+                $('#insight-reading').html(
+                    '<mdui-card class="p-3 rounded-lg"><div class="body-small text-on-surface-variant">加载失败</div></mdui-card>'
+                );
+                return;
+            }
+            var data = res.data || {};
+            $('#insight-empty').toggleClass('d-none', !!data.hasData);
+            renderReading(data.readingActivity || {});
+            perDay = data.perDay || {};
+            ym = data.initialYm || '';
+            selected = '';
+            var days = Object.keys(perDay).sort();
+            if (days.length) {
+                selected = days[days.length - 1];
+                ym = selected.slice(0, 7);
+                renderDay(selected);
+            }
+            renderMonth();
+        }, function () {
+            $.toaster.error('加载失败');
+        });
+    }
+
+    function renderReading(activity) {
+        if (!activity.hasData) {
+            $('#insight-reading').html(
+                '<mdui-card class="p-3 rounded-lg"><div class="body-small text-on-surface-variant">暂无阅读活动数据</div></mdui-card>'
+            );
             return;
         }
-        applyInsight(res.data || {});
-    }, function () {
-        $.toaster.error('加载失败');
-        renderReadingEmpty('加载失败');
-    });
-}
-
-function applyInsight(data) {
-    const emptyEl = document.getElementById('insight-empty');
-    if (emptyEl) {
-        emptyEl.classList.toggle('d-none', !!data.hasData);
-    }
-    renderReading(data.readingActivity || {});
-    initCalendar(data.perDay || {}, data.initialYm || '');
-}
-
-function renderReadingEmpty(msg) {
-    const root = document.getElementById('insight-reading');
-    if (!root) {
-        return;
-    }
-    root.innerHTML = '<mdui-card class="p-3 rounded-lg">'
-        + '<div class="body-small text-on-surface-variant">' + $.escapeHtml(msg) + '</div>'
-        + '</mdui-card>';
-}
-
-function renderReading(activity) {
-    const root = document.getElementById('insight-reading');
-    if (!root) {
-        return;
-    }
-    if (!activity.hasData) {
-        renderReadingEmpty('暂无阅读活动数据');
-        return;
-    }
-
-    const kpi = activity.kpi || {};
-    const kpiItems = [
-        { cls: 'kpi-total', icon: 'schedule', value: kpi.totalReadingTime, label: '总阅读时长', small: true },
-        { cls: 'kpi-reading', icon: 'date_range', value: kpi.last7DaysReadTime, label: '近 7 天', small: true },
-        { cls: 'kpi-rate', icon: 'timelapse', value: kpi.longestDay, label: '最长单日', small: true },
-        { cls: 'kpi-finished', icon: 'menu_book', value: kpi.mostPagesInADay, label: '单日最多页', small: false },
-        { cls: 'kpi-dusty', icon: 'auto_stories', value: kpi.totalPagesRead, label: '累计阅读页', small: false },
-    ];
-
-    let html = '<div class="stats-kpi-grid d-grid gap-3 mb-3">';
-    kpiItems.forEach((item) => {
-        html += '<mdui-card class="stats-kpi ' + item.cls + ' bg-surface-container-low d-flex items-center gap-3 p-3">'
-            + '<div class="stats-kpi-icon center-both"><mdui-icon name="' + item.icon + '"></mdui-icon></div>'
-            + '<div class="d-flex flex-col min-w-0">'
-            + '<div class="stats-kpi-value"' + (item.small ? ' style="font-size:1.25rem"' : '') + '>'
-            + $.escapeHtml(item.value) + '</div>'
-            + '<div class="body-small text-on-surface-variant">' + $.escapeHtml(item.label) + '</div>'
-            + '</div></mdui-card>';
-    });
-    html += '</div>';
-
-    html += '<div class="stats-two-grid d-grid gap-4">';
-    html += '<mdui-card class="p-3 rounded-lg">'
-        + '<div class="title-small mb-2 font-semibold">月度阅读时长</div>'
-        + '<div class="trend d-flex items-end justify-between gap-2 w-full pt-2">';
-    (activity.perMonth || []).forEach((m) => {
-        html += '<div class="trend-col flex-1 d-flex flex-col items-center justify-end h-full gap-1">'
-            + '<div class="trend-count">' + $.escapeHtml(m.count) + '</div>'
-            + '<div class="flex-1 w-full d-flex items-end justify-center">'
-            + '<div class="trend-bar" style="height:' + (m.pct || 0) + '%"></div></div>'
-            + '<div class="trend-label">' + $.escapeHtml(m.label) + '</div>'
-            + '</div>';
-    });
-    html += '</div></mdui-card>';
-
-    html += '<mdui-card class="p-3 rounded-lg">'
-        + '<div class="title-small mb-2 font-semibold">星期分布</div>';
-    (activity.perWeekday || []).forEach((d) => {
-        html += '<div class="d-flex items-center gap-2 my-2">'
-            + '<div class="bar-label text-on-surface-variant">' + $.escapeHtml(d.name) + '</div>'
-            + '<div class="bar-track"><div class="bar-fill" style="width:' + (d.pct || 0) + '%"></div></div>'
-            + '<div class="bar-count" style="flex-basis:auto;min-width:4.5rem">' + $.escapeHtml(d.count) + '</div>'
-            + '</div>';
-    });
-    html += '</mdui-card></div>';
-
-    root.innerHTML = html;
-}
-
-function initCalendar(perDay, initialYm) {
-    const grid = document.getElementById('cal-grid');
-    const label = document.getElementById('cal-label');
-    const dayTitle = document.getElementById('cal-day-title');
-    const dayList = document.getElementById('cal-day-list');
-    if (!grid || !label || !dayTitle || !dayList) {
-        return;
+        var kpi = activity.kpi || {};
+        var items = [
+            ['kpi-total', 'schedule', kpi.totalReadingTime, '总阅读时长', true],
+            ['kpi-reading', 'date_range', kpi.last7DaysReadTime, '近 7 天', true],
+            ['kpi-rate', 'timelapse', kpi.longestDay, '最长单日', true],
+            ['kpi-finished', 'menu_book', kpi.mostPagesInADay, '单日最多页', false],
+            ['kpi-dusty', 'auto_stories', kpi.totalPagesRead, '累计阅读页', false],
+        ];
+        var html = '<div class="stats-kpi-grid d-grid gap-3 mb-3">';
+        items.forEach(function (it) {
+            html += '<mdui-card class="stats-kpi ' + it[0] + ' bg-surface-container-low d-flex items-center gap-3 p-3">'
+                + '<div class="stats-kpi-icon center-both"><mdui-icon name="' + it[1] + '"></mdui-icon></div>'
+                + '<div class="d-flex flex-col min-w-0">'
+                + '<div class="stats-kpi-value"' + (it[4] ? ' style="font-size:1.25rem"' : '') + '>'
+                + $.escapeHtml(it[2]) + '</div>'
+                + '<div class="body-small text-on-surface-variant">' + $.escapeHtml(it[3]) + '</div>'
+                + '</div></mdui-card>';
+        });
+        html += '</div><div class="stats-two-grid d-grid gap-4">';
+        html += '<mdui-card class="p-3 rounded-lg"><div class="title-small mb-2 font-semibold">月度阅读时长</div>'
+            + '<div class="trend d-flex items-end justify-between gap-2 w-full pt-2">';
+        (activity.perMonth || []).forEach(function (m) {
+            html += '<div class="trend-col flex-1 d-flex flex-col items-center justify-end h-full gap-1">'
+                + '<div class="trend-count">' + $.escapeHtml(m.count) + '</div>'
+                + '<div class="flex-1 w-full d-flex items-end justify-center">'
+                + '<div class="trend-bar" style="height:' + (m.pct || 0) + '%"></div></div>'
+                + '<div class="trend-label">' + $.escapeHtml(m.label) + '</div></div>';
+        });
+        html += '</div></mdui-card><mdui-card class="p-3 rounded-lg">'
+            + '<div class="title-small mb-2 font-semibold">星期分布</div>';
+        (activity.perWeekday || []).forEach(function (d) {
+            html += '<div class="d-flex items-center gap-2 my-2">'
+                + '<div class="bar-label text-on-surface-variant">' + $.escapeHtml(d.name) + '</div>'
+                + '<div class="bar-track"><div class="bar-fill" style="width:' + (d.pct || 0) + '%"></div></div>'
+                + '<div class="bar-count" style="flex-basis:auto;min-width:4.5rem">' + $.escapeHtml(d.count) + '</div></div>';
+        });
+        html += '</mdui-card></div>';
+        $('#insight-reading').html(html);
     }
 
-    let ym = initialYm || '2020-01';
-    let selected = '';
-
-    const pad = (n) => (n < 10 ? '0' + n : '' + n);
-    const shiftYm = (y, m, delta) => {
-        const d = new Date(y, m - 1 + delta, 1);
-        return d.getFullYear() + '-' + pad(d.getMonth() + 1);
-    };
-
-    const renderDayDetail = (date) => {
+    // —— 日历 ——
+    function renderDay(date) {
         selected = date;
-        const info = perDay[date];
+        var info = perDay[date];
         if (!info || !info.books || !info.books.length) {
-            dayTitle.textContent = date || '选择日期';
-            dayList.innerHTML = '<div class="body-small text-on-surface-variant">这一天没有阅读记录</div>';
+            $('#cal-day-title').text(date || '选择日期');
+            $('#cal-day-list').html('<div class="body-small text-on-surface-variant">这一天没有阅读记录</div>');
             return;
         }
-        dayTitle.textContent = date + ' · ' + info.durationText;
-        dayList.innerHTML = info.books.map((b) => (
-            '<div class="list-row d-flex items-center gap-3 py-2">'
-            + '<image-loader src="' + $.escapeHtml(b.coverUrl || '') + '" class="list-cover"></image-loader>'
-            + '<div class="d-flex flex-col flex-1 min-w-0">'
-            + '<div class="title-small text-ellipsis" title="' + $.escapeHtml(b.title || '') + '">'
-            + $.escapeHtml(b.title || '') + '</div>'
-            + '<div class="body-small text-on-surface-variant text-ellipsis">'
-            + $.escapeHtml(b.authors || '未知作者') + '</div>'
-            + '</div>'
-            + '<div class="day-meta d-flex flex-col items-end gap-1 body-small text-on-surface-variant">'
-            + '<div>' + $.escapeHtml(b.durationText || '') + '</div>'
-            + '<div>' + $.escapeHtml(b.progressText || '0%') + '</div>'
-            + '</div>'
-            + '</div>'
-        )).join('');
-    };
+        $('#cal-day-title').text(date + ' · ' + info.durationText);
+        $('#cal-day-list').html(info.books.map(function (b) {
+            return '<div class="list-row d-flex items-center gap-3 py-2">'
+                + '<image-loader src="' + $.escapeHtml(b.coverUrl || '') + '" class="list-cover"></image-loader>'
+                + '<div class="d-flex flex-col flex-1 min-w-0">'
+                + '<div class="title-small text-ellipsis" title="' + $.escapeHtml(b.title || '') + '">'
+                + $.escapeHtml(b.title || '') + '</div>'
+                + '<div class="body-small text-on-surface-variant text-ellipsis">'
+                + $.escapeHtml(b.authors || '未知作者') + '</div></div>'
+                + '<div class="day-meta d-flex flex-col items-end gap-1 body-small text-on-surface-variant">'
+                + '<div>' + $.escapeHtml(b.durationText || '') + '</div>'
+                + '<div>' + $.escapeHtml(b.progressText || '0%') + '</div></div></div>';
+        }).join(''));
+    }
 
-    const renderMonth = () => {
-        const [y, m] = ym.split('-').map(Number);
-        label.textContent = y + '年' + m + '月';
-        const first = new Date(y, m - 1, 1);
-        const startPad = first.getDay();
-        const daysInMonth = new Date(y, m, 0).getDate();
-        const gridStart = new Date(y, m - 1, 1 - startPad);
-        const total = Math.ceil((startPad + daysInMonth) / 7) * 7;
+    function renderMonth() {
+        var parts = ym.split('-').map(Number);
+        var y = parts[0];
+        var m = parts[1];
+        $('#cal-label').text(y + '年' + m + '月');
 
-        let maxDur = 1;
-        for (let d = 1; d <= daysInMonth; d++) {
-            const key = ym + '-' + pad(d);
-            maxDur = Math.max(maxDur, (perDay[key] && perDay[key].duration) || 0);
+        var startPad = new Date(y, m - 1, 1).getDay();
+        var daysInMonth = new Date(y, m, 0).getDate();
+        var gridStart = new Date(y, m - 1, 1 - startPad);
+        var total = Math.ceil((startPad + daysInMonth) / 7) * 7;
+        var maxDur = 1;
+        for (var d = 1; d <= daysInMonth; d++) {
+            var k = ym + '-' + pad(d);
+            maxDur = Math.max(maxDur, (perDay[k] && perDay[k].duration) || 0);
         }
 
-        const frag = document.createDocumentFragment();
-        for (let i = 0; i < total; i++) {
-            const day = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
-            const key = day.getFullYear() + '-' + pad(day.getMonth() + 1) + '-' + pad(day.getDate());
-            const inMonth = day.getMonth() === m - 1;
-            const info = perDay[key];
-            const dur = (info && info.duration) || 0;
-            const bookCount = (info && info.books && info.books.length) || 0;
-            let level = 0;
+        var html = '';
+        for (var i = 0; i < total; i++) {
+            var day = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+            var key = day.getFullYear() + '-' + pad(day.getMonth() + 1) + '-' + pad(day.getDate());
+            var inMonth = day.getMonth() === m - 1;
+            var info = perDay[key];
+            var dur = (info && info.duration) || 0;
+            var level = 0;
             if (dur > 0) {
-                const ratio = dur / maxDur;
+                var ratio = dur / maxDur;
                 level = ratio >= 0.75 ? 4 : (ratio >= 0.5 ? 3 : (ratio >= 0.25 ? 2 : 1));
             }
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'cal-cell lv' + level
+            html += '<button type="button" class="cal-cell lv' + level
                 + (inMonth ? '' : ' out')
-                + (key === selected ? ' is-selected' : '');
-            btn.dataset.date = key;
-            btn.title = key + (dur ? (' · ' + ((info && info.durationText) || '')) : '');
-            btn.innerHTML = '<span>' + day.getDate() + '</span>'
-                + (inMonth && dur > 0 ? '<span class="meta">' + bookCount + '本</span>' : '');
-            btn.addEventListener('click', () => {
-                renderDayDetail(key);
-                renderMonth();
+                + (key === selected ? ' is-selected' : '')
+                + '" data-date="' + key + '" title="' + key
+                + (dur ? (' · ' + ((info && info.durationText) || '')) : '') + '">'
+                + '<span>' + day.getDate() + '</span>'
+                + (inMonth && dur > 0 ? '<span class="meta">' + ((info.books && info.books.length) || 0) + '本</span>' : '')
+                + '</button>';
+        }
+        $('#cal-grid').html(html);
+    }
+
+    $('#cal-grid').on('click', '.cal-cell', function () {
+        renderDay($(this).data('date'));
+        renderMonth();
+    });
+    $('#cal-prev').on('click', function () {
+        var p = ym.split('-').map(Number);
+        var d = new Date(p[0], p[1] - 2, 1);
+        ym = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+        renderMonth();
+    });
+    $('#cal-next').on('click', function () {
+        var p = ym.split('-').map(Number);
+        var d = new Date(p[0], p[1], 1);
+        ym = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+        renderMonth();
+    });
+
+    // —— DataTable ——
+    table.load({
+        uri: '/index/stats/books',
+        height: 'auto',
+        lineHeight: 'auto',
+        mobile: true,
+        page: true,
+        selectable: false,
+        empty_msg: '暂无阅读记录',
+        columns: [
+            {
+                field: 'coverUrl', name: '封面', align: 'center', width: 60,
+                formatter: function (v) {
+                    return '<image-loader src="' + $.escapeHtml(v || '') + '" class="insight-book-cover"></image-loader>';
+                },
+            },
+            {
+                field: 'title', name: '书名', align: 'left', width: 'auto',
+                formatter: function (v, row) {
+                    return '<div class="text-ellipsis" title="' + $.escapeHtml(v || '') + '">'
+                        + $.escapeHtml(v || '')
+                        + (row.inLibrary
+                            ? '<span class="badge badge-sm badge-primary ml-1">已入库</span>'
+                            : '<span class="badge badge-sm badge-error ml-1">未匹配</span>')
+                        + '</div><div class="body-small text-on-surface-variant text-ellipsis">'
+                        + $.escapeHtml(row.filename || '') + '</div>';
+                },
+            },
+            {
+                field: 'authors', name: '作者', align: 'left', width: 120,
+                formatter: function (v) { return $.escapeHtml(v || '—'); },
+            },
+            { field: 'durationText', name: '时长', align: 'center', width: 100 },
+            { field: 'records', name: '记录', align: 'center', width: 70 },
+            { field: 'lastReadText', name: '最近阅读', align: 'center', width: 140 },
+            {
+                field: 'filename', name: '操作', align: 'center', width: 140, fixed: 'right',
+                formatter: function (_v, _row, index) {
+                    return '<mdui-button-icon data-index="' + index + '" icon="swap_horiz" class="action-remap" title="改绑书库"></mdui-button-icon>'
+                        + '<mdui-button-icon data-index="' + index + '" icon="delete" class="action-delete" title="删除记录" color="error"></mdui-button-icon>';
+                },
+            },
+        ],
+    });
+
+    var searchTimer = null;
+    $('#insight-book-search').on('input', function () {
+        var q = this.value || '';
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () {
+            table.reload({ search: q });
+        }, 400);
+    });
+
+    $('#dataTable').on('click', '.action-delete', function () {
+        var row = table.getRow($(this).data('index'));
+        if (!row) return;
+        $.layer.confirm({
+            msg: '确定删除「' + (row.title || row.filename) + '」的全部阅读记录？',
+            yes: function () {
+                $.request.postForm('/index/stats/removeBook', { filename: row.filename }, function (res) {
+                    if (!res || res.code !== 200) {
+                        $.toaster.error((res && res.msg) || '删除失败');
+                        return;
+                    }
+                    $.toaster.success(res.msg || '已删除');
+                    reloadAll();
+                });
+            },
+        });
+    });
+
+    $('#dataTable').on('click', '.action-remap', function () {
+        var fromRow = table.getRow($(this).data('index'));
+        if (!fromRow) return;
+
+        $.layer.html({
+            title: '改绑到书库 · ' + (fromRow.title || fromRow.filename),
+            content: '<mdui-text-field id="remap-search" label="搜索书库" variant="outlined" icon="search" class="w-100 mb-2"></mdui-text-field>'
+                + '<div id="remap-pick-list" class="remap-pick-list body-small text-on-surface-variant">搜索中…</div>',
+            style: 'width:min(520px,94vw);',
+            closeOnOverlayClick: true,
+        });
+
+        var timer = null;
+        function searchLib(q) {
+            $.request.get('/index/book/list', { page: 1, pageSize: 20, search: q || '' }, function (res) {
+                var books = (res && res.code === 200 && res.data) || [];
+                if (!books.length) {
+                    $('#remap-pick-list').html('无匹配书籍');
+                    return;
+                }
+                $('#remap-pick-list').html(books.map(function (b) {
+                    return '<div class="remap-pick-row d-flex items-center gap-3 py-2" data-file="' + $.escapeHtml(b.filename || '') + '">'
+                        + '<image-loader src="/webdav/' + encodeURIComponent(b.filename || '') + '" class="insight-book-cover"></image-loader>'
+                        + '<div class="d-flex flex-col flex-1 min-w-0">'
+                        + '<div class="title-small text-ellipsis">' + $.escapeHtml(b.bookName || b.filename || '') + '</div>'
+                        + '<div class="body-small text-on-surface-variant text-ellipsis">'
+                        + $.escapeHtml(b.author || '') + ' · ' + $.escapeHtml(b.filename || '') + '</div></div></div>';
+                }).join(''));
             });
-            frag.appendChild(btn);
         }
-        grid.innerHTML = '';
-        grid.appendChild(frag);
-    };
 
-    const days = Object.keys(perDay).sort();
-    if (days.length) {
-        selected = days[days.length - 1];
-        const parts = selected.split('-');
-        if (parts.length === 3) {
-            ym = parts[0] + '-' + parts[1];
-        }
-        renderDayDetail(selected);
-    }
-    renderMonth();
-
-    const prev = document.getElementById('cal-prev');
-    const next = document.getElementById('cal-next');
-    if (prev && !prev.dataset.bound) {
-        prev.dataset.bound = '1';
-        prev.addEventListener('click', () => {
-            const [y, m] = ym.split('-').map(Number);
-            ym = shiftYm(y, m, -1);
-            renderMonth();
+        $('#remap-search').on('input', function () {
+            clearTimeout(timer);
+            var q = this.value || '';
+            timer = setTimeout(function () { searchLib(q); }, 350);
         });
-    }
-    if (next && !next.dataset.bound) {
-        next.dataset.bound = '1';
-        next.addEventListener('click', () => {
-            const [y, m] = ym.split('-').map(Number);
-            ym = shiftYm(y, m, 1);
-            renderMonth();
+        $('#remap-pick-list').on('click', '.remap-pick-row', function () {
+            var to = $(this).attr('data-file') || '';
+            if (!to) return;
+            $.request.postForm('/index/stats/remap', { from: fromRow.filename, to: to }, function (res) {
+                if (!res || res.code !== 200) {
+                    $.toaster.error((res && res.msg) || '改绑失败');
+                    return;
+                }
+                $.toaster.success(res.msg || '已改绑');
+                $.layer.closeAll();
+                reloadAll();
+            });
         });
-    }
-}
+        searchLib(fromRow.title || '');
+    });
 
-function bindMoonImport() {
-    const btn = document.getElementById('moon-import-btn');
-    const input = document.getElementById('moon-import-file');
-    if (!btn || !input || btn.dataset.bound) {
-        return;
-    }
-    btn.dataset.bound = '1';
-
-    btn.addEventListener('click', () => input.click());
-    input.addEventListener('change', () => {
-        const file = input.files && input.files[0];
-        input.value = '';
-        if (!file) {
-            return;
-        }
-        const name = (file.name || '').toLowerCase();
+    // —— 静读天下导入（FormData 只能用 fetch）——
+    $('#moon-import-btn').on('click', function () {
+        $('#moon-import-file')[0].click();
+    });
+    $('#moon-import-file').on('change', function () {
+        var file = this.files && this.files[0];
+        this.value = '';
+        if (!file) return;
+        var name = (file.name || '').toLowerCase();
         if (!name.endsWith('.mrpro') && !name.endsWith('.zip')) {
             $.toaster.error('请选择 .mrpro 备份文件');
             return;
         }
-
+        var btn = $('#moon-import-btn')[0];
         btn.disabled = true;
         btn.loading = true;
-        const fd = new FormData();
+        var fd = new FormData();
         fd.append('file', file);
-
-        // FormData 只能走原生 fetch；$.request.postForm 是 urlencoded
         fetch('/index/stats/importMoon', {
             method: 'POST',
             body: fd,
             credentials: 'same-origin',
-            headers: { 'Accept': 'application/json' },
+            headers: { Accept: 'application/json' },
         })
-            .then((r) => r.json())
-            .then((res) => {
-                if (!res || res.code !== 200) {
-                    throw new Error((res && res.msg) || '导入失败');
-                }
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || res.code !== 200) throw new Error((res && res.msg) || '导入失败');
                 $.toaster.success(res.msg || '导入成功');
-                loadInsight();
+                reloadAll();
             })
-            .catch((err) => {
+            .catch(function (err) {
                 $.toaster.error(err.message || '导入失败');
             })
-            .finally(() => {
+            .finally(function () {
                 btn.disabled = false;
                 btn.loading = false;
             });
     });
-}
+
+    loadInsight();
+
+    window.pageOnUnLoad = function () {
+        $('#cal-grid, #cal-prev, #cal-next, #dataTable, #insight-book-search, #moon-import-btn, #moon-import-file').off();
+    };
+};
