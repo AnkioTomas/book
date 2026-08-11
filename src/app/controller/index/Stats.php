@@ -26,6 +26,7 @@ use Throwable;
  * GET  /index/stats/book?filename=
  * POST /index/stats/remap
  * POST /index/stats/create
+ * POST /index/stats/createBatch
  * POST /index/stats/removeBook
  */
 class Stats extends ApiController
@@ -347,7 +348,7 @@ class Stats extends ApiController
     /**
      * POST /index/stats/create
      * body: { filename, date(Y-m-d), minutes, progress? }
-     * 手工补一条日粒度阅读记录（device_id=manual）。
+     * 手工补一条日粒度阅读记录（device_id=manual-upload）。
      */
     public function create(): Response
     {
@@ -367,22 +368,120 @@ class Stats extends ApiController
             return Response::asJson(['code' => 400, 'msg' => '阅读时长须在 1～1440 分钟', 'data' => []]);
         }
 
+        $resolved = $this->resolveCreateBook($filename);
+        if ($resolved instanceof Response) {
+            return $resolved;
+        }
+        $filename = $resolved;
+
+        $page = $this->progressToPage($progress);
+        $this->upsertManualDay($filename, $date, $minutes, $page);
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => '已添加阅读记录',
+            'data' => [
+                'filename' => $filename,
+                'date' => $date,
+                'duration' => $minutes * 60,
+                'durationText' => ReadingStats::formatDuration($minutes * 60),
+            ],
+        ]);
+    }
+
+    /**
+     * POST /index/stats/createBatch
+     * body: { filename, date_from, date_to, minutes_min, minutes_max, progress? }
+     * 日期范围内每天随机写入一条时长（含端点），上限 366 天。
+     */
+    public function createBatch(): Response
+    {
+        $body = $this->jsonBody();
+        $filename = PageStatDao::normalizeFilename((string)($body['filename'] ?? $this->request->post('filename', '')));
+        $from = trim((string)($body['date_from'] ?? $this->request->post('date_from', '')));
+        $to = trim((string)($body['date_to'] ?? $this->request->post('date_to', '')));
+        $min = (int)($body['minutes_min'] ?? $this->request->post('minutes_min', 0));
+        $max = (int)($body['minutes_max'] ?? $this->request->post('minutes_max', 0));
+        $progress = $body['progress'] ?? $this->request->post('progress', '');
+
+        if ($filename === '') {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍', 'data' => []]);
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+            return Response::asJson(['code' => 400, 'msg' => '日期格式应为 YYYY-MM-DD', 'data' => []]);
+        }
+        if ($min <= 0 || $max <= 0 || $min > 24 * 60 || $max > 24 * 60) {
+            return Response::asJson(['code' => 400, 'msg' => '每日时长须在 1～1440 分钟', 'data' => []]);
+        }
+        if ($min > $max) {
+            return Response::asJson(['code' => 400, 'msg' => '时长下限不能大于上限', 'data' => []]);
+        }
+
+        $startTs = strtotime($from . ' 12:00:00');
+        $endTs = strtotime($to . ' 12:00:00');
+        if ($startTs === false || $endTs === false) {
+            return Response::asJson(['code' => 400, 'msg' => '无效日期', 'data' => []]);
+        }
+        if ($startTs > $endTs) {
+            return Response::asJson(['code' => 400, 'msg' => '开始日期不能晚于结束日期', 'data' => []]);
+        }
+        $days = (int)(($endTs - $startTs) / 86400) + 1;
+        if ($days > 366) {
+            return Response::asJson(['code' => 400, 'msg' => '一次最多补 366 天', 'data' => []]);
+        }
+
+        $resolved = $this->resolveCreateBook($filename);
+        if ($resolved instanceof Response) {
+            return $resolved;
+        }
+        $filename = $resolved;
+        $page = $this->progressToPage($progress);
+
+        $totalSec = 0;
+        for ($ts = $startTs; $ts <= $endTs; $ts += 86400) {
+            $minutes = random_int($min, $max);
+            $this->upsertManualDay($filename, date('Y-m-d', $ts), $minutes, $page);
+            $totalSec += $minutes * 60;
+        }
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => "已批量添加 {$days} 天阅读记录",
+            'data' => [
+                'filename' => $filename,
+                'date_from' => $from,
+                'date_to' => $to,
+                'days' => $days,
+                'duration' => $totalSec,
+                'durationText' => ReadingStats::formatDuration($totalSec),
+            ],
+        ]);
+    }
+
+    /** @return string|Response 成功返回书库 filename */
+    private function resolveCreateBook(string $filename): string|Response
+    {
         $lib = BookDao::getInstance()->resolveByFilename($filename);
         if ($lib === null) {
             return Response::asJson(['code' => 400, 'msg' => '书籍不在书库中', 'data' => []]);
         }
-        $filename = $lib->filename;
+        return $lib->filename;
+    }
 
+    private function progressToPage(mixed $progress): int
+    {
+        if ($progress === '' || $progress === null) {
+            return 0;
+        }
+        return (int)round(max(0, min(100, (float)$progress)));
+    }
+
+    private function upsertManualDay(string $filename, string $date, int $minutes, int $page): void
+    {
         $start = strtotime($date . ' 12:00:00');
         if ($start === false) {
-            return Response::asJson(['code' => 400, 'msg' => '无效日期', 'data' => []]);
+            return;
         }
-
-        $page = 0;
-        if ($progress !== '' && $progress !== null) {
-            $page = (int)round(max(0, min(100, (float)$progress)));
-        }
-
         $stat = new PageStatModel();
         $stat->book_filename = $filename;
         $stat->device_id = self::UNKNOWN_DEVICE;
@@ -391,17 +490,6 @@ class Stats extends ApiController
         $stat->duration = $minutes * 60;
         $stat->total_pages = 100;
         PageStatDao::getInstance()->upsert($stat);
-
-        return Response::asJson([
-            'code' => 200,
-            'msg' => '已添加阅读记录',
-            'data' => [
-                'filename' => $filename,
-                'date' => $date,
-                'duration' => $stat->duration,
-                'durationText' => ReadingStats::formatDuration($stat->duration),
-            ],
-        ]);
     }
 
     /**

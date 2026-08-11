@@ -34,9 +34,11 @@
     .insight-book-cover { width: 32px; height: 44px; border-radius: 4px; overflow: hidden; vertical-align: middle; }
     .remap-pick-row { cursor: pointer; border-bottom: 1px solid rgba(var(--mdui-color-outline), .12); }
     .remap-pick-row:hover { background: rgba(var(--mdui-color-primary), .06); }
-    .remap-pick-list { max-height: 360px; overflow: auto; }
+    .remap-pick-list { max-height: 280px; overflow: auto; }
     .create-stat-form mdui-text-field { width: 100%; margin-bottom: .5rem; }
     .create-book-label { font-size: .85rem; color: rgb(var(--mdui-color-on-surface-variant)); }
+    #insight-create-dialog::part(panel),
+    #insight-remap-dialog::part(panel) { width: min(520px, 94vw); max-width: 94vw; }
 </style>
 
 <div id="container" class="container h-fit py-3">
@@ -91,6 +93,37 @@
         </div>
         <div id="dataTable" class="table-card w-100"></div>
     </section>
+
+    <mdui-dialog id="insight-create-dialog" close-on-overlay-click close-on-esc headline="新建阅读记录">
+        <div class="create-stat-form">
+            <div class="create-book-label mb-1">书籍</div>
+            <mdui-text-field id="create-book-search" label="搜索书库" variant="outlined" icon="search"></mdui-text-field>
+            <div id="create-book-picked" class="body-small text-on-surface-variant mb-2">未选择</div>
+            <div id="create-book-list" class="remap-pick-list mb-2 body-small text-on-surface-variant">输入关键词搜索…</div>
+            <mdui-checkbox id="create-batch-mode">批量（按日期范围每天随机时长）</mdui-checkbox>
+            <div id="create-single-fields" class="mt-2">
+                <mdui-text-field id="create-date" label="日期" type="date" variant="outlined"></mdui-text-field>
+                <mdui-text-field id="create-minutes" label="阅读时长（分钟）" type="number" variant="outlined" value="30"></mdui-text-field>
+            </div>
+            <div id="create-batch-fields" class="mt-2 d-none">
+                <mdui-text-field id="create-date-from" label="开始日期" type="date" variant="outlined"></mdui-text-field>
+                <mdui-text-field id="create-date-to" label="结束日期" type="date" variant="outlined"></mdui-text-field>
+                <mdui-text-field id="create-minutes-min" label="每日时长下限（分钟）" type="number" variant="outlined" value="20"></mdui-text-field>
+                <mdui-text-field id="create-minutes-max" label="每日时长上限（分钟）" type="number" variant="outlined" value="60"></mdui-text-field>
+                <div class="body-small text-on-surface-variant mb-2">范围内每一天写入一条，时长在上下限间随机（最多 366 天）。</div>
+            </div>
+            <mdui-text-field id="create-progress" label="进度%（可选）" type="number" variant="outlined"></mdui-text-field>
+        </div>
+        <mdui-button slot="action" variant="text" id="create-cancel-btn">取消</mdui-button>
+        <mdui-button slot="action" variant="filled" icon="check" id="create-stat-submit">保存</mdui-button>
+    </mdui-dialog>
+
+    <mdui-dialog id="insight-remap-dialog" close-on-overlay-click close-on-esc>
+        <span slot="headline" id="remap-dialog-title">改绑到书库</span>
+        <mdui-text-field id="remap-search" label="搜索书库" variant="outlined" icon="search" class="w-100 mb-2"></mdui-text-field>
+        <div id="remap-pick-list" class="remap-pick-list body-small text-on-surface-variant">搜索中…</div>
+        <mdui-button slot="action" variant="text" id="remap-cancel-btn">取消</mdui-button>
+    </mdui-dialog>
 </div>
 
 <script id="script" src="/static/js/insight.js?v={$__v}"></script>
