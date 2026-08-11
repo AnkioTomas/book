@@ -22,7 +22,7 @@ window.pageOnLoad = function () {
     }
 
     function reloadAll() {
-        table.reload(tableParams());
+        table.reload(tableParams(),false);
         loadInsight();
     }
 
@@ -37,9 +37,18 @@ window.pageOnLoad = function () {
                 return;
             }
             var data = res.data || {};
-            $('#insight-empty').toggleClass('d-none', !!data.hasData);
-            renderReading(data.readingActivity || {});
             perDay = data.perDay || {};
+            // mdui.$ 无 toggleClass；有数据必须藏空状态提示
+            var hasData = !!(data.hasData
+                || (data.readingActivity && data.readingActivity.hasData)
+                || Object.keys(perDay).length);
+            if (hasData) {
+                $('#insight-empty').addClass('d-none');
+                renderReading(data.readingActivity || {});
+            } else {
+                $('#insight-empty').removeClass('d-none');
+                $('#insight-reading').empty();
+            }
             ym = data.initialYm || '';
             selected = '';
             var days = Object.keys(perDay).sort();
@@ -308,6 +317,95 @@ window.pageOnLoad = function () {
         searchLib(fromRow.title || '');
     });
 
+    // —— 新建阅读记录 ——
+    $('#insight-create-btn').on('click', function () {
+        var today = new Date();
+        var ymd = today.getFullYear() + '-'
+            + String(today.getMonth() + 1).padStart(2, '0') + '-'
+            + String(today.getDate()).padStart(2, '0');
+        var pickedFile = '';
+        var pickedTitle = '';
+
+        $.layer.html({
+            title: '新建阅读记录',
+            content: '<div class="create-stat-form">'
+                + '<div class="create-book-label mb-1">书籍</div>'
+                + '<mdui-text-field id="create-book-search" label="搜索书库" variant="outlined" icon="search"></mdui-text-field>'
+                + '<div id="create-book-picked" class="body-small text-on-surface-variant mb-2">未选择</div>'
+                + '<div id="create-book-list" class="remap-pick-list mb-2 body-small text-on-surface-variant">输入关键词搜索…</div>'
+                + '<mdui-text-field id="create-date" label="日期" type="date" variant="outlined" value="' + ymd + '"></mdui-text-field>'
+                + '<mdui-text-field id="create-minutes" label="阅读时长（分钟）" type="number" variant="outlined" value="30"></mdui-text-field>'
+                + '<mdui-text-field id="create-progress" label="进度%（可选）" type="number" variant="outlined"></mdui-text-field>'
+                + '<mdui-button id="create-stat-submit" variant="filled" icon="check" class="mt-2">保存</mdui-button>'
+                + '</div>',
+            style: 'width:min(520px,94vw);',
+            closeOnOverlayClick: true,
+        });
+
+        var timer = null;
+        function searchLib(q) {
+            $.request.get('/index/book/list', { page: 1, pageSize: 20, search: q || '' }, function (res) {
+                var books = (res && res.code === 200 && res.data) || [];
+                if (!books.length) {
+                    $('#create-book-list').html('无匹配书籍');
+                    return;
+                }
+                $('#create-book-list').html(books.map(function (b) {
+                    return '<div class="remap-pick-row d-flex items-center gap-3 py-2" data-file="'
+                        + $.escapeHtml(b.filename || '') + '" data-title="'
+                        + $.escapeHtml(b.bookName || b.filename || '') + '">'
+                        + '<image-loader src="/webdav/' + encodeURIComponent(b.filename || '') + '" class="insight-book-cover"></image-loader>'
+                        + '<div class="d-flex flex-col flex-1 min-w-0">'
+                        + '<div class="title-small text-ellipsis">' + $.escapeHtml(b.bookName || b.filename || '') + '</div>'
+                        + '<div class="body-small text-on-surface-variant text-ellipsis">'
+                        + $.escapeHtml(b.author || '') + '</div></div></div>';
+                }).join(''));
+            });
+        }
+
+        $('#create-book-search').on('input', function () {
+            clearTimeout(timer);
+            var q = this.value || '';
+            timer = setTimeout(function () { searchLib(q); }, 350);
+        });
+        $('#create-book-list').on('click', '.remap-pick-row', function () {
+            pickedFile = $(this).attr('data-file') || '';
+            pickedTitle = $(this).attr('data-title') || pickedFile;
+            $('#create-book-picked').html('已选：<strong>' + $.escapeHtml(pickedTitle) + '</strong>');
+        });
+        $('#create-stat-submit').on('click', function () {
+            if (!pickedFile) {
+                $.toaster.error('请先选择书籍');
+                return;
+            }
+            var date = ($('#create-date')[0].value || '').trim();
+            var minutes = parseInt($('#create-minutes')[0].value, 10) || 0;
+            var progress = ($('#create-progress')[0].value || '').trim();
+            if (!date) {
+                $.toaster.error('请填写日期');
+                return;
+            }
+            if (minutes <= 0) {
+                $.toaster.error('请填写阅读时长（分钟）');
+                return;
+            }
+            var payload = { filename: pickedFile, date: date, minutes: minutes };
+            if (progress !== '') payload.progress = progress;
+            $.request.postForm('/index/stats/create', payload, function (res) {
+                if (!res || res.code !== 200) {
+                    $.toaster.error((res && res.msg) || '保存失败');
+                    return;
+                }
+                $.toaster.success(res.msg || '已添加');
+                $.layer.closeAll();
+                reloadAll();
+            }, function () {
+                $.toaster.error('保存失败');
+            });
+        });
+        searchLib('');
+    });
+
     // —— 静读天下导入（FormData 只能用 fetch）——
     $('#moon-import-btn').on('click', function () {
         $('#moon-import-file')[0].click();
@@ -350,6 +448,6 @@ window.pageOnLoad = function () {
     loadInsight();
 
     window.pageOnUnLoad = function () {
-        $('#cal-grid, #cal-prev, #cal-next, #dataTable, #insight-book-search, #insight-unmatched, #moon-import-btn, #moon-import-file').off();
+        $('#cal-grid, #cal-prev, #cal-next, #dataTable, #insight-book-search, #insight-unmatched, #insight-create-btn, #moon-import-btn, #moon-import-file').off();
     };
 };

@@ -25,6 +25,7 @@ use Throwable;
  * GET  /index/stats/books
  * GET  /index/stats/book?filename=
  * POST /index/stats/remap
+ * POST /index/stats/create
  * POST /index/stats/removeBook
  */
 class Stats extends ApiController
@@ -246,7 +247,6 @@ class Stats extends ApiController
         $unmatchedOnly = (string)$this->request->get('unmatched', '') === '1';
 
         $pageStats = PageStatDao::getInstance()->getAllRows();
-        $bookDays = ReadingStats::aggregateBookDays($pageStats);
 
         /** @var array<string, array{filename: string, duration: int, records: int, lastRead: int}> $agg */
         $agg = [];
@@ -266,8 +266,9 @@ class Stats extends ApiController
             $agg[$fn]['records']++;
             $agg[$fn]['lastRead'] = max($agg[$fn]['lastRead'], $s->start_time);
         }
-        foreach ($bookDays as $books) {
-            foreach ($books as $fn => $dur) {
+        // 用 perDay()（对外稳定 API），勿直接调内部 aggregateBookDays
+        foreach (ReadingStats::perDay($pageStats) as $info) {
+            foreach ($info['books'] as $fn => $dur) {
                 if (!isset($agg[$fn])) {
                     continue;
                 }
@@ -340,6 +341,66 @@ class Stats extends ApiController
             'code' => 200,
             'msg' => $n > 0 ? "已改绑 {$n} 条记录" : '没有需要改绑的记录',
             'data' => ['from' => $from, 'to' => $to, 'count' => $n],
+        ]);
+    }
+
+    /**
+     * POST /index/stats/create
+     * body: { filename, date(Y-m-d), minutes, progress? }
+     * 手工补一条日粒度阅读记录（device_id=manual）。
+     */
+    public function create(): Response
+    {
+        $body = $this->jsonBody();
+        $filename = PageStatDao::normalizeFilename((string)($body['filename'] ?? $this->request->post('filename', '')));
+        $date = trim((string)($body['date'] ?? $this->request->post('date', '')));
+        $minutes = (int)($body['minutes'] ?? $this->request->post('minutes', 0));
+        $progress = $body['progress'] ?? $this->request->post('progress', '');
+
+        if ($filename === '') {
+            return Response::asJson(['code' => 400, 'msg' => '请选择书籍', 'data' => []]);
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return Response::asJson(['code' => 400, 'msg' => '日期格式应为 YYYY-MM-DD', 'data' => []]);
+        }
+        if ($minutes <= 0 || $minutes > 24 * 60) {
+            return Response::asJson(['code' => 400, 'msg' => '阅读时长须在 1～1440 分钟', 'data' => []]);
+        }
+
+        $lib = BookDao::getInstance()->resolveByFilename($filename);
+        if ($lib === null) {
+            return Response::asJson(['code' => 400, 'msg' => '书籍不在书库中', 'data' => []]);
+        }
+        $filename = $lib->filename;
+
+        $start = strtotime($date . ' 12:00:00');
+        if ($start === false) {
+            return Response::asJson(['code' => 400, 'msg' => '无效日期', 'data' => []]);
+        }
+
+        $page = 0;
+        if ($progress !== '' && $progress !== null) {
+            $page = (int)round(max(0, min(100, (float)$progress)));
+        }
+
+        $stat = new PageStatModel();
+        $stat->book_filename = $filename;
+        $stat->device_id = self::UNKNOWN_DEVICE;
+        $stat->page = $page;
+        $stat->start_time = $start;
+        $stat->duration = $minutes * 60;
+        $stat->total_pages = 100;
+        PageStatDao::getInstance()->upsert($stat);
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => '已添加阅读记录',
+            'data' => [
+                'filename' => $filename,
+                'date' => $date,
+                'duration' => $stat->duration,
+                'durationText' => ReadingStats::formatDuration($stat->duration),
+            ],
         ]);
     }
 

@@ -35,6 +35,8 @@
     .remap-pick-row { cursor: pointer; border-bottom: 1px solid rgba(var(--mdui-color-outline), .12); }
     .remap-pick-row:hover { background: rgba(var(--mdui-color-primary), .06); }
     .remap-pick-list { max-height: 360px; overflow: auto; }
+    .create-stat-form mdui-text-field { width: 100%; margin-bottom: .5rem; }
+    .create-book-label { font-size: .85rem; color: rgb(var(--mdui-color-on-surface-variant)); }
 </style>
 
 <div id="container" class="container h-fit py-3">
@@ -83,6 +85,7 @@
             </div>
             <div class="d-flex items-center gap-1">
                 <input type="file" id="moon-import-file" accept=".mrpro,application/zip" hidden>
+                <mdui-button id="insight-create-btn" variant="tonal" icon="add">新建</mdui-button>
                 <mdui-button id="moon-import-btn" variant="tonal" icon="upload_file">导入静读天下</mdui-button>
             </div>
         </div>
