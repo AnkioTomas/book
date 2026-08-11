@@ -193,6 +193,15 @@ class Main extends BaseViewController
         ]);
     }
 
+    /**
+     * 多维统计单页壳：数据由 GET /index/stats/insight 提供，JS 渲染。
+     * GET /index/main/insight
+     */
+    public function insight(): Response
+    {
+        return $this->viewResponse->asTpl('insight');
+    }
+
     public function calibre(): Response
     {
         return $this->viewResponse->asTpl();
@@ -308,6 +317,12 @@ class Main extends BaseViewController
                 'title' => '统计',
                 'url' => '/index/main/stats',
                 'icon' => 'analytics',
+                'pjax' => true,
+            ],
+            [
+                'title' => '多维统计',
+                'url' => '/index/main/insight',
+                'icon' => 'insights',
                 'pjax' => true,
             ],
             [

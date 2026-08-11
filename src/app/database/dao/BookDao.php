@@ -223,6 +223,46 @@ class BookDao extends Dao
     }
 
     /**
+     * 按 basename 找书（子目录下的书用纯文件名也能命中）。
+     * 多条同名时取路径最短的一条。
+     */
+    public function getByBasename(string $basename): ?BookModel
+    {
+        $basename = basename(str_replace('\\', '/', trim($basename)));
+        if ($basename === '') {
+            return null;
+        }
+        /** @var BookModel[] $rows */
+        $rows = $this->select()
+            ->where(['filename like :fn', ':fn' => '%' . $basename])
+            ->commit();
+        $best = null;
+        foreach ($rows as $row) {
+            $fn = str_replace('\\', '/', $row->filename);
+            if (basename($fn) !== $basename) {
+                continue;
+            }
+            if ($best === null || strlen($fn) < strlen($best->filename)) {
+                $best = $row;
+            }
+        }
+        return $best;
+    }
+
+    /**
+     * 精确路径优先，否则 basename。
+     */
+    public function resolveByFilename(string $filename): ?BookModel
+    {
+        $filename = str_replace('\\', '/', trim($filename));
+        $filename = ltrim($filename, '/');
+        if ($filename === '') {
+            return null;
+        }
+        return $this->getByFileName($filename) ?? $this->getByBasename($filename);
+    }
+
+    /**
      * @param  string[]    $filenames
      * @return BookModel[]
      */

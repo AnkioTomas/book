@@ -58,14 +58,31 @@ class Douban extends ApiController
     public function webdav(string $filename): Response
     {
         $filename = rawurldecode($filename);
-        $book = BookDao::getInstance()->getByFileName($filename);
-        if (empty($book)) {
-            return Response::asText('404 not found');
+        $filename = str_replace('\\', '/', trim($filename));
+        $filename = ltrim($filename, '/');
+
+        $book = BookDao::getInstance()->resolveByFilename($filename);
+        if ($book !== null) {
+            if ($book->coverUrl !== '') {
+                $file = DoubanUtil::download($book->coverUrl);
+                if ($file !== '') {
+                    return Response::asStatic($file);
+                }
+            }
+            // 封面 sidecar 按 basename 存，用书库真实 filename
+            $file = CoverManager::getInstance()->getCover($book->filename);
+            if ($file !== '') {
+                return Response::asStatic($file);
+            }
+            return Response::asText('404 not found', code: 404);
         }
-        if (empty($book->coverUrl)) {
-            return Response::asStatic(CoverManager::getInstance()->getCover($filename));
+
+        // 书库无记录：仍尝试按 basename 取本地/WebDAV 封面缓存
+        $file = CoverManager::getInstance()->getCover($filename);
+        if ($file !== '') {
+            return Response::asStatic($file);
         }
-        $file = DoubanUtil::download($book->coverUrl);
-        return Response::asStatic($file);
+
+        return Response::asText('404 not found', code: 404);
     }
 }
