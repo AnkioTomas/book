@@ -243,6 +243,7 @@ class Stats extends ApiController
         $page = max(1, (int)$this->request->get('page', 1));
         $pageSize = max(1, min(100, (int)$this->request->get('pageSize', 20)));
         $search = trim((string)$this->request->get('search', ''));
+        $unmatchedOnly = (string)$this->request->get('unmatched', '') === '1';
 
         $pageStats = PageStatDao::getInstance()->getAllRows();
         /** @var array<string, array{filename: string, duration: int, records: int, lastRead: int}> $agg */
@@ -269,6 +270,9 @@ class Stats extends ApiController
         $rows = [];
         foreach ($agg as $fn => $a) {
             $m = $meta[$fn];
+            if ($unmatchedOnly && $m['inLibrary']) {
+                continue;
+            }
             $title = $m['title'];
             $authors = $m['authors'];
             if ($search !== '') {

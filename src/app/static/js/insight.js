@@ -14,8 +14,15 @@ window.pageOnLoad = function () {
         return n < 10 ? '0' + n : '' + n;
     }
 
+    function tableParams() {
+        return {
+            search: $('#insight-book-search')[0].value || '',
+            unmatched: $('#insight-unmatched')[0].checked ? '1' : '',
+        };
+    }
+
     function reloadAll() {
-        table.reload({ search: $('#insight-book-search')[0].value || '' });
+        table.reload(tableParams());
         loadInsight();
     }
 
@@ -222,11 +229,13 @@ window.pageOnLoad = function () {
 
     var searchTimer = null;
     $('#insight-book-search').on('input', function () {
-        var q = this.value || '';
         clearTimeout(searchTimer);
         searchTimer = setTimeout(function () {
-            table.reload({ search: q });
+            table.reload(tableParams());
         }, 400);
+    });
+    $('#insight-unmatched').on('change', function () {
+        table.reload(tableParams());
     });
 
     $('#dataTable').on('click', '.action-delete', function () {
@@ -341,6 +350,6 @@ window.pageOnLoad = function () {
     loadInsight();
 
     window.pageOnUnLoad = function () {
-        $('#cal-grid, #cal-prev, #cal-next, #dataTable, #insight-book-search, #moon-import-btn, #moon-import-file').off();
+        $('#cal-grid, #cal-prev, #cal-next, #dataTable, #insight-book-search, #insight-unmatched, #moon-import-btn, #moon-import-file').off();
     };
 };

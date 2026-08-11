@@ -77,7 +77,10 @@
 
     <section>
         <div class="d-flex items-center justify-between gap-2 mb-2 flex-wrap">
-            <mdui-text-field id="insight-book-search" label="搜索阅读书籍" variant="outlined" icon="search" class="flex-1" style="min-width:180px;max-width:320px"></mdui-text-field>
+            <div class="d-flex items-center gap-2 flex-1 flex-wrap" style="min-width:180px">
+                <mdui-text-field id="insight-book-search" label="搜索阅读书籍" variant="outlined" icon="search" class="flex-1" style="min-width:180px;max-width:320px"></mdui-text-field>
+                <mdui-checkbox id="insight-unmatched">仅未匹配</mdui-checkbox>
+            </div>
             <div class="d-flex items-center gap-1">
                 <input type="file" id="moon-import-file" accept=".mrpro,application/zip" hidden>
                 <mdui-button id="moon-import-btn" variant="tonal" icon="upload_file">导入静读天下</mdui-button>
