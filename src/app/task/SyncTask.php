@@ -60,6 +60,15 @@ class SyncTask extends TaskerAbstract
 
         $bookManager = BookManager::getInstance();
 
+        // 0. 固定布局目录不存在则创建（/Apps/Books、.Moon+、Cache、Cover）。
+        TaskLogger::log('检查并创建远端书库目录…');
+        if (!$bookManager->ensureLibraryDirs()) {
+            Logger::warning('[SyncTask] 无法创建远端书库目录，跳过本次同步');
+            TaskLogger::log('无法创建远端书库目录，跳过本次同步', 'warn');
+            $cache->set('sync-books', 'complete');
+            return;
+        }
+
         // 1. 远端 epub 文件列表 —— 删除判定的唯一可靠依据。null = 不可达 → 中止，绝不删。
         TaskLogger::log('列举远端书库目录…');
         $remoteFiles = $bookManager->listRemoteFilenames();

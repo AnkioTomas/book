@@ -44,6 +44,9 @@ class ProgressManager extends BaseManager
         if ($key === '' || $content === '') {
             return false;
         }
+        if (!$this->ensureRemoteDir($this->moon . '/Cache')) {
+            return false;
+        }
 
         $remotePath = $this->moon . '/Cache/' . $key . '.po';
         $localPath = $this->progress . md5($key) . ".po";
@@ -63,6 +66,9 @@ class ProgressManager extends BaseManager
     public function listRemoteProgress(): ?array
     {
         $dir = $this->moon . '/Cache';
+        if (!$this->ensureRemoteDir($dir)) {
+            return null;
+        }
         try {
             $files = $this->client->listDir($dir);
         } catch (\Throwable $e) {

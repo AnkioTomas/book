@@ -12,6 +12,9 @@ class BookManager extends BaseManager
 {
     public function updateBookList(array $books): bool
     {
+        if (!$this->ensureRemoteDir($this->moon)) {
+            return false;
+        }
         $path = $this->moon . "/books.sync";
         $sync = $this->runtime . "books.sync";
         $data = zlib_encode(Json::encode($books), ZLIB_ENCODING_DEFLATE);
@@ -35,8 +38,11 @@ class BookManager extends BaseManager
             return false;
         }
         $dir = dirname($path);
-        if ($dir !== $this->path && $dir !== '.' && $dir !== '/') {
-            $this->client->mkcol($dir);
+        if ($dir === '' || $dir === '.' || $dir === '/') {
+            return false;
+        }
+        if (!$this->ensureRemoteDir($dir)) {
+            return false;
         }
         return $this->client->upload($file, $path);
     }
@@ -76,11 +82,12 @@ class BookManager extends BaseManager
             return false;
         }
         $dir = dirname($dst);
-        if ($dir !== $this->path && $dir !== '.' && $dir !== '/') {
-            if (!$this->client->mkcol($dir)) {
-                Logger::warning("[BookManager] mkcol failed: {$dir}");
-                return false;
-            }
+        if ($dir === '' || $dir === '.' || $dir === '/') {
+            return false;
+        }
+        if (!$this->ensureRemoteDir($dir)) {
+            Logger::warning("[BookManager] ensureRemoteDir failed: {$dir}");
+            return false;
         }
         return $this->client->move($src, $dst, $overwrite);
     }
@@ -96,8 +103,10 @@ class BookManager extends BaseManager
      */
     public function listRemoteFilenames(): ?array
     {
-        $names = $this->listRemoteFilenamesUnder($this->path, '');
-        return $names;
+        if (!$this->ensureRemoteDir($this->path)) {
+            return null;
+        }
+        return $this->listRemoteFilenamesUnder($this->path, '');
     }
 
     /**

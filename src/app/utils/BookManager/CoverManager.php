@@ -26,6 +26,10 @@ class CoverManager extends BaseManager
             $file = Douban::download($file);
         }
 
+        if (!$this->ensureRemoteDir($this->moon . '/Cover')) {
+            return false;
+        }
+
         if (!$this->client->upload($file, $this->remotePath($filename))) {
             return false;
         }

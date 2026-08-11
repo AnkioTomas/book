@@ -21,6 +21,10 @@ class BaseManager extends Instance
     protected string $moon = "/Apps/Books/.Moon+";
 
     protected string $runtime = "";
+
+    /** @var array<string, bool> 本进程内已确认存在的远端目录 */
+    private array $ensuredDirs = [];
+
     public function __construct()
     {
         $this->runtime = RUNTIME_PATH . DS . "books" . DS;
@@ -40,6 +44,56 @@ class BaseManager extends Instance
     public function __destruct()
     {
 
+    }
+
+    /**
+     * 确保远端目录存在（逐级 MKCOL，含所有父级）。已存在视为成功。
+     */
+    public function ensureRemoteDir(string $path): bool
+    {
+        $path = trim(str_replace('\\', '/', $path), '/');
+        if ($path === '') {
+            return true;
+        }
+        if (isset($this->ensuredDirs[$path])) {
+            return $this->ensuredDirs[$path];
+        }
+
+        $current = '';
+        foreach (explode('/', $path) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                return false;
+            }
+            $current .= '/' . $part;
+            if (isset($this->ensuredDirs[$current])) {
+                if (!$this->ensuredDirs[$current]) {
+                    return false;
+                }
+                continue;
+            }
+            if (!$this->client->mkdir($current)) {
+                $this->ensuredDirs[$current] = false;
+                return false;
+            }
+            $this->ensuredDirs[$current] = true;
+        }
+
+        $this->ensuredDirs[$path] = true;
+        return true;
+    }
+
+    /**
+     * 书库固定布局：/Apps/Books、.Moon+、Cache、Cover。
+     */
+    public function ensureLibraryDirs(): bool
+    {
+        return $this->ensureRemoteDir($this->path)
+            && $this->ensureRemoteDir($this->moon)
+            && $this->ensureRemoteDir($this->moon . '/Cache')
+            && $this->ensureRemoteDir($this->moon . '/Cover');
     }
 
     /**
