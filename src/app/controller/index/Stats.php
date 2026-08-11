@@ -246,6 +246,8 @@ class Stats extends ApiController
         $unmatchedOnly = (string)$this->request->get('unmatched', '') === '1';
 
         $pageStats = PageStatDao::getInstance()->getAllRows();
+        $bookDays = ReadingStats::aggregateBookDays($pageStats);
+
         /** @var array<string, array{filename: string, duration: int, records: int, lastRead: int}> $agg */
         $agg = [];
         foreach ($pageStats as $s) {
@@ -261,9 +263,16 @@ class Stats extends ApiController
                     'lastRead' => 0,
                 ];
             }
-            $agg[$fn]['duration'] += $s->duration;
             $agg[$fn]['records']++;
             $agg[$fn]['lastRead'] = max($agg[$fn]['lastRead'], $s->start_time);
+        }
+        foreach ($bookDays as $books) {
+            foreach ($books as $fn => $dur) {
+                if (!isset($agg[$fn])) {
+                    continue;
+                }
+                $agg[$fn]['duration'] += $dur;
+            }
         }
 
         $meta = $this->bookMetaFor(array_keys($agg));

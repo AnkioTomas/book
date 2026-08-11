@@ -9,9 +9,15 @@ use app\database\model\PageStatModel;
 /**
  * 阅读统计聚合。纯函数，无 ORM。
  * 书籍身份：filename；start_time 为 Unix 秒；duration 为秒。
+ *
+ * 同书同日多设备：先按设备求和（KOReader 多页），再跨设备取 max
+ * （避免 Moon 重复导入 / 多 device_id 把同一天时长加两遍）。
+ * 单日墙钟上限 86400 秒。
  */
 class ReadingStats
 {
+    private const int DAY_SECONDS = 86400;
+
     private const array WEEKDAY_NAMES = [
         0 => '周日',
         1 => '周一',
@@ -36,35 +42,48 @@ class ReadingStats
      */
     public static function summarize(array $stats): array
     {
-        $cutoff = time() - 7 * 86400;
+        $bookDays = self::aggregateBookDays($stats);
+
+        $cutoffDay = date('Y-m-d', time() - 7 * self::DAY_SECONDS);
         $total = 0;
         $last7 = 0;
         $perDayDur = [];
-        $perDayPages = [];
-        $seenPages = [];
         $perMonth = [];
         $weekday = array_fill(0, 7, 0);
 
-        foreach ($stats as $s) {
-            $total += $s->duration;
-            if ($s->start_time >= $cutoff) {
-                $last7 += $s->duration;
+        foreach ($bookDays as $day => $books) {
+            $dayTotal = 0;
+            foreach ($books as $dur) {
+                $dayTotal += $dur;
             }
-            $day = date('Y-m-d', $s->start_time);
-            $perDayDur[$day] = ($perDayDur[$day] ?? 0) + $s->duration;
-            $perDayPages[$day] = ($perDayPages[$day] ?? 0) + 1;
-            $seenPages[$s->book_filename . '#' . $s->page] = true;
+            $dayTotal = min(self::DAY_SECONDS, $dayTotal);
+            $perDayDur[$day] = $dayTotal;
+            $total += $dayTotal;
 
-            $monthKey = date('Y-m', $s->start_time);
+            if ($day >= $cutoffDay) {
+                $last7 += $dayTotal;
+            }
+
+            $monthKey = substr($day, 0, 7);
             if (!isset($perMonth[$monthKey])) {
                 $perMonth[$monthKey] = [
                     'month' => $monthKey,
                     'duration' => 0,
-                    'date' => strtotime($monthKey . '-01') ?: $s->start_time,
+                    'date' => strtotime($monthKey . '-01') ?: 0,
                 ];
             }
-            $perMonth[$monthKey]['duration'] += $s->duration;
-            $weekday[(int)date('w', $s->start_time)] += $s->duration;
+            $perMonth[$monthKey]['duration'] += $dayTotal;
+
+            $dow = (int)date('w', strtotime($day . ' 12:00:00') ?: 0);
+            $weekday[$dow] += $dayTotal;
+        }
+
+        $perDayPages = [];
+        $seenPages = [];
+        foreach ($stats as $s) {
+            $day = date('Y-m-d', $s->start_time);
+            $perDayPages[$day] = ($perDayPages[$day] ?? 0) + 1;
+            $seenPages[$s->book_filename . '#' . $s->page] = true;
         }
 
         $monthList = array_values($perMonth);
@@ -119,19 +138,20 @@ class ReadingStats
      */
     public static function perDay(array $stats): array
     {
-        /** @var array<string, array{duration: int, books: array<string, int>}> $acc */
-        $acc = [];
-        foreach ($stats as $s) {
-            $day = date('Y-m-d', $s->start_time);
-            if (!isset($acc[$day])) {
-                $acc[$day] = ['duration' => 0, 'books' => []];
+        $bookDays = self::aggregateBookDays($stats);
+        $out = [];
+        foreach ($bookDays as $day => $books) {
+            $dayTotal = 0;
+            foreach ($books as $dur) {
+                $dayTotal += $dur;
             }
-            $acc[$day]['duration'] += $s->duration;
-            $acc[$day]['books'][$s->book_filename] =
-                ($acc[$day]['books'][$s->book_filename] ?? 0) + $s->duration;
+            $out[$day] = [
+                'duration' => min(self::DAY_SECONDS, $dayTotal),
+                'books' => $books,
+            ];
         }
-        ksort($acc);
-        return $acc;
+        ksort($out);
+        return $out;
     }
 
     /**
@@ -154,6 +174,35 @@ class ReadingStats
             $out[$fn] = $row['total'] > 0
                 ? round(min(100, $row['page'] / $row['total'] * 100), 1)
                 : 0.0;
+        }
+        return $out;
+    }
+
+    /**
+     * @param  PageStatModel[] $stats
+     * @return array<string, array<string, int>> day => filename => duration(sec)
+     */
+    public static function aggregateBookDays(array $stats): array
+    {
+        /** @var array<string, array<string, array<string, int>>> $byDayBookDev */
+        $byDayBookDev = [];
+        foreach ($stats as $s) {
+            if ($s->book_filename === '' || $s->duration <= 0) {
+                continue;
+            }
+            $day = date('Y-m-d', $s->start_time);
+            $dev = $s->device_id !== '' ? $s->device_id : '_';
+            $byDayBookDev[$day][$s->book_filename][$dev] =
+                ($byDayBookDev[$day][$s->book_filename][$dev] ?? 0)
+                + min(self::DAY_SECONDS, $s->duration);
+        }
+
+        $out = [];
+        foreach ($byDayBookDev as $day => $books) {
+            foreach ($books as $fn => $devs) {
+                // 同书同日：各设备内已求和，跨设备取 max（防重复导入加倍）
+                $out[$day][$fn] = min(self::DAY_SECONDS, max($devs));
+            }
         }
         return $out;
     }
