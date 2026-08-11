@@ -220,12 +220,12 @@ window.pageOnLoad = function () {
                 },
             },
             {
-                field: 'authors', name: '作者', align: 'left', width: 120,
+                field: 'authors', name: '作者', align: 'left', width: 200,
                 formatter: function (v) { return $.escapeHtml(v || '—'); },
             },
-            { field: 'durationText', name: '时长', align: 'center', width: 100 },
+            { field: 'durationText', name: '时长', align: 'center', width: 120 },
             { field: 'records', name: '记录', align: 'center', width: 70 },
-            { field: 'lastReadText', name: '最近阅读', align: 'center', width: 140 },
+            { field: 'lastReadText', name: '最近阅读', align: 'center', width: 189 },
             {
                 field: 'filename', name: '操作', align: 'center', width: 140, fixed: 'right',
                 formatter: function (_v, _row, index) {
