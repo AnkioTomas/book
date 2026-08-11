@@ -2,7 +2,7 @@
 
 > **基于静读天下 App WebDAV 同步的 Web 端书库管理系统**
 
-一个为 **静读天下（Moon+ Reader）** 用户设计的 PC 端书库管理后台：手机 App 通过 WebDAV 同步书籍和元数据，本系统在 Web 端提供搜索、批量编辑、豆瓣抓取、AI 智能识别、统计分析、在线阅读等能力，并把改动同步回 WebDAV，形成双向闭环。
+一个为 **静读天下（Moon+ Reader）** 用户设计的 PC 端书库管理后台：手机 App 通过 WebDAV 同步书籍和元数据，本系统在 Web 端提供搜索、批量编辑、豆瓣抓取、AI 智能识别、藏书统计、多维阅读统计、在线阅读等能力，并把改动同步回 WebDAV，形成双向闭环。
 
 ---
 
@@ -27,6 +27,7 @@
 - **AI 智能分类**：批量让 AI 根据书籍信息自动判断分类和标签
 - **豆瓣搜索**：手动搜索豆瓣，获取书名、作者、简介、封面、出版信息
 - **统计面板**：藏书总量、已读/在读/未读、分类分布、评分分布、近 12 月入库趋势
+- **多维阅读统计**：总时长 / 近 7 天 / 最长单日、月度与星期分布、阅读日历；支持静读天下 `.mrpro` 备份导入、手动/批量补录、改绑书库与删除；数据也可由 [KOReader Book 插件](https://github.com/AnkioTomas/moon) 上报
 - **批量操作**：批量改分类 / 标签 / 系列、批量已读标记、批量删除、批量封面刮削、删除重复
 - **Web 端上传**：拖拽 / 多选，大文件分片，支持 EPUB / MOBI / AZW / AZW3 / PDF / TXT，上传后自动入库并发布到 WebDAV
 - **在线阅读器**（Foliate.js）：支持 EPUB / MOBI / AZW / AZW3 / PDF
@@ -354,6 +355,28 @@ Authorization: Bearer bk_XXXXXXXX
 
 成功响应与现有 Web API 一致：`{"code":200,"msg":"success","data":…}`。
 
+### 阅读统计上报（可选）
+
+侧栏 **多维统计**（`/index/main/insight`）展示阅读时长 KPI、日历与书籍列表。数据写入 `pagestat`，来源可以是：
+
+1. **KOReader Book 插件**：按页停留上报（`POST /index/stats/import` 等，需设备令牌）
+2. **静读天下备份**：页面右上角导入 `.mrpro`（`POST /index/stats/importMoon`）
+3. **手动补录**：单日或按日期范围批量随机时长（`POST /index/stats/create` / `createBatch`）
+
+同书同日多设备会按设备取 max 再汇总，避免重复导入把时长加两遍。未匹配到书库的记录可在表格中筛选、改绑或删除。
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| `POST` | `/index/stats/device` | 注册/校验设备（兼容） |
+| `POST` | `/index/stats/import` | KOReader 批量上报页停留 |
+| `POST` | `/index/stats/importMoon` | 上传 `.mrpro` 备份 |
+| `GET` | `/index/stats/insight` | 多维统计页数据 |
+| `GET` | `/index/stats/books` | 阅读书籍列表（表格） |
+| `POST` | `/index/stats/create` | 手动新建单日记录 |
+| `POST` | `/index/stats/createBatch` | 按日期范围批量补录 |
+| `POST` | `/index/stats/remap` | 阅读记录改绑到书库书籍 |
+| `POST` | `/index/stats/removeBook` | 删除某书全部阅读记录 |
+
 ---
 
 ## 典型工作流
@@ -365,10 +388,12 @@ Authorization: Bearer bk_XXXXXXXX
                       本系统自动同步（每小时）或手动触发
                                       │
                                       ▼
-              Web 端搜索 / 批量编辑 / AI 识别 / 豆瓣抓取 / 统计
+              Web 端搜索 / 批量编辑 / AI 识别 / 豆瓣抓取 / 藏书统计 / 多维阅读统计
                                       │
                                       ▼
                          手机静读天下下次同步拉走更新
+
+阅读时长数据另线进入「多维统计」：KOReader 上报，或导入静读天下 `.mrpro`，或 Web 端手动/批量补录。
 ```
 
 ---
@@ -406,10 +431,10 @@ book/
 ├── src/
 │   ├── app/
 │   │   ├── ai/                 # AI Agent、工具集、任务（元数据填充、分类）
-│   │   ├── controller/         # 控制器（书籍、上传、豆瓣、Calibre）
-│   │   ├── database/           # 数据模型与 DAO（BookModel、ReadingProgressModel）
+│   │   ├── controller/         # 控制器（书籍、上传、豆瓣、Calibre、阅读统计）
+│   │   ├── database/           # 数据模型与 DAO（Book、ReadingProgress、PageStat）
 │   │   ├── task/               # 后台任务（同步、封面刮削、AI 识别/分类）
-│   │   ├── utils/              # 工具类（豆瓣搜索、BookManager、安装向导）
+│   │   ├── utils/              # 工具类（豆瓣、BookManager、ReadingStats、MoonReaderImport、安装向导）
 │   │   ├── static/             # 前端资源（JS、Foliate 阅读器、UI 组件）
 │   │   └── Application.php     # 应用入口，路由注册，定时任务注册
 │   ├── calibre/
@@ -434,7 +459,7 @@ book/
 
 ## 技术栈
 
-- **后端**：PHP 8.3 + Nova 框架 + MySQL
+- **后端**：PHP 8.3 + Nova 框架 + SQLite / MySQL
 - **前端**：MDUI 2.x + Foliate.js（在线阅读器）
 - **AI**：OpenRouter / ChatGPT（通过 nova-ai 插件，Agent + Tool Calling 架构）
 - **存储**：WebDAV（坚果云 / Nextcloud / 群晖 ……）
