@@ -31,7 +31,7 @@
 - **Web 端上传**：拖拽 / 多选，大文件分片，支持 EPUB / MOBI / AZW / AZW3 / PDF / TXT，上传后自动入库并发布到 WebDAV
 - **在线阅读器**（Foliate.js）：支持 EPUB / MOBI / AZW / AZW3 / PDF
 - **阅读进度同步**：与静读天下共享同一份进度文件，双向 last-write-wins 仲裁
-- **设备令牌**：长期 Bearer Token，供 KOReader 等客户端调用 Book API（不直连 WebDAV）
+- **设备令牌 / Book API**：长期 Bearer Token，供 [KOReader 插件（moon）](https://github.com/AnkioTomas/moon) 或其它第三方客户端调用书库接口（不直连 WebDAV）
 - **Web 安装向导**：首次部署通过浏览器填表完成配置，无需手动编辑配置文件
 
 ---
@@ -316,6 +316,43 @@ server {
 ```
 
 在 App 侧执行一次「立即同步」，确认 WebDAV 上出现 `Apps/Books/` 目录后，再回到本系统等待自动同步或手动点击「同步」按钮拉数据。
+
+---
+
+## KOReader 插件与第三方 API
+
+本系统除静读天下 WebDAV 同步外，还提供 **Bearer Token Book API**，给墨水屏 / 第三方客户端用，**不直连 WebDAV**。
+
+官方 KOReader 插件仓库：[AnkioTomas/moon](https://github.com/AnkioTomas/moon)（`book.koplugin`）。
+
+### 快速接入
+
+1. 在本系统侧栏打开 **设备令牌**，创建令牌并**立即复制保存**（明文只显示一次）
+2. 安装插件：把 `book.koplugin` 拷到 KOReader 的 `plugins/` 目录后重启
+3. 打开 **Book 桌面 → 设置 → 服务器与令牌**，填写：
+   - **服务器地址**：本服务基础 URL，例如 `https://book.example.com`
+   - **令牌**：上一步复制的 `bk_…`
+4. 点 **测试连接**；通过后即可浏览书库、下载打开、同步进度
+
+其它客户端可按同样方式携带请求头：
+
+```http
+Authorization: Bearer bk_XXXXXXXX
+```
+
+常用接口示例（完整约定见 [moon 仓库 README](https://github.com/AnkioTomas/moon)）：
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| `GET` | `/index/auth/ping` | 探测令牌 |
+| `GET` | `/index/book/list` | 分页书库 |
+| `GET` | `/index/book/recent` | 最近阅读 |
+| `GET` | `/index/book/stats` | 总数 / 已读 / 未读 |
+| `GET` | `/index/book/file?filename=` | 下载书籍 |
+| `GET` | `/webdav/{filename}` | 封面 |
+| `GET` / `POST` | `/index/book/progress` · `progressUpdate` | 读 / 写进度 |
+
+成功响应与现有 Web API 一致：`{"code":200,"msg":"success","data":…}`。
 
 ---
 
