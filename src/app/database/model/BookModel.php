@@ -223,4 +223,27 @@ class BookModel extends Model
         }
         return $this;
     }
+
+    /** 缺失详情判定字段（封面不算；任一为空即不完整） */
+    public const array DETAIL_FIELDS = ['author', 'description', 'favorite', 'category'];
+
+    public function isIncomplete(): bool
+    {
+        foreach (self::DETAIL_FIELDS as $field) {
+            if (trim((string)$this->$field) === '') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** SQL 片段：与 isIncomplete / 侧栏「缺失详情」一致 */
+    public static function incompleteWhereSql(): string
+    {
+        $parts = [];
+        foreach (self::DETAIL_FIELDS as $field) {
+            $parts[] = "TRIM(IFNULL({$field}, '')) = ''";
+        }
+        return '(' . implode(' OR ', $parts) . ')';
+    }
 }

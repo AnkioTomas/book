@@ -50,8 +50,10 @@ class BookDao extends Dao
             $where[':category'] = $category;
         }
 
-        // 筛选：分类
-        if (!empty($favorite)) {
+        // 筛选：分类（favorite）；empty=无分类；incomplete=缺失详情
+        if ($favorite === 'incomplete') {
+            $where[] = BookModel::incompleteWhereSql();
+        } elseif ($favorite !== '') {
             if ($favorite === 'empty') {
                 $favorite = '';
             }
@@ -188,6 +190,19 @@ class BookDao extends Dao
             array_unshift($list, BookModel::TAG_FINISHED);
         }
         return $list;
+    }
+
+    /**
+     * 缺失详情的书籍 id 列表（作者/描述/分类/标签任一为空；封面不计）。
+     *
+     * @return int[]
+     */
+    public function listIncompleteIds(): array
+    {
+        $rows = $this->select('id')
+            ->where([BookModel::incompleteWhereSql()])
+            ->commit(object: false);
+        return array_map('intval', array_column($rows, 'id'));
     }
 
     /**
