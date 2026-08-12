@@ -22,8 +22,10 @@ use nova\framework\core\Context;
 use nova\framework\core\File;
 use nova\framework\core\Text;
 use nova\framework\http\Response;
+use nova\plugin\corn\schedule\TaskerAbstract;
 use nova\plugin\corn\schedule\TaskerManager;
 
+use nova\plugin\corn\schedule\TaskerTime;
 use nova\plugin\tpl\Pjax;
 
 class Book extends ApiController
@@ -449,7 +451,7 @@ class Book extends ApiController
     /**
      * AI 识别：让助手自动检索并直接写库（无需人工核对），支持单本/批量。
      * 提交后台任务异步执行，进度写入后台任务面板，前端立即返回。
-     * GET /book/aiIdentify?ids=[1,2,3]
+     * GET /book/aiIdentify?ids=[1,2,3]&onlyEmpty=0|1
      */
     public function aiIdentify(): Response
     {
@@ -458,15 +460,36 @@ class Book extends ApiController
             return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
-        $key = 'AI识别_'.substr(md5(implode('', $ids)), 8, 8);
-
-        TaskerManager::del($key);
-
-        TaskerManager::add("", new AiIdentifyTask($ids), $key);
+        $onlyEmpty = (string)$this->request->get('onlyEmpty', '') === '1';
+        $key = ($onlyEmpty ? 'AI填充_' : 'AI识别_') . substr(md5(implode(',', $ids) . ($onlyEmpty ? 'e' : '')), 8, 8);
+        $this->queueTask($key, new AiIdentifyTask($ids, $onlyEmpty));
 
         return Response::asJson([
             'code' => 200,
-            'msg'  => '已提交后台 AI 识别任务（' . count($ids) . ' 本），可在任务面板查看进度',
+            'msg'  => $onlyEmpty
+                ? '已提交后台 AI 填充任务（' . count($ids) . ' 本，仅补空字段），可在任务面板查看进度'
+                : '已提交后台 AI 识别任务（' . count($ids) . ' 本），可在任务面板查看进度',
+        ]);
+    }
+
+    /**
+     * AI 填充全部「缺失详情」书籍（仅补空字段）。
+     * GET /book/aiFillIncomplete
+     */
+    public function aiFillIncomplete(): Response
+    {
+        $ids = BookDao::getInstance()->listIncompleteIds();
+        if ($ids === []) {
+            return Response::asJson(['code' => 200, 'msg' => '没有缺失详情的书籍']);
+        }
+
+        $key = 'AI填充_incomplete_' . substr(md5(implode(',', $ids)), 8, 8);
+        $this->queueTask($key, new AiIdentifyTask($ids, true));
+
+        return Response::asJson([
+            'code' => 200,
+            'msg'  => '已提交后台 AI 填充任务（' . count($ids) . ' 本缺失详情），可在任务面板查看进度',
+            'data' => ['count' => count($ids)],
         ]);
     }
 
@@ -481,9 +504,8 @@ class Book extends ApiController
             return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
-        $key = 'AI分类_' . substr(md5(implode('', $ids)), 8, 8);
-        TaskerManager::del($key);
-        TaskerManager::add('', new AiClassifyTask($ids), $key);
+        $key = 'AI分类_' . substr(md5(implode(',', $ids)), 8, 8);
+        $this->queueTask($key, new AiClassifyTask($ids));
 
         return Response::asJson([
             'code' => 200,
@@ -549,8 +571,7 @@ class Book extends ApiController
         }
 
         $key = '整理源文件_' . substr(md5(implode(',', $ids)), 8, 8);
-        TaskerManager::del($key);
-        TaskerManager::add('', new OrganizeTask($ids), $key);
+        $this->queueTask($key, new OrganizeTask($ids));
 
         return Response::asJson([
             'code' => 200,
@@ -742,13 +763,20 @@ class Book extends ApiController
             return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
-        TaskerManager::del('封面刮削');
-        TaskerManager::add('', new CoverScrapeTask($ids), '封面刮削');
+        $key = '封面刮削_' . substr(md5(implode(',', $ids)), 8, 8);
+        $this->queueTask($key, new CoverScrapeTask($ids));
 
         return Response::asJson([
             'code' => 200,
             'msg'  => '已提交后台封面刮削任务（' . count($ids) . ' 本），可在任务面板查看进度',
         ]);
+    }
+
+    /** 用户触发的一次性后台任务：入 Tasker 调度队列（空 cron = 约 10 秒后执行一次） */
+    private function queueTask(string $name, TaskerAbstract $task): void
+    {
+        TaskerManager::del($name);
+        TaskerManager::add(TaskerTime::after(1), $task, $name);
     }
 
 }

@@ -32,11 +32,14 @@ window.pageOnLoad = function () {
 
 
     // AI 识别：提交后台任务，AI 自动检索并直接写库，进度在任务面板查看
-    function aiIdentifyRun(books) {
+    // onlyEmpty=true 时仅补空字段（缺失详情）
+    function aiIdentifyRun(books, onlyEmpty) {
         if (!books || !books.length) return;
         var ids = books.map(function (b) { return b.id; });
+        var params = { ids: JSON.stringify(ids) };
+        if (onlyEmpty) params.onlyEmpty = '1';
 
-        $.request.get('/index/book/aiIdentify', { ids: JSON.stringify(ids) }, function (res) {
+        $.request.get('/index/book/aiIdentify', params, function (res) {
             if (res.code === 200) {
                 $.toaster.success(res.msg || '已提交后台 AI 识别任务');
             } else {
@@ -44,6 +47,18 @@ window.pageOnLoad = function () {
             }
         }, function () {
             $.toaster.error('AI 识别提交失败');
+        });
+    }
+
+    function aiFillIncompleteAll() {
+        $.request.get('/index/book/aiFillIncomplete', {}, function (res) {
+            if (res.code === 200) {
+                $.toaster.success(res.msg || '已提交');
+            } else {
+                $.toaster.error(res.msg || '提交失败');
+            }
+        }, function () {
+            $.toaster.error('提交失败');
         });
     }
 
@@ -316,8 +331,25 @@ window.pageOnLoad = function () {
             var selected = requireSelected('请先选择要识别的书籍');
             if (!selected) return;
             confirm('确定让 AI 自动识别并直接修改选中的 ' + selected.length + ' 本书籍信息吗？此操作无需人工核对、会直接保存。', 'AI 识别', function () {
-                aiIdentifyRun(selected);
+                aiIdentifyRun(selected, false);
             });
+        });
+
+        $('#btnBatchAiFillMissing').on('click', function () {
+            var selected = cardView.getSelectedRows();
+            if (selected && selected.length) {
+                confirm(
+                    '将对选中的 ' + selected.length + ' 本仅补全空字段（作者、简介、分类、标签），已有内容不覆盖。',
+                    'AI 填充缺失',
+                    function () { aiIdentifyRun(selected, true); }
+                );
+                return;
+            }
+            confirm(
+                '未选中书籍时，将对书库中全部「缺失详情」的书执行 AI 填充（仅补空字段）。可在任务面板查看进度。',
+                'AI 填充缺失',
+                function () { aiFillIncompleteAll(); }
+            );
         });
 
         $('#btnBatchAiClassify').on('click', function () {
@@ -422,18 +454,25 @@ window.pageOnLoad = function () {
             batchRequest('/index/book/batchUpdate', batchData, '正在批量更新 ' + selected.length + ' 本书籍...');
         });
 
-        $(editDialog).on("click", "#douban", function () {
+        function openExternalSearch(url, title) {
             var bookName = $("#bookName").val().trim();
             if (!bookName) return $.toaster.error('请先输入书名');
             $(editDialog).showLoading();
-            $.request.postForm("/index/douban/search", { q: bookName }, function (data) {
+            $.request.postForm(url, { q: bookName }, function (data) {
                 $(editDialog).closeLoading();
                 if (data.code === 200) {
-                    $doubanPicker[0].open(data.data);
+                    $doubanPicker[0].open(data.data, title);
                 } else {
                     $.toaster.error(data.msg);
                 }
             });
+        }
+
+        $(editDialog).on("click", "#douban", function () {
+            openExternalSearch("/index/douban/search", "豆瓣结果");
+        });
+        $(editDialog).on("click", "#weread", function () {
+            openExternalSearch("/index/weread/search", "微信读书结果");
         });
 
         $(editDialog).on("click", "#aiFill", function () {

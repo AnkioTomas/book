@@ -17,6 +17,7 @@ use Throwable;
  * AI 识别任务：对指定书籍逐本检索元数据并直接写库（无需人工核对）。
  *
  * 由 Book 控制器在用户选书后通过 go() 提交到后台异步执行，进度写入后台任务面板。
+ * $onlyEmpty=true 时只补空字段，不覆盖已有详情（用于「缺失详情」/上传后自动补全）。
  */
 class AiIdentifyTask extends TaskerAbstract
 {
@@ -25,10 +26,13 @@ class AiIdentifyTask extends TaskerAbstract
     private const array EDITABLE = ['bookName', 'author', 'description', 'rate', 'coverUrl', 'favorite', 'category'];
 
     /**
-     * @param int[] $ids 需要识别的书籍 ID
+     * @param int[] $ids       需要识别的书籍 ID
+     * @param bool  $onlyEmpty 仅填充当前为空的字段
      */
-    public function __construct(private readonly array $ids)
-    {
+    public function __construct(
+        private readonly array $ids,
+        private readonly bool $onlyEmpty = false,
+    ) {
     }
 
     public function getTimeOut(): int
@@ -43,6 +47,7 @@ class AiIdentifyTask extends TaskerAbstract
         $total = count($this->ids);
         $ok = 0;
         $fail = 0;
+        $skip = 0;
 
         foreach (array_values($this->ids) as $index => $id) {
             $book = $dao->getById($id);
@@ -53,6 +58,13 @@ class AiIdentifyTask extends TaskerAbstract
 
             $title = $book->bookName !== '' ? $book->bookName : $book->filename;
             $pos = '（' . ($index + 1) . '/' . $total . '）《' . $title . '》';
+
+            if ($this->onlyEmpty && !$book->isIncomplete()) {
+                $skip++;
+                TaskLogger::log($pos . '详情已完整，跳过');
+                continue;
+            }
+
             TaskLogger::log($pos . '开始识别…');
 
             $out = $resolver->fill($title, $book->author, static function (string $msg) use ($pos): void {
@@ -68,9 +80,13 @@ class AiIdentifyTask extends TaskerAbstract
             // 「已读」是本地阅读状态标签，与 AI 元数据无关：覆盖标签后需补回。
             $wasFinished = $book->hasFinishedTag();
             foreach (self::EDITABLE as $field) {
-                if (isset($out[$field])) {
-                    $book->$field = Text::parseType($book->$field, $out[$field]);
+                if (!isset($out[$field])) {
+                    continue;
                 }
+                if ($this->onlyEmpty && trim((string)$book->$field) !== '') {
+                    continue;
+                }
+                $book->$field = Text::parseType($book->$field, $out[$field]);
             }
             if ($wasFinished) {
                 $book->markFinished(true);
@@ -90,7 +106,11 @@ class AiIdentifyTask extends TaskerAbstract
         }
 
         $dao->syncBooks();
-        TaskLogger::log("识别完成：成功 {$ok}，失败 {$fail}");
+        $msg = "识别完成：成功 {$ok}，失败 {$fail}";
+        if ($skip > 0) {
+            $msg .= "，跳过 {$skip}";
+        }
+        TaskLogger::log($msg);
     }
 
     public function onStop(): void

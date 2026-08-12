@@ -59,6 +59,12 @@ return array(
         'password' => '',
     ),
     'calibre' => '',
+    // 书库行为（与 AI 服务商配置分离）
+    'book' =>
+    array(
+        // 上传新书入库后，自动提交 AI 识别任务（仅补空：作者/简介/分类/标签/封面）
+        'autoFillOnUpload' => false,
+    ),
     'ai' =>
     array(
         'currentProvider' => 'ChatGPT',
