@@ -22,7 +22,7 @@ class BookDao extends Dao
      * @param  string $search   搜索关键词（书名、作者）
      * @param  string $series   系列筛选
      * @param  string $category 标签筛选（category 字段）
-     * @param  string $favorite 分类筛选（favorite 字段）
+     * @param  string $favorite 分类筛选（favorite）；empty=无分类；incomplete=缺失详情；unorganized=根目录文件
      * @param  string $finished 已读筛选：1=已读，0=未读
      * @param  string $author   作者筛选（精确匹配）
      * @return array  ['total' => int, 'list' => BookModel[]]
@@ -50,9 +50,11 @@ class BookDao extends Dao
             $where[':category'] = $category;
         }
 
-        // 筛选：分类（favorite）；empty=无分类；incomplete=缺失详情
+        // 筛选：分类（favorite）；empty=无分类；incomplete=缺失详情；unorganized=根目录文件
         if ($favorite === 'incomplete') {
             $where[] = BookModel::incompleteWhereSql();
+        } elseif ($favorite === 'unorganized') {
+            $where[] = "filename <> '' AND filename NOT LIKE '%/%'";
         } elseif ($favorite !== '') {
             if ($favorite === 'empty') {
                 $favorite = '';

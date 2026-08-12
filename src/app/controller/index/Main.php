@@ -243,6 +243,13 @@ class Main extends BaseViewController
             ];
         }
         $categories[] = [
+            'title' => '未整理',
+            'icon' => 'folder_off',
+            'url' => $bookBase . '?favorite=unorganized',
+            'pjax' => true,
+            'match' => '^/index/main/book\?([^#]*&)?favorite=unorganized(&|$)',
+        ];
+        $categories[] = [
             'title' => '无分类',
             'icon' => 'folder',
             'url' => $bookBase . '?favorite=empty',
