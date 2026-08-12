@@ -132,9 +132,9 @@ class ReadingStats
     }
 
     /**
-     * @param  PageStatModel[] $stats
+     * @param  PageStatModel[]                                                $stats
      * @return array<string, array{duration: int, books: array<string, int>}>
-     *         day => { duration, books: filename => duration }
+     *                                                                        day => { duration, books: filename => duration }
      */
     public static function perDay(array $stats): array
     {
@@ -157,7 +157,7 @@ class ReadingStats
     /**
      * 由 page_stat 估算当前进度：max(page) / max(total_pages)。
      *
-     * @param  PageStatModel[] $stats
+     * @param  PageStatModel[]      $stats
      * @return array<string, float> filename => 0–100
      */
     public static function progressByFilename(array $stats): array
@@ -179,7 +179,7 @@ class ReadingStats
     }
 
     /**
-     * @param  PageStatModel[] $stats
+     * @param  PageStatModel[]                   $stats
      * @return array<string, array<string, int>> day => filename => duration(sec)
      */
     public static function aggregateBookDays(array $stats): array
