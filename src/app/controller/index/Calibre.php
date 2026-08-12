@@ -43,6 +43,27 @@ class Calibre extends BaseAPIController
     }
 
     /**
+     * 书库行为开关（与 AI 服务商配置无关）
+     * GET/POST /index/calibre/bookConfig
+     */
+    public function bookConfig(): Response
+    {
+        if ($this->request->isGet()) {
+            return Response::asJson([
+                'code' => 200,
+                'data' => config('book'),
+            ]);
+        }
+
+        config('book', $this->request->post());
+
+        return Response::asJson([
+            'code' => 200,
+            'msg'  => '保存成功',
+        ]);
+    }
+
+    /**
      * 测试连接（短超时），以表单当前填写的地址为准；为空则用已保存值
      */
     public function test(): Response

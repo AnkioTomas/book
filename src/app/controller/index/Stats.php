@@ -570,7 +570,7 @@ class Stats extends ApiController
     }
 
     /**
-     * @param  PageStatModel[] $stats
+     * @param  PageStatModel[]                                                    $stats
      * @return array{hasData: bool, kpi: array, perMonth: list, perWeekday: list}
      */
     private function buildReadingActivity(array $stats): array
@@ -639,7 +639,7 @@ class Stats extends ApiController
     }
 
     /**
-     * @param  PageStatModel[] $pageStats
+     * @param  PageStatModel[]                                                        $pageStats
      * @return array<string, array{duration: int, durationText: string, books: list}>
      */
     private function buildPerDay(array $pageStats): array
@@ -682,7 +682,7 @@ class Stats extends ApiController
     }
 
     /**
-     * @param  string[] $filenames
+     * @param  string[]                                                                                $filenames
      * @return array<string, array{title: string, authors: string, coverUrl: string, inLibrary: bool}>
      */
     private function bookMetaFor(array $filenames): array

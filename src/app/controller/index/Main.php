@@ -249,6 +249,13 @@ class Main extends BaseViewController
             'pjax' => true,
             'match' => '^/index/main/book\?([^#]*&)?favorite=empty(&|$)',
         ];
+        $categories[] = [
+            'title' => '缺失详情',
+            'icon' => 'report',
+            'url' => $bookBase . '?favorite=incomplete',
+            'pjax' => true,
+            'match' => '^/index/main/book\?([^#]*&)?favorite=incomplete(&|$)',
+        ];
 
         $tags = [];
         foreach (BookDao::getInstance()->getTags() as $item) {
@@ -339,9 +346,9 @@ class Main extends BaseViewController
                 'sub' => $this->subMenus(),
             ],
             [
-                'title' => 'Calibre配置',
+                'title' => '系统设置',
                 'url' => '/index/main/calibre',
-                'icon' => 'auto_stories',
+                'icon' => 'settings',
                 'pjax' => true,
             ],
             [
