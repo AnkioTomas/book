@@ -111,6 +111,7 @@
                 <mdui-menu>
                     <mdui-menu-item id="btnBatchEdit" icon="edit_note">批量编辑</mdui-menu-item>
                     <mdui-menu-item id="btnBatchAiIdentify" icon="auto_awesome">AI 识别</mdui-menu-item>
+                    <mdui-menu-item id="btnBatchAiFillMissing" icon="playlist_add_check">AI 填充缺失</mdui-menu-item>
                     <mdui-menu-item id="btnBatchAiClassify" icon="label">AI 分类</mdui-menu-item>
                     <mdui-menu-item id="btnBatchDelete" icon="delete_sweep">批量删除</mdui-menu-item>
                     <mdui-menu-item id="btnBatchScrape" icon="image">批量刮削封面</mdui-menu-item>
@@ -144,7 +145,8 @@
                             required
                             class="flex-1"
                     ></mdui-text-field>
-                    <mdui-button-icon variant="filled" icon="search" id="douban"></mdui-button-icon>
+                    <mdui-button-icon variant="filled" icon="search" id="douban" title="豆瓣搜索"></mdui-button-icon>
+                    <mdui-button-icon variant="tonal" icon="menu_book" id="weread" title="微信读书搜索"></mdui-button-icon>
                     <mdui-button-icon variant="tonal" icon="auto_awesome" id="aiFill"></mdui-button-icon>
                 </div>
 

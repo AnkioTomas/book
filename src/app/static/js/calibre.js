@@ -4,6 +4,7 @@ window.pageLoadFiles = [
 
 window.pageOnLoad = function (loading) {
     $.form.manage("/index/calibre/config", "#form");
+    $.form.manage("/index/calibre/bookConfig", "#bookForm");
 
     $('#btnTest').on('click', function () {
         const data = $.form.get('#form');

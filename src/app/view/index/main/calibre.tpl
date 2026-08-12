@@ -1,4 +1,4 @@
-<title id="title">Calibre 配置 - {$title}</title>
+<title id="title">系统设置 - {$title}</title>
 <style id="style">
     .action-buttons {
         display: flex;
@@ -24,15 +24,45 @@
         padding: 1px 6px;
         border-radius: 4px;
     }
+
+    .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 8px 0;
+    }
 </style>
 
 <div id="container" class="container p-4">
     <div class="row col-space16">
         <div class="col-xs-12 title-large center-vertical mb-4">
-            <mdui-icon name="auto_stories" class="mr-2"></mdui-icon>
-            <span>Calibre 微服务配置</span>
+            <mdui-icon name="settings" class="mr-2"></mdui-icon>
+            <span>系统设置</span>
         </div>
 
+        <div class="col-xs-12 mb-2">
+            <div class="title-medium mb-2">书库</div>
+            <div class="calibre-tip mb-3">
+                上传后自动识别依赖已配置的 AI 服务商（在 <code>config.php</code> 的 <code>ai</code> 段），会提交后台任务且仅补全空字段。
+            </div>
+            <form class="row col-space16" id="bookForm">
+                <div class="col-xs-12">
+                    <div class="setting-row">
+                        <div>
+                            <div class="title-small">上传后自动 AI 识别</div>
+                            <div class="body-small text-on-surface-variant">新书入库后自动刮削作者、简介、分类、标签、封面等</div>
+                        </div>
+                        <mdui-switch name="autoFillOnUpload"></mdui-switch>
+                    </div>
+                </div>
+                <div class="col-xs-12 action-buttons">
+                    <mdui-button id="btnBookSave" icon="save" type="submit">保存书库设置</mdui-button>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-xs-12 title-medium mt-4 mb-2">Calibre 微服务</div>
         <div class="col-xs-12 mb-3">
             <div class="calibre-tip">
                 Calibre 微服务用于 <strong>非 EPUB 格式的封面提取、元数据读取、格式转换</strong>。
