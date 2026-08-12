@@ -12,8 +12,12 @@ declare(strict_types=1);
 
 namespace app;
 
+use app\task\AiIdentifyTask;
 use app\task\SyncTask;
 use nova\framework\App;
+
+use function nova\framework\config;
+
 use nova\framework\event\EventManager;
 
 use function nova\framework\route;
@@ -36,6 +40,19 @@ class Application extends App
             ->get("/proxy/{uri}", route('index', 'douban', 'proxy'));
 
         TaskerManager::add(TaskerTime::hour(1), new SyncTask(), 'sync_books', -1);
+
+        if(config('book.autoFillOnUpload')){
+            // 上传入库后的副作用（AI 补空等）走事件，Upload 不直接依赖任务层
+            EventManager::addListener('book.uploaded', function (string $event, mixed &$data): void {
+                $id = (int)($data['id'] ?? 0);
+                if ($id <= 0) {
+                    return;
+                }
+                $key = 'AI填充_upload_' . $id;
+                TaskerManager::del($key);
+                TaskerManager::add(TaskerTime::after(1), new AiIdentifyTask([$id], true), $key);
+            });
+        }
 
     }
 

@@ -9,6 +9,7 @@ use app\database\model\BookModel;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookOrganizer\Parser;
+use nova\framework\event\EventManager;
 use nova\framework\http\Response;
 use nova\plugin\login\controller\BaseAPIController;
 use nova\plugin\upload\FileDao;
@@ -58,12 +59,13 @@ class Upload extends BaseAPIController
         }
 
         $model = BookDao::getInstance()->getByFileName($file->name);
+        $isNew = empty($model);
         if (BookManager::getInstance()->uploadBook($file->path, $file->name)) {
             [$author, $title, $year, $ext] = Parser::filename($file->name);
             if (empty($title)) {
                 return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
             }
-            if (empty($model)) {
+            if ($isNew) {
                 $model = new BookModel();
                 $model->deviceId = BookManager::getInstance()->deviceId;
                 $model->addTime = time() * 1000;
@@ -78,7 +80,9 @@ class Upload extends BaseAPIController
                 if (!empty($path)) {
                     CoverManager::getInstance()->uploadCover($path, $model->filename);
                 }
-                BookDao::getInstance()->insertModel($model);
+                $id = (int)BookDao::getInstance()->insertModel($model);
+                $payload = ['id' => $id];
+                EventManager::trigger('book.uploaded', $payload);
             }
 
             BookDao::getInstance()->syncBooks();
@@ -87,7 +91,6 @@ class Upload extends BaseAPIController
         } else {
             return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
         }
-
     }
 
 }
