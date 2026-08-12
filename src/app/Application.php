@@ -41,7 +41,7 @@ class Application extends App
 
         TaskerManager::add(TaskerTime::hour(1), new SyncTask(), 'sync_books', -1);
 
-        if(config('book.autoFillOnUpload')){
+        if (config('book.autoFillOnUpload')) {
             // 上传入库后的副作用（AI 补空等）走事件，Upload 不直接依赖任务层
             EventManager::addListener('book.uploaded', function (string $event, mixed &$data): void {
                 $id = (int)($data['id'] ?? 0);
