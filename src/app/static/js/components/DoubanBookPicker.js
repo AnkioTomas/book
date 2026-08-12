@@ -41,13 +41,13 @@ class DoubanBookPicker extends HTMLElement {
         });
     }
 
-    open(books) {
+    open(books, title) {
         if (!books || !books.length) {
             $.toaster.warning('未找到匹配的书籍');
             return;
         }
         this._books = books;
-        $('#doubanPickerTitle').text('选择书籍 (共 ' + books.length + ' 条结果)');
+        $('#doubanPickerTitle').text((title || '选择书籍') + ' (共 ' + books.length + ' 条结果)');
         this.renderList();
         $('#doubanPickerDialog')[0].open = true;
     }
