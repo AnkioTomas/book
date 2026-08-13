@@ -34,28 +34,6 @@ class Stats extends ApiController
     private const UNKNOWN_DEVICE = 'manual-upload';
 
     /**
-     * POST /index/stats/device
-     * body: { id, model }
-     * 兼容 KOReader：校验后直接 ok，不再落库。
-     */
-    public function device(): Response
-    {
-        $body = $this->jsonBody();
-        $id = trim((string)($body['id'] ?? $this->request->post('id', '')));
-        $model = trim((string)($body['model'] ?? $this->request->post('model', '')));
-
-        if ($id === '' || $model === '') {
-            return Response::asJson(['code' => 400, 'msg' => '缺少 device id 或 model', 'data' => []]);
-        }
-
-        return Response::asJson([
-            'code' => 200,
-            'msg' => 'ok',
-            'data' => ['id' => $id, 'model' => $model],
-        ]);
-    }
-
-    /**
      * POST /index/stats/import
      * body: {
      *   books: [{ filename, title?, authors? }],
