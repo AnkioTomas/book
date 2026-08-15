@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace app\controller\index;
 
 use app\controller\ApiController;
+use app\database\dao\AnnotationDao;
 use app\database\dao\BookDao;
 use app\database\dao\PageStatDao;
+use app\database\model\AnnotationModel;
 use app\database\model\PageStatModel;
 use app\utils\MoonReaderImport;
 use app\utils\ReadingStats;
@@ -15,10 +17,11 @@ use RuntimeException;
 use Throwable;
 
 /**
- * 高维阅读统计 API。唯一持久化表：page_stat。书名作者读时查书库。
+ * 阅读活动与 KOReader 注解 API。书名作者读时查书库。
  *
  * POST /index/stats/device
  * POST /index/stats/import
+ * GET|POST /index/stats/annotations
  * POST /index/stats/importMoon  (.mrpro 文件上传)
  * GET  /index/stats/summary
  * GET  /index/stats/insight
@@ -121,6 +124,162 @@ class Stats extends ApiController
                 'device_id' => $deviceId,
             ],
         ]);
+    }
+
+    /**
+     * GET  /index/stats/annotations?filename=xxx.epub
+     * POST /index/stats/annotations
+     * body: { filename, device_id, annotations: [...] }
+     *
+     * POST 是该书在该设备上的完整快照；缺失项视为已删除。
+     */
+    public function annotations(): Response
+    {
+        if (!$this->request->isPost()) {
+            return $this->annotationList();
+        }
+
+        $body = $this->jsonBody();
+        $reported = PageStatDao::normalizeFilename((string)($body['filename'] ?? ''));
+        $deviceId = trim((string)($body['device_id'] ?? ''));
+        $items = $body['annotations'] ?? null;
+        if ($reported === '' || $deviceId === '' || !is_array($items)) {
+            return Response::asJson([
+                'code' => 400,
+                'msg' => 'filename、device_id、annotations 必填',
+                'data' => [],
+            ]);
+        }
+
+        $filename = $this->resolveLibraryFilename($reported);
+        $models = [];
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $datetime = trim((string)($item['datetime'] ?? ''));
+            $pageRef = trim((string)($item['page'] ?? $item['pageref'] ?? ''));
+            if ($datetime === '' || $pageRef === '') {
+                continue;
+            }
+
+            $annotation = new AnnotationModel();
+            $annotation->book_filename = $filename;
+            $annotation->device_id = $deviceId;
+            $annotation->text = trim((string)($item['text'] ?? ''));
+            $annotation->note = trim((string)($item['note'] ?? ''));
+            $annotation->drawer = trim((string)($item['drawer'] ?? ''));
+            $annotation->color = trim((string)($item['color'] ?? ''));
+            $annotation->chapter = trim((string)($item['chapter'] ?? ''));
+            $annotation->pageno = (int)($item['pageno'] ?? 0);
+            $annotation->page_ref = $pageRef;
+            $annotation->total_pages = (int)($item['total_pages'] ?? 0);
+            $annotation->pos0 = $this->annotationPosition($item['pos0'] ?? '');
+            $annotation->pos1 = $this->annotationPosition($item['pos1'] ?? '');
+            $annotation->datetime = $datetime;
+            $annotation->datetime_updated = trim((string)($item['datetime_updated'] ?? ''));
+            $annotation->annotation_type = $this->annotationType($annotation);
+            $models[] = $annotation;
+        }
+
+        $result = AnnotationDao::getInstance()->replaceSnapshot($filename, $deviceId, $models);
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'ok',
+            'data' => $result + [
+                'filename' => $filename,
+                'device_id' => $deviceId,
+            ],
+        ]);
+    }
+
+    private function annotationList(): Response
+    {
+        $filename = PageStatDao::normalizeFilename((string)$this->request->get('filename', ''));
+        if ($filename !== '') {
+            $filename = $this->resolveLibraryFilename($filename);
+            $rows = AnnotationDao::getInstance()->getByFilename($filename);
+        } else {
+            $rows = AnnotationDao::getInstance()->getAllRows();
+        }
+
+        $filenames = [];
+        foreach ($rows as $row) {
+            $filenames[$row->book_filename] = true;
+        }
+        $meta = $this->bookMetaFor(array_keys($filenames));
+        $books = [];
+        $annotations = [];
+        foreach ($rows as $row) {
+            $fn = $row->book_filename;
+            if (!isset($books[$fn])) {
+                $books[$fn] = [
+                    'filename' => $fn,
+                    'title' => $meta[$fn]['title'],
+                    'authors' => $meta[$fn]['authors'],
+                    'coverUrl' => $meta[$fn]['coverUrl'],
+                    'count' => 0,
+                    'highlights' => 0,
+                    'notes' => 0,
+                    'bookmarks' => 0,
+                    'lastUpdated' => '',
+                ];
+            }
+            $books[$fn]['count']++;
+            $books[$fn][$row->annotation_type . 's']++;
+            $updated = $row->datetime_updated !== '' ? $row->datetime_updated : $row->datetime;
+            $books[$fn]['lastUpdated'] = max($books[$fn]['lastUpdated'], $updated);
+            $annotations[] = $this->annotationArray($row);
+        }
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'ok',
+            'data' => [
+                'books' => array_values($books),
+                'annotations' => $annotations,
+            ],
+        ]);
+    }
+
+    private function annotationType(AnnotationModel $annotation): string
+    {
+        if ($annotation->drawer === '' && $annotation->color === ''
+            && $annotation->pos0 === '' && $annotation->pos1 === '') {
+            return 'bookmark';
+        }
+        return $annotation->note !== '' && $annotation->text !== '' ? 'note' : 'highlight';
+    }
+
+    private function annotationPosition(mixed $value): string
+    {
+        if (is_array($value)) {
+            return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
+        }
+        return trim((string)$value);
+    }
+
+    /** @return array<string, mixed> */
+    private function annotationArray(AnnotationModel $row): array
+    {
+        return [
+            'id' => $row->id,
+            'filename' => $row->book_filename,
+            'device_id' => $row->device_id,
+            'type' => $row->annotation_type,
+            'text' => $row->text,
+            'note' => $row->note,
+            'drawer' => $row->drawer,
+            'color' => $row->color,
+            'chapter' => $row->chapter,
+            'pageno' => $row->pageno,
+            'page' => $row->page_ref,
+            'total_pages' => $row->total_pages,
+            'pos0' => $row->pos0,
+            'pos1' => $row->pos1,
+            'datetime' => $row->datetime,
+            'datetime_updated' => $row->datetime_updated,
+        ];
     }
 
     /**

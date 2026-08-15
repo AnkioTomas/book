@@ -202,6 +202,14 @@ class Main extends BaseViewController
         return $this->viewResponse->asTpl('insight');
     }
 
+    /**
+     * 高亮与笔记页面。数据由 GET /index/stats/annotations 提供。
+     */
+    public function annotations(): Response
+    {
+        return $this->viewResponse->asTpl('annotations');
+    }
+
     public function calibre(): Response
     {
         return $this->viewResponse->asTpl();
@@ -337,6 +345,12 @@ class Main extends BaseViewController
                 'title' => '多维统计',
                 'url' => '/index/main/insight',
                 'icon' => 'insights',
+                'pjax' => true,
+            ],
+            [
+                'title' => '笔记与高亮',
+                'url' => '/index/main/annotations',
+                'icon' => 'format_quote',
                 'pjax' => true,
             ],
             [
