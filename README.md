@@ -11,11 +11,13 @@
 本系统**不是独立的书库管理系统**，必须配合静读天下 App + WebDAV 一起使用：
 
 1. 在手机上安装静读天下（Moon+ Reader）
-2. 配置一个可用的 WebDAV 服务（坚果云 / Nextcloud / 群晖 等）
+2. 配置一个可用的 WebDAV 服务（坚果云 / Nextcloud / 群晖 / 本机 rclone 等）
 3. 在静读天下中至少完成一次同步，让 WebDAV 上出现 `Apps/Books/` 目录
 4. 在本系统的安装向导中填入**完全相同**的 WebDAV 凭据
 
 没有静读天下生成的 WebDAV 数据，本系统是空的。
+
+详细说明见 **[WebDAV 配置说明](docs/webdav.md)**：公开网盘怎么填、Windows / macOS 怎么用 rclone 最小化起一个本地 WebDAV。
 
 ---
 
@@ -119,6 +121,7 @@ Docker / Windows 绿色包默认走 **SQLite**，不必另装 MySQL。标准包�
 | Windows + phpEnv | [phpEnv 安装教程](docs/install-phpenv.md) | 从 [phpenv.cn](https://www.phpenv.cn/download.html) 自建环境，可用标准 zip |
 | Linux 服务器 | [1Panel 安装教程](docs/install-1panel.md) | 通过 1Panel 创建 PHP 运行环境与网站 |
 | Linux 服务器 | [宝塔面板安装教程](docs/install-baota.md) | 通过宝塔面板部署 LNMP 与网站 |
+| WebDAV（必配） | [WebDAV 配置说明](docs/webdav.md) | 公开网盘（坚果云等）与 Windows / macOS 本机最小化启动 |
 
 下面「通用安装步骤」适用于 **标准 zip / 源码** 且 **已具备 PHP 8.3 + 数据库 + Nginx/Apache** 的环境。绿色包与 Docker 包请直接看对应文档，不必走 Git 拉代码流程。
 
@@ -308,6 +311,8 @@ server {
 ---
 
 ## 静读天下侧配置（一次就够）
+
+WebDAV 服务怎么选、公开网盘怎么开、本机 Windows / macOS 怎么用 rclone 起服务，见 **[WebDAV 配置说明](docs/webdav.md)**。下面以坚果云为例。
 
 打开静读天下 App → 设置 → 通过 WebDAV 同步：
 

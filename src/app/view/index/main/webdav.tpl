@@ -26,7 +26,7 @@
                             type="text"
                             variant="outlined"
                             required
-                            helper="类似于https://xx.xx.xx"
+                            helper="须与静读天下一致，如 https://dav.jianguoyun.com/dav/"
                     ></mdui-text-field>
                 </div>
 
