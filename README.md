@@ -455,9 +455,10 @@ book/
 ├── tests/                      # 测试目录
 ├── dist/                       # 发布包：标准 zip / docker zip / windows zip
 ├── docs/                       # 部署文档与截图
-├── Dockerfile                  # Docker 整站镜像（Workerman :9528）
+├── Dockerfile                  # Docker PHP-FPM 镜像
 ├── docker-compose.yml
-├── nginx.conf                  # Nginx rewrite 参考
+├── nginx.conf                  # Docker Nginx 站点配置
+├── php.ini                     # Docker PHP 配置
 ├── package.json                # 项目元信息
 ├── nova.phar                   # CLI 工具
 └── README.md

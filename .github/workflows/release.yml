@@ -79,6 +79,9 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' "${{ steps.ver.outputs.version }}" | php nova.phar build all
+          zip -j \
+            dist/book-${{ steps.ver.outputs.version }}-docker.zip \
+            Dockerfile docker-compose.yml nginx.conf php.ini
           ls -lh dist/book-${{ steps.ver.outputs.version }}*.zip
 
       - name: Create GitHub Release

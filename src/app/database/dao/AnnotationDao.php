@@ -13,7 +13,7 @@ class AnnotationDao extends Dao
     /**
      * 用设备上报的完整快照替换该书现有注解。
      *
-     * @param AnnotationModel[] $annotations
+     * @param  AnnotationModel[]               $annotations
      * @return array{upserted:int,deleted:int}
      */
     public function replaceSnapshot(string $filename, string $deviceId, array $annotations): array

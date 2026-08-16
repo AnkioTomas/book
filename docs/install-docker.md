@@ -30,6 +30,8 @@ book-<版本>-docker.zip
 book-<版本>-docker/
 ├── Dockerfile
 ├── docker-compose.yml
+├── nginx.conf
+├── php.ini
 └── src/                 ← 业务代码（含 example.config.php）
 ```
 
@@ -42,7 +44,8 @@ cd book-<版本>-docker   # 以实际解压目录名为准
 docker compose up -d --build
 ```
 
-服务通过 Workerman 监听容器内 `9528`，已映射到主机：
+Nginx 监听容器内 `80` 端口并将 PHP 请求转发给独立的 PHP-FPM
+容器，主机端口仍为 `9528`：
 
 ```
 http://localhost:9528
@@ -51,7 +54,7 @@ http://localhost:9528
 查看日志：
 
 ```bash
-docker compose logs -f app
+docker compose logs -f
 ```
 
 停止：
@@ -92,15 +95,15 @@ docker compose up -d
 
 **9528 端口冲突**
 
-改 `docker-compose.yml` 的 `ports`，例如 `"9529:9528"`，再 `docker compose up -d`。
+改 `docker-compose.yml` 中 Nginx 的 `ports`，例如 `"9529:80"`，再 `docker compose up -d`。
 
 **选了 MySQL 安装失败**
 
-当前 Docker 镜像只装了 SQLite 相关扩展。重新安装并选 SQLite，或自行改 Dockerfile 加 `pdo_mysql` 并另起 MySQL 容器。
+当前 PHP-FPM 镜像只装了 SQLite 相关扩展。重新安装并选 SQLite，或自行改 Dockerfile 加 `pdo_mysql` 并另起 MySQL 容器。
 
 **改代码不生效**
 
-`src` 是 volume 挂载；若改了依赖镜像构建的内容（`Dockerfile`、扩展），需要 `--build` 重建。
+`src` 是 volume 挂载；若修改了 `Dockerfile`、`php.ini` 或 PHP 扩展，需要 `--build` 重建。修改 `nginx.conf` 后需要重启 Nginx 容器。
 
 **权限 / runtime 写失败**
 
