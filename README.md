@@ -371,13 +371,15 @@ Authorization: Bearer bk_XXXXXXXX
 2. **静读天下备份**：页面右上角导入 `.mrpro`（`POST /index/stats/importMoon`）
 3. **手动补录**：单日或按日期范围批量随机时长（`POST /index/stats/create` / `createBatch`）
 
-同书同日多设备会按设备取 max 再汇总，避免重复导入把时长加两遍。未匹配到书库的记录可在表格中筛选、改绑或删除。
+同书同日多设备会按设备取 max 再汇总，避免重复导入把时长加两遍。KOReader 固定使用 `koreader` 设备标识。未匹配到书库的记录可在表格中筛选、改绑或删除。
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
 | `POST` | `/index/stats/device` | 注册/校验设备（兼容） |
 | `POST` | `/index/stats/import` | KOReader 批量上报页停留 |
 | `POST` | `/index/stats/importMoon` | 上传 `.mrpro` 备份 |
+| `GET` | `/index/stats/daily` | 导出按设备去重后的书籍日桶 |
+| `GET` / `POST` | `/index/stats/annotations` | 读取/覆盖单本书注解 |
 | `GET` | `/index/stats/insight` | 多维统计页数据 |
 | `GET` | `/index/stats/books` | 阅读书籍列表（表格） |
 | `POST` | `/index/stats/create` | 手动新建单日记录 |

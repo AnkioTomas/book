@@ -63,16 +63,17 @@ class Douban extends ApiController
 
         $book = BookDao::getInstance()->resolveByFilename($filename);
         if ($book !== null) {
+            // 本地 sidecar 是同步任务准备好的权威缓存，必须先读；不能每次首页请求
+            // 都阻塞在第三方封面站点上。
+            $file = CoverManager::getInstance()->getCover($book->filename);
+            if ($file !== '') {
+                return Response::asStatic($file);
+            }
             if ($book->coverUrl !== '') {
                 $file = DoubanUtil::download($book->coverUrl);
                 if ($file !== '') {
                     return Response::asStatic($file);
                 }
-            }
-            // 封面 sidecar 按 basename 存，用书库真实 filename
-            $file = CoverManager::getInstance()->getCover($book->filename);
-            if ($file !== '') {
-                return Response::asStatic($file);
             }
             return Response::asText('404 not found', code: 404);
         }

@@ -19,11 +19,11 @@ use Throwable;
 /**
  * 阅读活动与 KOReader 注解 API。书名作者读时查书库。
  *
- * POST /index/stats/device
  * POST /index/stats/import
  * GET|POST /index/stats/annotations
  * POST /index/stats/importMoon  (.mrpro 文件上传)
  * GET  /index/stats/summary
+ * GET  /index/stats/daily
  * GET  /index/stats/insight
  * GET  /index/stats/books
  * GET  /index/stats/book?filename=
@@ -52,7 +52,6 @@ class Stats extends ApiController
         $books = is_array($body['books'] ?? null) ? $body['books'] : [];
         $stats = is_array($body['stats'] ?? null) ? $body['stats'] : [];
         $deviceIdOverride = trim((string)($body['device_id'] ?? ''));
-
         $pathByReport = [];
         foreach ($books as $row) {
             if (!is_array($row)) {
@@ -71,8 +70,7 @@ class Stats extends ApiController
                 continue;
             }
             $duration = (int)($row['duration'] ?? 0);
-            $totalPages = (int)($row['total_pages'] ?? 0);
-            if ($duration <= 0 || $totalPages <= 0) {
+            if ($duration <= 0 || (int)($row['start_time'] ?? 0) <= 0) {
                 continue;
             }
             $safeStats[] = $row;
@@ -303,6 +301,33 @@ class Stats extends ApiController
     }
 
     /**
+     * GET /index/stats/daily
+     * 服务端按设备去重后的书籍日桶，供无设备维度的客户端一次同步。
+     */
+    public function daily(): Response
+    {
+        $stats = [];
+        foreach (ReadingStats::aggregateBookDays(PageStatDao::getInstance()->getAllRows()) as $day => $books) {
+            foreach ($books as $filename => $duration) {
+                $stats[] = [
+                    'book_filename' => $filename,
+                    'day' => $day,
+                    // 正午时间避免客户端时区把日期挤到相邻天。
+                    'start_time' => strtotime($day . ' 12:00:00'),
+                    'duration' => $duration,
+                    'page' => 0,
+                    'total_pages' => 0,
+                ];
+            }
+        }
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'ok',
+            'data' => ['stats' => $stats],
+        ]);
+    }
+
+    /**
      * GET /index/stats/insight
      * 多维统计页：阅读 KPI + 月/星期分布 + 日历 perDay。
      */
@@ -346,17 +371,7 @@ class Stats extends ApiController
         }
 
         $meta = $this->bookMetaFor([$filename])[$filename];
-        $list = [];
-        foreach ($stats as $s) {
-            $list[] = [
-                'book_filename' => $s->book_filename,
-                'device_id' => $s->device_id,
-                'page' => $s->page,
-                'start_time' => $s->start_time,
-                'duration' => $s->duration,
-                'total_pages' => $s->total_pages,
-            ];
-        }
+        $list = array_map(fn (PageStatModel $stat): array => $this->pageStatArray($stat), $stats);
 
         return Response::asJson([
             'code' => 200,
@@ -371,6 +386,19 @@ class Stats extends ApiController
                 'count' => count($list),
             ],
         ]);
+    }
+
+    /** @return array{book_filename:string,device_id:string,page:int,start_time:int,duration:int,total_pages:int} */
+    private function pageStatArray(PageStatModel $stat): array
+    {
+        return [
+            'book_filename' => $stat->book_filename,
+            'device_id' => $stat->device_id,
+            'page' => $stat->page,
+            'start_time' => $stat->start_time,
+            'duration' => $stat->duration,
+            'total_pages' => $stat->total_pages,
+        ];
     }
 
     /**

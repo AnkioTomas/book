@@ -19,6 +19,31 @@ class ReadingProgressModel extends Model
     public string $percentText = '0'; // 原始百分比文本(不含%)
 
     /**
+     * 精确定位坐标（XPointer / EPUB CFI），由 KOReader 之类的客户端上报。
+     *
+     * 刻意不进 {@see $raw}：raw 是静读天下的 .po 进度串，格式固定为
+     * {ts}*{spine}@{page}#{offset}:{pct}%，塞不下也不该塞别的东西。
+     * 这一列只在本站接口内往返，对静读天下完全透明。
+     */
+    public string $locator = '';
+
+    public function getSchemaVersion(): int
+    {
+        return 2;
+    }
+
+    public function getUpgradeSql(): array
+    {
+        return [
+            "1_2" => [
+                // TEXT 不带 DEFAULT：MySQL 的 TEXT 不支持默认值，PG 不认 LONGTEXT，
+                // 这样写 mysql / sqlite / pgsql 三个驱动都能直接执行。
+                "ALTER TABLE {table} ADD COLUMN `locator` TEXT",
+            ],
+        ];
+    }
+
+    /**
      * 第三方进度串（可多形态并存）。始终以原始串写入 {@see $raw}，结构化字段仅为内部使用；
      * 规范输出见 {@see toString()}（完整形态）。
      *

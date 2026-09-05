@@ -233,20 +233,35 @@ class Book extends ApiController
             return Response::asJson(['code' => 400, 'msg' => '参数错误', 'data' => []]);
         }
 
-        $progress = ProgressManager::getInstance()->getProgressText($filename);
-        if (empty($progress)) {
-            return Response::asJson(['code' => 200, 'msg' => 'success', 'data' => []]);
+        // 进度有两个写入方：静读天下写 .po 文件，本站客户端写数据库。
+        // 取时间戳新的那一份；locator 只存在于数据库，.po 更新时它已经过期，必须丢弃，
+        // 否则会把读者送回上一次在别的设备上停下的位置。
+        $text = ProgressManager::getInstance()->getProgressText($filename);
+        $remote = empty($text) ? null : ReadingProgressModel::fromString($text);
+        $local = ReadingProgressDao::getInstance()->getByFilename($filename);
+
+        if ($remote === null && $local === null) {
+            return Response::asJson(['code' => 200, 'msg' => 'success', 'data' => null]);
+        }
+        $item = $remote;
+        $locator = '';
+        if ($local !== null && ($remote === null || $local->timestamp >= $remote->timestamp)) {
+            $item = $local;
+            $locator = $local->locator;
         }
 
-        $item = ReadingProgressModel::fromString($progress);
-        $percent = $item->percent;
-        if ($percent > 1) {
-            $percent /= 100;
-        }
         return Response::asJson([
             'code' => 200,
             'msg' => 'success',
-            'data' => $percent
+            'data' => [
+                // percent 为 0–100，与 book/list 的 progressPercent 同一口径
+                'percent' => $item->percent,
+                'spine' => $item->spineIndex,
+                'page' => $item->pageIndex,
+                'offset' => $item->offset,
+                'locator' => $locator,
+                'timestamp' => $item->timestamp,
+            ],
         ]);
     }
 
@@ -259,6 +274,9 @@ class Book extends ApiController
         $data  = $this->request->post();
         $filename = rawurldecode($data['filename'] ?? '');
         $filename = trim($filename);
+        if ($filename === '') {
+            return Response::asJson(['code' => 400, 'msg' => '参数错误', 'data' => null]);
+        }
 
         $frac = $data["frac"] ?? 0;
         $frac = round(floatval($frac) * 100, 2);
@@ -268,12 +286,17 @@ class Book extends ApiController
 
         $page  = $data["page"] ?? 0;
         $page = intval($page);
+        $offset = intval($data["offset"] ?? 0);
 
         $percent = $data["percent"] ?? '0%';
         $percent = rtrim(trim((string)$percent), '%');
         if ($percent === '') {
             $percent = '0';
         }
+
+        // 精确定位坐标（XPointer / CFI）。不进 raw 串：那是静读天下的 .po 格式，
+        // 只认 {ts}*{spine}@{page}#{offset}:{pct}%，多塞一个字段会让它解析失败。
+        $locator = trim((string)($data["locator"] ?? ''));
 
         $progress = ReadingProgressDao::getInstance()->getByFilename($filename);
         if (empty($progress)) {
@@ -287,6 +310,8 @@ class Book extends ApiController
         $progress->spineIndex   = $spine;
         $progress->percentText = $percent;
         $progress->pageIndex = $page;
+        $progress->offset = $offset;
+        $progress->locator = $locator;
         $progress->timestamp = time() * 1000;
         $progress->raw = $progress->toString();
 
@@ -300,7 +325,8 @@ class Book extends ApiController
 
         return Response::asJson([
             'code' => 200,
-            'data' => $progress
+            'msg' => 'success',
+            'data' => $progress,
         ]);
     }
 
@@ -321,7 +347,7 @@ class Book extends ApiController
         }
 
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        $allowed = ['epub', 'mobi', 'azw', 'azw3', 'pdf'];
+        $allowed = ['epub', 'mobi', 'azw', 'azw3', 'pdf', 'txt', 'cbz', 'cbr'];
         if (!in_array($ext, $allowed, true)) {
             return Response::asText('不支持的文件格式');
         }
