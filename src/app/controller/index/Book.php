@@ -607,24 +607,20 @@ class Book extends ApiController
 
     /**
      * 删除书籍
-     * POST /book/delete
+     * POST /book/delete  ids=json array 与/或 filenames=json array
      */
     public function delete(): Response
     {
-        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
-        if ($ids === []) {
+        $books = $this->resolveBooks();
+        if ($books === []) {
             return Response::asJson(['code' => 400, 'msg' => '请选择书籍']);
         }
 
         $dao = BookDao::getInstance();
         $deleted = 0;
-        foreach ($ids as $id) {
-            $book = $dao->getById($id);
-            if ($book === null) {
-                continue;
-            }
+        foreach ($books as $book) {
             BookManager::getInstance()->delete($book->filename);
-            if ($dao->deleteById($id)) {
+            if ($dao->deleteById($book->id)) {
                 $deleted++;
             }
         }
@@ -679,6 +675,42 @@ class Book extends ApiController
             return [];
         }
         return array_values(array_filter(array_map('intval', $ids), static fn ($id) => $id > 0));
+    }
+
+    /**
+     * 按 ids 与/或 filenames 解析书籍；KOReader 插件以 filename 为 stable_id。
+     * @return BookModel[]
+     */
+    private function resolveBooks(): array
+    {
+        $dao = BookDao::getInstance();
+        $seen = [];
+        $books = [];
+        foreach ($this->parseIds((string)$this->request->post('ids', '[]')) as $id) {
+            $book = $dao->getById($id);
+            if ($book === null || isset($seen[$book->id])) {
+                continue;
+            }
+            $seen[$book->id] = true;
+            $books[] = $book;
+        }
+        $filenames = json_decode((string)$this->request->post('filenames', '[]'), true);
+        if (!is_array($filenames)) {
+            return $books;
+        }
+        foreach ($filenames as $filename) {
+            $filename = trim((string)$filename);
+            if ($filename === '') {
+                continue;
+            }
+            $book = $dao->getByFileName($filename);
+            if ($book === null || isset($seen[$book->id])) {
+                continue;
+            }
+            $seen[$book->id] = true;
+            $books[] = $book;
+        }
+        return $books;
     }
 
     /** 把可编辑字段从请求数据写入书籍模型 */
