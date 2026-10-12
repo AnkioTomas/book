@@ -91,7 +91,7 @@
 | --- | --- |
 | PHP | >= 8.3，需要 `mbstring`、`pdo`、`curl`、`gd`、`zip`、`fileinfo`；MySQL 部署另需 `pdo_mysql`，SQLite 部署另需 `pdo_sqlite` |
 | 数据库 | **SQLite**（Docker / Windows 绿色包默认）或 **MySQL >= 5.7 / MariaDB >= 10.2**（`utf8mb4`） |
-| Web 服务器 | Nginx 或 Apache（必须支持 URL 重写）；Docker 包用内置 Workerman，Windows 绿色包自带 Nginx |
+| Web 服务器 | Nginx 或 Apache（必须支持 URL 重写）；单容器镜像用内置 Workerman，Docker Compose 包为 Nginx + PHP-FPM，Windows 绿色包自带 Nginx |
 | WebDAV | 坚果云 / Nextcloud / 群晖 / 阿里云盘网关，任选其一 |
 | 静读天下 App | Android，支持 WebDAV 同步的版本即可 |
 | Docker（可选） | 整站 Docker 部署，或仅跑 Calibre `ebook-service` 做 MOBI/AZW 封面提取 |
@@ -111,6 +111,31 @@
 
 Docker / Windows 绿色包默认走 **SQLite**，不必另装 MySQL。标准包可按安装向导选 SQLite 或 MySQL。
 
+### 单容器快速启动
+
+一个容器、一个端口（`9528`）、一个数据目录（`/data`），适合 NAS（unRAID / 群晖 / 威联通）：
+
+```bash
+docker run -d --name book \
+  -p 9528:9528 \
+  -v /path/to/book-data:/data \
+  --restart unless-stopped \
+  ghcr.io/ankiotomas/book:latest
+```
+
+浏览器打开 `http://<主机地址>:9528` 进入安装向导。`config.php`、SQLite 库、日志、上传的书都在 `/data`，升级时拉新镜像、挂同一目录重建容器即可；不要用后台「在线更新」。
+
+镜像支持 `linux/amd64` 与 `linux/arm64`，每次发布 tag 时由 GitHub Actions 推送。想从源码自己构建：
+
+```bash
+git clone --recursive https://github.com/AnkioTomas/book.git
+cd book
+docker build -f Dockerfile.workerman -t book .
+docker run -d --name book -p 9528:9528 -v /path/to/book-data:/data book
+```
+
+更多说明见 [Docker 安装教程](docs/install-docker.md)。
+
 ---
 
 ## 部署教程
@@ -118,7 +143,8 @@ Docker / Windows 绿色包默认走 **SQLite**，不必另装 MySQL。标准包�
 | 环境 | 文档 | 说明 |
 | --- | --- | --- |
 | Windows 绿色包 | [Windows 绿色包教程](docs/install-windows.md) | 下载 `book-*-windows.zip`，解压后双击 `start.bat` |
-| Docker | [Docker 安装教程](docs/install-docker.md) | 下载 `book-*-docker.zip`，`docker compose up -d` |
+| Docker 单容器 / NAS | [Docker 安装教程](docs/install-docker.md#单容器镜像) | `docker run -p 9528:9528 -v <数据目录>:/data ghcr.io/ankiotomas/book` |
+| Docker Compose | [Docker 安装教程](docs/install-docker.md#compose-包) | 下载 `book-*-docker.zip`，`docker compose up -d` |
 | Windows + phpEnv | [phpEnv 安装教程](docs/install-phpenv.md) | 从 [phpenv.cn](https://www.phpenv.cn/download.html) 自建环境，可用标准 zip |
 | Linux 服务器 | [1Panel 安装教程](docs/install-1panel.md) | 通过 1Panel 创建 PHP 运行环境与网站 |
 | Linux 服务器 | [宝塔面板安装教程](docs/install-baota.md) | 通过宝塔面板部署 LNMP 与网站 |

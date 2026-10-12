@@ -26,6 +26,21 @@ docker run -d --name book \
 
 unRAID 用户在 Docker 页面「Add Container」：Repository 填 `ghcr.io/ankiotomas/book:latest`，添加一个 Port（Container Port `9528`）和一个 Path（Container Path `/data`，Host Path 例如 `/mnt/user/appdata/book`）。
 
+### 从源码构建
+
+镜像由 `Dockerfile.workerman` 构建，代码依赖 submodule，克隆时必须带 `--recursive`：
+
+```bash
+git clone --recursive https://github.com/AnkioTomas/book.git
+cd book
+docker build -f Dockerfile.workerman -t book .
+docker run -d --name book -p 9528:9528 -v /path/to/book-data:/data --restart unless-stopped book
+```
+
+已有仓库补拉 submodule：`git submodule update --init --recursive`。
+
+查看日志：`docker logs -f book`。
+
 ---
 
 # Compose 包
