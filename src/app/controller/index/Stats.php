@@ -21,6 +21,7 @@ use Throwable;
  *
  * POST /index/stats/import
  * GET|POST /index/stats/annotations
+ * GET  /index/stats/annotationPage
  * POST /index/stats/importMoon  (.mrpro 文件上传)
  * GET  /index/stats/summary
  * GET  /index/stats/daily
@@ -237,6 +238,58 @@ class Stats extends ApiController
                 'books' => array_values($books),
                 'annotations' => $annotations,
             ],
+        ]);
+    }
+
+    /**
+     * GET /index/stats/annotationPage?page=&pageSize=&search=&type=
+     * CardView：一本书一张卡片，annotations 为该书命中筛选的注解。
+     */
+    public function annotationPage(): Response
+    {
+        $page = max(1, (int)$this->request->get('page', 1));
+        $pageSize = max(1, min(100, (int)$this->request->get('pageSize', 20)));
+        $search = mb_strtolower(trim((string)$this->request->get('search', '')));
+        $type = trim((string)$this->request->get('type', ''));
+
+        $rows = AnnotationDao::getInstance()->getAllRows();
+        $meta = $this->bookMetaFor(array_values(array_unique(array_map(
+            static fn (AnnotationModel $row) => $row->book_filename,
+            $rows
+        ))));
+
+        $books = [];
+        foreach ($rows as $row) {
+            if ($type !== '' && $row->annotation_type !== $type) {
+                continue;
+            }
+            $fn = $row->book_filename;
+            $m = $meta[$fn];
+            $hay = mb_strtolower(implode(' ', [$m['title'], $m['authors'], $row->chapter, $row->text, $row->note]));
+            if ($search !== '' && !str_contains($hay, $search)) {
+                continue;
+            }
+            if (!isset($books[$fn])) {
+                $books[$fn] = [
+                    'filename' => $fn,
+                    'title' => $m['title'],
+                    'authors' => $m['authors'],
+                    'coverUrl' => $m['coverUrl'],
+                    'highlights' => 0,
+                    'notes' => 0,
+                    'bookmarks' => 0,
+                    'annotations' => [],
+                ];
+            }
+            $books[$fn][$row->annotation_type . 's']++;
+            $books[$fn]['annotations'][] = $this->annotationArray($row);
+        }
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => 'ok',
+            'data' => array_slice(array_values($books), ($page - 1) * $pageSize, $pageSize),
+            'count' => count($books),
         ]);
     }
 

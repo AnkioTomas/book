@@ -203,7 +203,7 @@ class Main extends BaseViewController
     }
 
     /**
-     * 高亮与笔记页面。数据由 GET /index/stats/annotations 提供。
+     * 高亮与笔记页面。数据由 GET /index/stats/annotationPage 提供。
      */
     public function annotations(): Response
     {
