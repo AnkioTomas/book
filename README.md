@@ -105,6 +105,7 @@
 | 包名 | 场景 | 说明 |
 | --- | --- | --- |
 | `book-<版本>-windows.zip` | Windows 本机开箱即用 | 内置 PHP 8.3 + Nginx（TinyPHP），双击 `start.bat` → `http://localhost` |
+| `ghcr.io/ankiotomas/book` | NAS / 只能跑单容器 | 单镜像，`docker run -p 9528:9528 -v <数据目录>:/data ghcr.io/ankiotomas/book` |
 | `book-<版本>-docker.zip` | 已有 Docker | 含 `Dockerfile` + `compose`，`docker compose up -d` → `http://localhost:9528` |
 | `book-<版本>.zip` | 已有 LNMP / 面板 | 标准 PHP 源码，配合 1Panel / 宝塔 / phpEnv 等 |
 
@@ -458,6 +459,7 @@ book/
 ├── dist/                       # 发布包：标准 zip / docker zip / windows zip
 ├── docs/                       # 部署文档与截图
 ├── Dockerfile                  # Docker PHP-FPM 镜像
+├── Dockerfile.workerman        # 单容器镜像（Workerman，发布到 GHCR）
 ├── docker-compose.yml
 ├── nginx.conf                  # Docker Nginx 站点配置
 ├── php.ini                     # Docker PHP 配置

@@ -1,5 +1,35 @@
 # Docker 部署教程
 
+Book 提供两种 Docker 部署方式：
+
+| 方式 | 适合 | 说明 |
+| --- | --- | --- |
+| 单容器镜像（推荐） | NAS（unRAID / 群晖 / 威联通）、不支持 compose 的环境 | 一个容器、一个端口、一个数据目录，内置 Workerman |
+| Compose 包 | 已有 Docker Compose，想用 Nginx + PHP-FPM | 下文「一」到「六」节 |
+
+## 单容器镜像
+
+```bash
+docker run -d --name book \
+  -p 9528:9528 \
+  -v /mnt/user/appdata/book:/data \
+  --restart unless-stopped \
+  ghcr.io/ankiotomas/book:latest
+```
+
+浏览器打开 `http://<NAS地址>:9528`，按安装向导完成配置（见「四、安装向导」）。
+
+- **端口**：容器内固定 `9528`，主机端口可以随意映射（例如 `-p 8080:9528`）。
+- **数据目录** `/data`：`config.php`、`runtime/`（SQLite 库、缓存、日志）、`uploads/`（上传的书）全部在这里。升级时删除容器、拉取新镜像、挂载同一目录重建即可，配置和数据不会丢。
+- **数据库**：默认 SQLite；镜像已包含 `pdo_mysql`，也可以连接外部 MySQL。
+- **升级**：请拉取新版本镜像重建容器，不要使用后台的「在线更新」。在线更新只会改动容器内的代码，重建容器后就会还原。
+
+unRAID 用户在 Docker 页面「Add Container」：Repository 填 `ghcr.io/ankiotomas/book:latest`，添加一个 Port（Container Port `9528`）和一个 Path（Container Path `/data`，Host Path 例如 `/mnt/user/appdata/book`）。
+
+---
+
+# Compose 包
+
 > 适用场景：已安装 Docker / Docker Compose，希望一键跑起 Book，不想自己配 PHP + Nginx。  
 > 发布包：`dist/book-<版本>-docker.zip`（例如 `book-1.0.7-docker.zip`）
 

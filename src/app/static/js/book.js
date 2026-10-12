@@ -505,6 +505,7 @@ window.pageOnLoad = function () {
                         }
                     },
                     done: function () {
+                        aiSource.close();
                         $(editDialog).closeLoading();
                     }
                 },

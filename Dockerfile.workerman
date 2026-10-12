@@ -1,0 +1,21 @@
+FROM php:8.3-cli-alpine
+
+RUN apk add --no-cache freetype libjpeg-turbo libpng libzip \
+    && apk add --no-cache --virtual .build-deps \
+        $PHPIZE_DEPS freetype-dev libjpeg-turbo-dev libpng-dev libzip-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" gd opcache zip pcntl pdo_mysql \
+    && apk del .build-deps
+
+WORKDIR /app
+
+COPY src/ /app/
+
+RUN ln -s /data/config.php /app/config.php \
+    && ln -s /data/runtime /app/runtime \
+    && ln -s /data/uploads /app/uploads
+
+VOLUME /data
+EXPOSE 9528
+
+CMD ["sh", "-c", "mkdir -p /data/runtime /data/uploads && exec sh /app/nova/plugin/workerman/workerman.sh start"]
