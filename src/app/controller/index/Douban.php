@@ -18,6 +18,11 @@ use nova\framework\http\Response;
  */
 class Douban extends ApiController
 {
+    private const array COVER_COLORS = [
+        '#8b2e3a', '#3b5a80', '#2b2b2b', '#5e6b73',
+        '#6b4226', '#9e3a6e', '#2e6b4e', '#c47a2c',
+    ];
+
     /**
      * 搜索豆瓣图书
      *
@@ -75,7 +80,7 @@ class Douban extends ApiController
                     return Response::asStatic($file);
                 }
             }
-            return Response::asText('404 not found', code: 404);
+            return $this->defaultCover($book->bookName ?: pathinfo($book->filename, PATHINFO_FILENAME), $book->author);
         }
 
         // 书库无记录：仍尝试按 basename 取本地/WebDAV 封面缓存
@@ -84,6 +89,37 @@ class Douban extends ApiController
             return Response::asStatic($file);
         }
 
-        return Response::asText('404 not found', code: 404);
+        return $this->defaultCover(pathinfo($filename, PATHINFO_FILENAME), '');
+    }
+
+    /**
+     * 无封面时的默认封面：书名哈希定底色，竖排书名，底部作者。
+     */
+    private function defaultCover(string $title, string $author): Response
+    {
+        $color = self::COVER_COLORS[crc32($title) % count(self::COVER_COLORS)];
+        $len = mb_strlen($title);
+        $size = $len <= 5 ? 44 : ($len <= 12 ? 34 : 26);
+        $title = htmlspecialchars($title, ENT_XML1 | ENT_QUOTES);
+        $author = htmlspecialchars(mb_strimwidth($author, 0, 24, '…'), ENT_XML1 | ENT_QUOTES);
+        $font = "'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif";
+
+        $svg = <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400">
+<rect width="300" height="400" fill="{$color}"/>
+<rect x="16" y="16" width="268" height="368" fill="none" stroke="#f5ecd7" stroke-opacity=".8" stroke-width="1.5"/>
+<foreignObject x="30" y="68" width="240" height="252">
+<div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;justify-content:center;height:100%;overflow:hidden">
+<div style="writing-mode:vertical-rl;max-height:100%;font:{$size}px/1.2 {$font};letter-spacing:6px;color:#fff">{$title}</div>
+</div>
+</foreignObject>
+<text x="150" y="360" text-anchor="middle" font-family="{$font}" font-size="16" fill="#fff" fill-opacity=".85">{$author}</text>
+</svg>
+SVG;
+
+        return Response::asRaw($svg, [
+            'Content-Type' => 'image/svg+xml; charset=utf-8',
+            'Cache-Control' => 'no-cache',
+        ]);
     }
 }
