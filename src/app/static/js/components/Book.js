@@ -1,6 +1,6 @@
 class BookCard extends HTMLElement {
     static get observedAttributes() {
-        return ["cover", "title", "author", "description", "show-author", "show-description", "read"];
+        return ["cover", "fallback", "title", "author", "description", "show-author", "show-description", "read"];
     }
 
     constructor() {
@@ -18,6 +18,7 @@ class BookCard extends HTMLElement {
 
     render() {
         const cover = $.escapeHtml(this.getAttribute("cover") || "/static/framework/imageLoader/default.png");
+        const fallback = $.escapeHtml(this.getAttribute("fallback") || "/static/framework/imageLoader/default.png");
         const title = $.escapeHtml(this.getAttribute("title") || "未命名书籍");
         const author = $.escapeHtml(this.getAttribute("author") || "未知作者");
         const description = $.escapeHtml(this.getAttribute("description") || "");
@@ -102,7 +103,7 @@ class BookCard extends HTMLElement {
                 </style>
                 <div class="book-card">
                     <div class="cover-wrap">
-                        <image-loader src="${cover}" no-refer></image-loader>
+                        <image-loader src="${cover}" default="${fallback}" no-refer></image-loader>
                         ${showReadRibbon ? `<span class="read-ribbon" part="read-ribbon">已读</span>` : ""}
                     </div>
                     <div class="meta">
@@ -117,12 +118,12 @@ class BookCard extends HTMLElement {
     }
 
     static formatRow(row) {
-        var cover = row.coverUrl
-            ? '/proxy/' + encodeURIComponent(row.coverUrl)
-            : '/webdav/' + encodeURIComponent(row.filename || "");
+        var webdav = '/webdav/' + encodeURIComponent(row.filename || "");
+        var cover = row.coverUrl ? '/proxy/' + encodeURIComponent(row.coverUrl) : webdav;
         var readAttr = row.hasReadTag ? ' read="1"' : '';
         return '<book-card'
             + ' cover="' + $.escapeHtml(cover) + '"'
+            + ' fallback="' + $.escapeHtml(webdav) + '"'
             + ' title="' + $.escapeHtml(row.bookName || "未命名书籍") + '"'
             + ' author="' + $.escapeHtml(row.author || "未知作者") + '"'
             + ' description="' + $.escapeHtml(row.description || "") + '"' + readAttr

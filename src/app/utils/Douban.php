@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace app\utils;
 
+use nova\framework\core\Context;
 use nova\framework\core\File;
+use nova\framework\core\Logger;
 use nova\plugin\http\HttpClient;
+use nova\plugin\http\HttpException;
 
 class Douban
 {
@@ -20,17 +23,34 @@ class Douban
         if (file_exists($file)) {
             return $file;
         }
-        $client = HttpClient::init()
-            ->timeout(300)
-            ->setHeader('User-Agent', self::getRandomUserAgent())
-            ->setHeader('X-Forwarded-For', self::getRandomIP())
-            ->setHeader("Referer", $uri)
-            ->send($uri);
 
-        if ($client->getHttpCode() === 200) {
-            File::write($file, $client->getBody());
+        // 豆瓣限流时一律回 418，失败后短时间内不再请求，免得越刷越被限
+        $cache = Context::instance()->cache;
+        $failKey = "douban_fail/{$key}";
+        if ($cache->get($failKey)) {
+            return '';
         }
 
+        try {
+            $client = HttpClient::init()
+                ->timeout(15)
+                ->setHeader('User-Agent', self::getRandomUserAgent())
+                ->setHeader('X-Forwarded-For', self::getRandomIP())
+                ->setHeader("Referer", $uri)
+                ->send($uri);
+        } catch (HttpException $e) {
+            Logger::warning("Douban download failed: {$uri} : " . $e->getMessage());
+            $cache->set($failKey, true, 600);
+            return '';
+        }
+
+        if ($client->getHttpCode() !== 200) {
+            Logger::warning("Douban download failed: {$uri} : HTTP " . $client->getHttpCode());
+            $cache->set($failKey, true, 600);
+            return '';
+        }
+
+        File::write($file, $client->getBody());
         return $file;
     }
 
