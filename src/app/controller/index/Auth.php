@@ -8,7 +8,7 @@ use app\controller\ApiController;
 use nova\framework\http\Response;
 
 /**
- * 客户端凭证探测：Authorization: Bearer bk_xxx
+ * 客户端凭证探测：Authorization: Bearer <个人 Token>
  * GET /index/auth/ping
  */
 class Auth extends ApiController

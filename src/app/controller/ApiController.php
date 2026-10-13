@@ -4,43 +4,38 @@ declare(strict_types=1);
 
 namespace app\controller;
 
-use app\database\dao\DeviceTokenDao;
 use nova\framework\http\Response;
 use nova\plugin\login\controller\BaseAPIController;
 use nova\plugin\login\LoginManager;
 use nova\plugin\login\route\Permission;
+use nova\plugin\login\TokenManager;
 use nova\plugin\tpl\Pjax;
 
 /**
- * Book API 基类：Bearer 长期凭证优先，否则回退 Session。
+ * Book API 基类：login 插件个人 Token（Bearer）优先，否则回退 Session。
  * 带了 Bearer 却无效时返回 JSON 401，不 302 到登录页（墨水屏客户端要这个）。
  */
 class ApiController extends BaseAPIController
 {
     public function init(): ?Response
     {
-        $bearer = $this->bearerToken();
-        if ($bearer !== '') {
-            $this->userModel = DeviceTokenDao::getInstance()->authenticate($bearer);
-            if ($this->userModel === null) {
+        $this->userModel = LoginManager::getInstance()->checkLogin();
+        if ($this->userModel === null) {
+            if ((new TokenManager())->hasBearerToken()) {
                 return Response::asJson([
                     'code' => 401,
                     'msg' => '无效或过期的访问令牌',
                     'data' => [],
                 ]);
             }
-        } else {
-            $this->userModel = LoginManager::getInstance()->checkLogin();
-            if ($this->userModel === null) {
-                if ($this->request->isAjax() || $this->wantsJson()) {
-                    return Response::asJson([
-                        'code' => 401,
-                        'msg' => '未登录',
-                        'data' => [],
-                    ]);
-                }
-                return Pjax::redirectTo(LoginManager::getInstance()->redirectLogin());
+            if ($this->request->isAjax() || $this->wantsJson()) {
+                return Response::asJson([
+                    'code' => 401,
+                    'msg' => '未登录',
+                    'data' => [],
+                ]);
             }
+            return Pjax::redirectTo(LoginManager::getInstance()->redirectLogin());
         }
 
         if (!Permission::getInstance()->hasPermission($this->userModel)) {
@@ -52,20 +47,6 @@ class ApiController extends BaseAPIController
         }
 
         return null;
-    }
-
-    private function bearerToken(): string
-    {
-        foreach ($this->request->getHeaders() as $key => $value) {
-            if (strcasecmp((string)$key, 'Authorization') !== 0) {
-                continue;
-            }
-            if (preg_match('/^\s*Bearer\s+(\S+)\s*$/i', (string)$value, $m)) {
-                return $m[1];
-            }
-            return '';
-        }
-        return '';
     }
 
     private function wantsJson(): bool
