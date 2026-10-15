@@ -236,10 +236,11 @@ class Main extends BaseViewController
         }
 
         $categories = [];
+        $hiddenFavorites = BookDao::getInstance()->getHiddenCategories();
         foreach (BookDao::getInstance()->getCategories() as $item) {
             $categories[] = [
                 'title' => $item,
-                'icon' => 'folder',
+                'icon' => in_array($item, $hiddenFavorites, true) ? 'visibility_off' : 'folder',
                 'url' => $bookBase . '?favorite=' . rawurlencode($item),
                 'pjax' => true,
                 'match' => '^/index/main/book\?([^#]*&)?favorite=' . preg_quote(rawurlencode($item), '/') . '(&|$)',

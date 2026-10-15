@@ -200,7 +200,29 @@ class Book extends ApiController
                 'categories' => BookDao::getInstance()->getTags(),
                 'favorites' => BookDao::getInstance()->getCategories(),
                 'authors' => BookDao::getInstance()->getAuthors(),
+                'hiddenFavorites' => BookDao::getInstance()->getHiddenCategories(),
             ]
+        ]);
+    }
+
+    /**
+     * 隐藏 / 取消隐藏某个分类（favorite）
+     * 隐藏后该分类的书不出现在「全部书籍」等常规列表中，进入该分类仍可查看。
+     * POST /book/categoryHidden  name=分类名, hidden=1|0
+     */
+    public function categoryHidden(): Response
+    {
+        $name = trim((string)$this->request->post('name', ''));
+        if ($name === '') {
+            return Response::asJson(['code' => 400, 'msg' => '请选择分类']);
+        }
+        $hidden = ((int)$this->request->post('hidden', 1)) === 1;
+        BookDao::getInstance()->setCategoryHidden($name, $hidden);
+
+        return Response::asJson([
+            'code' => 200,
+            'msg' => $hidden ? "已隐藏分类「{$name}」" : "已取消隐藏分类「{$name}」",
+            'data' => ['name' => $name, 'hidden' => $hidden],
         ]);
     }
 
@@ -716,11 +738,16 @@ class Book extends ApiController
     /** 把可编辑字段从请求数据写入书籍模型 */
     private function applyEditableFields(BookModel $book, array $data): void
     {
+        $oldFavorite = $book->favorite;
         $editableFields = ['bookName', 'author', 'description', 'category', 'series', 'seriesNum', 'favorite', 'rate', 'coverUrl'];
         foreach ($editableFields as $field) {
             if (isset($data[$field])) {
                 $book->$field = Text::parseType($book->$field, $data[$field]);
             }
+        }
+        // 分类变化时 hidden 跟随目标分类的隐藏状态
+        if (isset($data['favorite']) && $book->favorite !== $oldFavorite) {
+            BookDao::getInstance()->applyCategoryHidden($book);
         }
         // 标签经 setTags 规范化：「已读」置顶、去重去空
         if (isset($data['category'])) {

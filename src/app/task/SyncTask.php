@@ -286,6 +286,8 @@ class SyncTask extends TaskerAbstract
         if ($local !== null && $local->coverUrl !== '') {
             $book->coverUrl = $local->coverUrl;
         }
+        // hidden 为纯本地字段：跟随（可能已变化的）分类的隐藏状态
+        BookDao::getInstance()->applyCategoryHidden($book);
         $book->update_at = 0; // 来自远端，标记为本地未修改
         BookDao::getInstance()->insertModel($book, true);
         return $book;
@@ -471,14 +473,14 @@ class SyncTask extends TaskerAbstract
      * toArray(false) 跳过 Model::onToArray 的 serialize，使 groupBooks 保持为 JSON 数组
      * （否则会被写成 "a:0:{}" 这类 PHP 序列化串，移动端无法解析）。
      * series / seriesNum 作为独立字段输出，category 保持纯标签，与移动端契约一致。
-     * update_at 为本地同步仲裁字段，id 为本地自增主键，都不属于共享契约，不写入。
+     * update_at 为本地同步仲裁字段，id 为本地自增主键，hidden 为本地可见性标记，都不属于共享契约，不写入。
      * coverUrl 仍然写出，作为本地库损坏时的兜底副本。
      */
     private function toRemoteEntry(BookModel $book): array
     {
         $book->pushSeries2Category();
         $entry = $book->toArray(false);
-        unset($entry['update_at'], $entry['id']);
+        unset($entry['update_at'], $entry['id'], $entry['hidden']);
         return $entry;
     }
 

@@ -38,6 +38,9 @@ class BookModel extends Model
     // 本地最后修改时间(毫秒)。仅本地用于同步 last-write-wins 仲裁，不写入 books.sync。
     public int $update_at = 0;
 
+    // 是否隐藏(0/1)。按分类整体隐藏/取消隐藏；仅本地使用，不写入 books.sync。
+    public int $hidden = 0;
+
     /**
      * {
      * "addTime": "1761286619609",
@@ -66,7 +69,7 @@ class BookModel extends Model
 
     public function getSchemaVersion(): int
     {
-        return 5;
+        return 6;
     }
 
     public function getUpgradeSql(): array
@@ -88,6 +91,10 @@ class BookModel extends Model
                 "ALTER TABLE {table} ADD COLUMN `update_at` BIGINT NOT NULL DEFAULT 0",
                 // 存量数据以 addTime 作为初始修改时间，首次同步倾向以本地为权威推送远端
                 "UPDATE {table} SET update_at = addTime WHERE update_at = 0",
+            ],
+            "5_6" => [
+                // 按分类隐藏：书籍级可见性标记，0=显示 1=隐藏
+                "ALTER TABLE {table} ADD COLUMN `hidden` TINYINT(1) NOT NULL DEFAULT 0",
             ],
         ];
     }

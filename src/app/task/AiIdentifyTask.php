@@ -94,6 +94,7 @@ class AiIdentifyTask extends TaskerAbstract
             if (!empty($book->coverUrl)) {
                 Context::instance()->cache->set("coverUrl/{$book->coverUrl}", true);
             }
+            BookDao::getInstance()->applyCategoryHidden($book);
             $book->update_at = time() * 1000;
 
             if ($dao->updateModel($book)) {

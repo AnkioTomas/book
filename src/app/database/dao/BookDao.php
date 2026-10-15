@@ -62,6 +62,11 @@ class BookDao extends Dao
             $where['favorite'] = $favorite;
         }
 
+        // 隐藏：未指定具体分类时排除 hidden=1 的书（直接进入该分类仍可见）
+        if (!isset($where['favorite']) || $where['favorite'] === '') {
+            $where[] = "IFNULL(hidden, 0) = 0";
+        }
+
         // 筛选：作者
         if ($author !== '') {
             $where['author'] = $author;
@@ -219,6 +224,39 @@ class BookDao extends Dao
 
         // GROUP BY已经保证唯一性，直接提取列值
         return array_column($result, 'favorite');
+    }
+
+    /**
+     * 被隐藏的分类名（该分类下存在 hidden=1 的书即视为隐藏）
+     * @return string[]
+     */
+    public function getHiddenCategories(): array
+    {
+        $result = $this->select('favorite')
+                       ->where(['favorite <> ""', 'hidden = 1'])
+                       ->groupBy('favorite')
+                       ->commit(object: false);
+        return array_column($result, 'favorite');
+    }
+
+    public function isCategoryHidden(string $favorite): bool
+    {
+        return $favorite !== '' && $this->exists(['favorite' => $favorite, 'hidden' => 1]);
+    }
+
+    /** 隐藏 / 取消隐藏整个分类：批量写该分类所有书的 hidden 标记 */
+    public function setCategoryHidden(string $favorite, bool $hidden): void
+    {
+        if ($favorite === '') {
+            return;
+        }
+        $this->update()->where(['favorite' => $favorite])->set(['hidden' => $hidden ? 1 : 0])->commit();
+    }
+
+    /** 书籍分类变化后，hidden 跟随目标分类的隐藏状态（移入隐藏分类即隐藏，移出即显示） */
+    public function applyCategoryHidden(BookModel $book): void
+    {
+        $book->hidden = $this->isCategoryHidden($book->favorite) ? 1 : 0;
     }
 
     /**

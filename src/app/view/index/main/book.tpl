@@ -106,10 +106,12 @@
         <div class="book-toolbar-actions">
             <mdui-button id="btnAdd" icon="add" variant="filled">导入</mdui-button>
             <mdui-button id="btnSync" icon="sync" variant="tonal">同步</mdui-button>
+            <mdui-button id="btnToggleCategoryHidden" icon="visibility_off" variant="outlined" style="display:none">隐藏此分类</mdui-button>
             <mdui-dropdown>
                 <mdui-button slot="trigger" icon="more_vert" variant="outlined" end-icon="arrow_drop_down">批量</mdui-button>
                 <mdui-menu>
                     <mdui-menu-item id="btnBatchEdit" icon="edit_note">批量编辑</mdui-menu-item>
+                    <mdui-menu-item id="btnBatchSetCategory" icon="topic">设置分类</mdui-menu-item>
                     <mdui-menu-item id="btnBatchAiIdentify" icon="auto_awesome">AI 识别</mdui-menu-item>
                     <mdui-menu-item id="btnBatchAiFillMissing" icon="playlist_add_check">AI 填充缺失</mdui-menu-item>
                     <mdui-menu-item id="btnBatchAiClassify" icon="label">AI 分类</mdui-menu-item>
@@ -298,6 +300,30 @@
 
         <mdui-button slot="action" variant="text" onclick="this.closest('mdui-dialog').open = false">取消</mdui-button>
         <mdui-button slot="action" variant="filled" id="btnBatchSubmit">批量更新</mdui-button>
+    </mdui-dialog-form>
+
+    <!-- 设置分类对话框（单本 / 批量共用） -->
+    <mdui-dialog-form id="setCategoryDialog" label="设置分类" saveName="确定">
+        <form id="setCategoryForm">
+            <div class="body-medium mb-3" id="setCategoryTip"></div>
+            <div class="mb-3">
+                <mdui-search-input
+                        id="setCategoryFavorite"
+                        name="favorite"
+                        label="分类"
+                        placeholder="可选择已有分类或输入新分类"
+                        search-uri="/index/book/searchFavorite"
+                        min-length="1"
+                        clearable
+                ></mdui-search-input>
+            </div>
+            <div class="body-small text-on-surface-variant">
+                提示：只修改分类，不影响标签；如需移除分类请点「清空分类」
+            </div>
+        </form>
+
+        <mdui-button slot="action" variant="text" onclick="this.closest('mdui-dialog').open = false">取消</mdui-button>
+        <mdui-button slot="action" variant="tonal" id="btnClearCategory">清空分类</mdui-button>
     </mdui-dialog-form>
 
     <drag-upload

@@ -25,6 +25,10 @@ window.pageOnLoad = function () {
     var filterOptions = {};
     var editDialog = $('#bookEditDialog')[0];
     var batchDialog = $('#batchEditDialog')[0];
+    var setCategoryDialog = $('#setCategoryDialog')[0];
+    var setCategoryTargets = [];
+    // 不是真实分类名的特殊 favorite 筛选值
+    var SPECIAL_FAVORITES = ['', 'empty', 'incomplete', 'unorganized'];
     var $doubanPicker = $('#doubanBookPicker');
     var $dragUpload = $('drag-upload');
     var bookCtxCleanup = null;
@@ -145,6 +149,65 @@ window.pageOnLoad = function () {
         batchRequest('/index/book/batchRead', { ids: bookIds(books), read: read ? '1' : '0' }, read ? '正在标记已读…' : '正在标记未读…');
     }
 
+    // 设置分类：单本 / 批量共用对话框，复用 batchUpdate，仅改 favorite
+    function openSetCategory(books) {
+        if (!books || !books.length) return;
+        setCategoryTargets = books;
+        var input = document.getElementById('setCategoryFavorite');
+        var current = books.length === 1 ? (books[0].favorite || '') : '';
+        if (input) input.setValue(current, current);
+        $('#setCategoryTip').text(books.length === 1
+            ? '为《' + (books[0].bookName || books[0].filename || '') + '》设置分类'
+            : '为选中的 ' + books.length + ' 本书籍设置同一分类');
+        setCategoryDialog.open();
+    }
+
+    function applyCategory(name) {
+        var books = setCategoryTargets;
+        if (!books || !books.length) return;
+        setCategoryDialog.close();
+        batchRequest('/index/book/batchUpdate', { ids: bookIds(books), favorite: name },
+            name ? '正在设置分类…' : '正在清空分类…');
+    }
+
+    // 隐藏 / 取消隐藏当前分类（仅在进入某个具体分类时显示按钮）
+    function initCategoryHiddenToggle() {
+        var current = $.url.getParam('favorite') || '';
+        var $btn = $('#btnToggleCategoryHidden');
+        if (SPECIAL_FAVORITES.indexOf(current) !== -1) {
+            $btn.hide();
+            return;
+        }
+        var hidden = (filterOptions.hiddenFavorites || []).indexOf(current) !== -1;
+        $btn.attr('icon', hidden ? 'visibility' : 'visibility_off')
+            .text(hidden ? '取消隐藏此分类' : '隐藏此分类')
+            .show();
+        $btn.off('click').on('click', function () {
+            var toHide = !hidden;
+            var doIt = function () {
+                $.request.postForm('/index/book/categoryHidden', { name: current, hidden: toHide ? '1' : '0' }, function (res) {
+                    if (res.code !== 200) return $.toaster.error(res.msg || '操作失败');
+                    $.toaster.success(res.msg);
+                    var list = filterOptions.hiddenFavorites || [];
+                    if (toHide) {
+                        list.push(current);
+                    } else {
+                        list = list.filter(function (n) { return n !== current; });
+                    }
+                    filterOptions.hiddenFavorites = list;
+                    initCategoryHiddenToggle();
+                }, function () {
+                    $.toaster.error('请求失败');
+                });
+            };
+            if (toHide) {
+                confirm('隐藏后，分类「' + $.escapeHtml(current) + '」下的书不会出现在「全部书籍」等列表中，进入该分类仍可查看，可随时取消隐藏。', '隐藏分类', doIt);
+            } else {
+                doIt();
+            }
+        });
+    }
+
     function uploadBatch(files) {
         var total = files.length, count = 0;
 
@@ -198,6 +261,16 @@ window.pageOnLoad = function () {
                         editDialog.setValue(book);
                         var fav = document.getElementById('editFavorite');
                         if (fav) fav.setValue(book.favorite || '', book.favorite || '');
+                    }
+                },
+                {
+                    text: '设置分类',
+                    icon: 'topic',
+                    action: function () {
+                        // 若当前有多选且包含该书，则对所有选中项设置
+                        var selected = cardView.getSelectedRows() || [];
+                        var inSel = selected.some(function (b) { return b.id === book.id; });
+                        openSetCategory(inSel && selected.length > 1 ? selected : [book]);
                     }
                 },
                 { text: 'AI 识别', icon: 'auto_awesome', action: function () { aiIdentifyRun([book]); } },
@@ -358,6 +431,22 @@ window.pageOnLoad = function () {
             confirm('确定让 AI 自动判断选中的 ' + selected.length + ' 本书籍的分类和标签吗？此操作会直接保存。', 'AI 分类', function () {
                 aiClassifyRun(selected);
             });
+        });
+
+        $('#btnBatchSetCategory').on('click', function () {
+            var selected = requireSelected('请先选择要设置分类的书籍');
+            if (selected) openSetCategory(selected);
+        });
+
+        setCategoryDialog.submit(null, function () {
+            var input = document.getElementById('setCategoryFavorite');
+            var name = String((input && (input.text || input.value)) || '').trim();
+            if (!name) return $.toaster.warn('请输入或选择分类；如需移除请点「清空分类」');
+            applyCategory(name);
+        });
+
+        $(setCategoryDialog).on('click', '#btnClearCategory', function () {
+            applyCategory('');
         });
 
         $('#btnBatchDelete').on('click', function () {
@@ -559,6 +648,7 @@ window.pageOnLoad = function () {
 
         initBookContextMenu();
         bindEvents();
+        initCategoryHiddenToggle();
     });
 
     $.emitter.on('pjax:prevented', reload);
@@ -571,5 +661,6 @@ window.pageOnLoad = function () {
         if ($doubanPicker.length) $doubanPicker[0].destroy();
         $('#searchForm, [id^="btn"]').off();
         $(editDialog).off();
+        $(setCategoryDialog).off();
     };
 };

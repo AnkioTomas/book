@@ -69,6 +69,7 @@ class AiClassifyTask extends TaskerAbstract
                     $book->$field = Text::parseType($book->$field, $out[$field]);
                 }
             }
+            BookDao::getInstance()->applyCategoryHidden($book);
             $book->update_at = time() * 1000;
 
             if ($dao->updateModel($book)) {
