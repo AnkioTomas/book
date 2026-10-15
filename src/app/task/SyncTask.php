@@ -12,6 +12,7 @@ use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\ProgressManager;
 use app\utils\Douban;
+use app\utils\WereadSearch;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\plugin\corn\schedule\TaskerAbstract;
@@ -215,6 +216,9 @@ class SyncTask extends TaskerAbstract
         if ($finishedMarked > 0) {
             $dirty = true;
         }
+
+        // 7.5 一次性：存量微信读书封面 s_ 缩略图升级为 t9_ 高清，并标记重新补传。
+        $this->upgradeWereadCovers($localMap, $cache);
 
         // 8. 封面补传（沿用：本地标记过需要上传封面的书）。
         TaskLogger::log('检查封面补传…');
@@ -435,6 +439,42 @@ class SyncTask extends TaskerAbstract
         }
 
         return [$down, $up, $marked];
+    }
+
+    /**
+     * 一次性迁移：历史上微信读书封面存的是 s_ 缩略图（≈70×101），升级为 t9_（≈428×616）。
+     * 同时打上 coverUrl 待补传标记，由随后的 syncCovers 重新下载并覆盖 WebDAV 上的模糊封面。
+     * 用缓存标志保证只跑一次；t9_ 不存在的书保持原样。
+     *
+     * @param BookModel[] $localMap
+     */
+    private function upgradeWereadCovers(array $localMap, $cache): void
+    {
+        $flag = 'migrate.weread_cover_t9.v1';
+        if ($cache->get($flag)) {
+            return;
+        }
+        $upgraded = 0;
+        foreach ($localMap as $book) {
+            if (!str_contains($book->coverUrl, 'cdn.weread.qq.com/')) {
+                continue;
+            }
+            $hd = WereadSearch::hdCoverUrl($book->coverUrl);
+            if ($hd === $book->coverUrl) {
+                continue;
+            }
+            try {
+                $book->coverUrl = $hd;
+                if (BookDao::getInstance()->updateModel($book)) {
+                    $cache->set("coverUrl/{$hd}", true);
+                    $upgraded++;
+                }
+            } catch (Throwable $e) {
+                Logger::warning('[SyncTask] 微信读书封面升级失败 ' . $book->filename . ': ' . $e->getMessage());
+            }
+        }
+        TaskLogger::log('微信读书封面高清升级 ' . $upgraded . ' 本');
+        $cache->set($flag, true, 0);
     }
 
     /**

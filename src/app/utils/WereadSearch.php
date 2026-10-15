@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace app\utils;
 
+use nova\framework\core\Context;
 use nova\framework\core\Instance;
 use nova\plugin\http\HttpClient;
 
@@ -17,6 +18,53 @@ class WereadSearch extends Instance
 {
     private const SEARCH_URL = 'https://weread.qq.com/web/search/global';
     private const DEFAULT_COUNT = 10;
+
+    /** 微信读书封面 CDN 可用的最大尺寸前缀（实测 t9_ ≈ 428×616；s_ 仅 ≈ 70×101） */
+    private const COVER_HD_PREFIX = 't9_';
+
+    /**
+     * 把微信读书封面 URL 的 s_ / t\d+_ 文件名前缀换成高清 t9_。
+     * $verify=true 时以 HEAD 探测 t9_ 是否存在（结果按 URL 缓存），不存在或探测失败则回退原 URL。
+     * 非微信读书 CDN 的 URL 原样返回。
+     */
+    public static function hdCoverUrl(string $url, bool $verify = true): string
+    {
+        $url = trim($url);
+        if ($url === '' || !str_contains($url, 'cdn.weread.qq.com/')) {
+            return $url;
+        }
+        $hd = preg_replace('#/(?:s|t\d+)_([^/?\#]+)$#', '/' . self::COVER_HD_PREFIX . '$1', $url);
+        if (!is_string($hd) || $hd === $url) {
+            return $url;
+        }
+        if (!$verify) {
+            return $hd;
+        }
+
+        $cache = Context::instance()->cache;
+        $key = 'weread_cover_hd/' . md5($hd);
+        $known = $cache->get($key);
+        if ($known === 'y' || $known === 'n') {
+            return $known === 'y' ? $hd : $url;
+        }
+
+        $ok = false;
+        try {
+            $resp = HttpClient::init()
+                ->timeout(3)
+                ->setOption(CURLOPT_NOBODY, true)
+                ->setHeader('User-Agent', Douban::getRandomUserAgent())
+                ->send($hd);
+            $ok = $resp !== null && $resp->getHttpCode() === 200;
+            // 仅对确定结果（200 / 404）长期缓存；网络异常不缓存，下次再试
+            if ($resp !== null && in_array($resp->getHttpCode(), [200, 404], true)) {
+                $cache->set($key, $ok ? 'y' : 'n', 86400 * 30);
+            }
+        } catch (\Throwable) {
+            $ok = false;
+        }
+        return $ok ? $hd : $url;
+    }
 
     private function headers(): array
     {
@@ -152,7 +200,7 @@ class WereadSearch extends Instance
             'intro' => $intro,
             'full_intro' => $intro,
             'tags' => $tags,
-            'cover_url' => trim((string)($info['cover'] ?? '')),
+            'cover_url' => self::hdCoverUrl((string)($info['cover'] ?? '')),
             'url' => $url,
             'pages' => '',
             'series' => trim((string)($info['lPushName'] ?? '')),
