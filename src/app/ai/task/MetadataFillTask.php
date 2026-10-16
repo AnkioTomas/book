@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\ai\task;
 
 use app\ai\agent\BookAssistantAgent;
+use app\utils\BookOrganizer\Volume;
 use nova\plugin\ai\agent\Agent;
 use nova\plugin\ai\task\AiTask;
 
@@ -86,15 +87,22 @@ class MetadataFillTask extends AiTask
     }
 
     /** @return array<string, mixed>|null */
-    public function fill(string $bookName, string $author = '', ?callable $onProgress = null): ?array
+    public function fill(string $bookName, string $author = '', ?callable $onProgress = null, string $filename = ''): ?array
     {
         if ($bookName === '') {
             return null;
         }
 
+        $volume = Volume::extract($bookName) ?? ($filename !== '' ? Volume::extract(pathinfo($filename, PATHINFO_FILENAME)) : null);
+
         $prompt = "请为下面这本书检索并挑选最准确的元数据：\n"
             . "书名：{$bookName}\n"
             . ($author !== '' ? "作者：{$author}\n" : '')
+            . ($filename !== '' ? "文件名：" . basename($filename) . "\n" : '')
+            . ($volume !== null
+                ? "注意：这是多卷书中的一卷（分卷标记：{$volume}）。只能选择分卷完全一致的候选（如「（中）」不能选「（上）」或「（下）」），"
+                    . "输出的 bookName 必须保留该分卷标记；找不到同卷候选时宁可只填能确定的字段。\n"
+                : '')
             . "优先用 search_douban 检索豆瓣；无结果或信息不全时用 search_weread 检索微信读书补全；必要时用 fetch_url。"
             . "在多个候选里挑选最匹配的一条。"
             . "最终只输出一个 JSON 对象，不要任何额外文字、解释或 Markdown 代码块，字段为："

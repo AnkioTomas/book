@@ -62,6 +62,14 @@ class Upload extends BaseAPIController
         $isNew = empty($model);
         if (BookManager::getInstance()->uploadBook($file->path, $file->name)) {
             [$author, $title, $year, $ext] = Parser::filename($file->name);
+            // 优先 EPUB 内 OPF 的 dc:title / dc:creator，缺失时回退文件名解析
+            $meta = Parser::epubMeta($file->path, $file->name);
+            if (!empty($meta['title'])) {
+                $title = $meta['title'];
+            }
+            if (!empty($meta['author'])) {
+                $author = $meta['author'];
+            }
             if (empty($title)) {
                 return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
             }

@@ -6,6 +6,7 @@ namespace app\task;
 
 use app\ai\task\MetadataFillTask;
 use app\database\dao\BookDao;
+use app\utils\BookOrganizer\Volume;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\core\Text;
@@ -69,12 +70,22 @@ class AiIdentifyTask extends TaskerAbstract
 
             $out = $resolver->fill($title, $book->author, static function (string $msg) use ($pos): void {
                 TaskLogger::log($pos . $msg);
-            });
+            }, $book->filename);
 
             if ($out === null) {
                 $fail++;
                 TaskLogger::log($pos . '未识别到信息', 'warn');
                 continue;
+            }
+
+            // 分卷保护：本地书名带分卷时，AI 结果分卷不同或丢了分卷都不覆盖书名（防止上/中/下被识别成同一本）
+            if (isset($out['bookName']) && $book->bookName !== '') {
+                $localVol = Volume::extract($book->bookName);
+                $aiVol = Volume::extract((string)$out['bookName']);
+                if ($localVol !== null && $aiVol !== $localVol) {
+                    TaskLogger::log($pos . "AI 结果分卷（" . ($aiVol ?? '无') . "）与本地（{$localVol}）不一致，保留原书名", 'warn');
+                    unset($out['bookName']);
+                }
             }
 
             // 「已读」是本地阅读状态标签，与 AI 元数据无关：覆盖标签后需补回。

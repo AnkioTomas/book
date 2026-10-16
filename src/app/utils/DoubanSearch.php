@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace app\utils;
 
+use app\utils\BookOrganizer\Volume;
 use DOMDocument;
 use DOMXPath;
 use nova\framework\core\Instance;
@@ -151,7 +152,14 @@ class DoubanSearch extends Instance
             return null;
         }
 
+        // 分卷不一致（如搜「（中）」却是「（上）」）直接剔除；查询带分卷而候选没有的，适当降权
+        if (Volume::conflicts($query, $title)) {
+            return null;
+        }
         $similarity = $this->calculateSimilarity($query, $title);
+        if (Volume::extract($query) !== null && Volume::extract($title) === null) {
+            $similarity *= 0.9;
+        }
 
         $subjectCast = $xpath->query(".//div[@class='rating-info']//div[@class='subject-cast']", $result)->item(0);
         $info = $this->parsePublishInfo($subjectCast ? $subjectCast->textContent : '');
@@ -227,8 +235,9 @@ class DoubanSearch extends Instance
     /** 计算字符串相似度 (0-1) */
     private function calculateSimilarity(string $str1, string $str2): float
     {
-        $s1 = str_replace(' ', '', mb_strtolower($str1));
-        $s2 = str_replace(' ', '', mb_strtolower($str2));
+        // 统一 ·/：/空白/全半角括号等再比较，避免「龙族Ⅲ·黑月之潮」与「龙族Ⅲ：黑月之潮」被判为差异
+        $s1 = Volume::normalizeTitle($str1);
+        $s2 = Volume::normalizeTitle($str2);
 
         similar_text($s1, $s2, $percent);
 
