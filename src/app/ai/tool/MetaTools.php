@@ -31,8 +31,9 @@ class MetaTools extends Instance
         return [
             new CallableTool(
                 'search_meta',
-                'Search book metadata from a catalog source and return matched books (title, author, rating, intro, tags, cover, url). '
+                'Search book metadata from ONE catalog source and return matched books (title, author, rating, intro, tags, cover, url). '
                 . 'Available source ids: ' . $hint . '. '
+                . 'Pick the best-fitting source once; if results already match the book, stop and answer—do not call again with another source. '
                 . 'Do not fetch book pages yourself; call this tool instead.',
                 ['type' => 'object', 'properties' => [
                     'source' => [
