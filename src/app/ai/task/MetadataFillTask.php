@@ -6,6 +6,7 @@ namespace app\ai\task;
 
 use app\ai\agent\BookAssistantAgent;
 use app\utils\BookOrganizer\Volume;
+use app\utils\meta\MetaHit;
 use nova\plugin\ai\agent\Agent;
 use nova\plugin\ai\task\AiTask;
 
@@ -54,6 +55,9 @@ class MetadataFillTask extends AiTask
     {
         if (isset($out['favorite']) && !in_array($out['favorite'], self::CATEGORIES, true)) {
             unset($out['favorite']);
+        }
+        if (isset($out['author'])) {
+            $out['author'] = MetaHit::cleanAuthor((string)$out['author']);
         }
         if (isset($out['rate']) && $out['rate'] !== '') {
             $rate = (float)$out['rate'];
@@ -109,7 +113,7 @@ class MetadataFillTask extends AiTask
             . "同一源返回的候选里挑最匹配的一条（优先书名+作者一致）；关键字段够用就立刻输出 JSON，禁止再调用 search_meta 换源或重搜。"
             . "只有该源无结果或明显不对时，才允许再换一个源；禁止自己抓网页。"
             . "最终只输出一个 JSON 对象，不要任何额外文字、解释或 Markdown 代码块，字段为："
-            . "bookName(正式书名，已纠错/规范化), author(作者), description(简介), publisher(出版社), publishYear(出版年), "
+            . "bookName(正式书名，已纠错/规范化), author(作者名，不要带[日]/[美]等国籍标记), description(简介), publisher(出版社), publishYear(出版年), "
             . "isbn, pages(页数), price(价格), coverUrl(封面图URL), "
             . "rate(本系统五星评分，整数，最低0最高5，满分只有5分；豆瓣与微信读书对外多为十分制，必须先÷2再取整写入，禁止直接写原始分), "
             . "favorite(图书分类，必须从以下固定分类中选且只能选一个：" . implode('/', self::CATEGORIES) . "), "

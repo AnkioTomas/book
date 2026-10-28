@@ -51,7 +51,7 @@ final class MetaHit
 
         return [
             'title' => $title,
-            'author' => trim((string)($row['author'] ?? $row['authors'] ?? '')),
+            'author' => self::cleanAuthor((string)($row['author'] ?? $row['authors'] ?? '')),
             'publisher' => trim((string)($row['publisher'] ?? '')),
             'year' => trim((string)($row['year'] ?? '')),
             'isbn' => trim((string)($row['isbn'] ?? '')),
@@ -66,6 +66,34 @@ final class MetaHit
             'price' => trim((string)($row['price'] ?? '')),
             'source' => $source,
         ];
+    }
+
+    /**
+     * 去掉豆瓣等常见的国籍前缀：`[日]` `(英)` `（美）` `【法】`。
+     */
+    public static function cleanAuthor(string $author): string
+    {
+        $author = trim($author);
+        if ($author === '') {
+            return '';
+        }
+
+        $parts = preg_split('/\s*[\/、,，&]\s*/u', $author) ?: [$author];
+        $out = [];
+        foreach ($parts as $part) {
+            $part = trim((string)$part);
+            $part = preg_replace(
+                '/^(?:\[[^\]]{1,8}\]|\([^)]{1,8}\)|（[^）]{1,8}）|【[^】]{1,8}】)\s*/u',
+                '',
+                $part
+            ) ?? $part;
+            $part = trim($part);
+            if ($part !== '') {
+                $out[] = $part;
+            }
+        }
+
+        return implode(' / ', $out);
     }
 
     /**
