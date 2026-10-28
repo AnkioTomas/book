@@ -12,9 +12,21 @@
 <body class="bg">
 
 <mdui-layout class="">
-    <mdui-top-app-bar scroll-behavior="elevate" scroll-target=".layout-main" class="position-fixed">
+    <mdui-top-app-bar scroll-behavior="elevate" scroll-target=".layout-main" class="position-fixed nova-app-bar-surface">
         <mdui-button-icon icon="menu" id="navigation-drawer-switch"></mdui-button-icon>
-        <mdui-top-app-bar-title>{$title}</mdui-top-app-bar-title>
+        <div class="app-bar-brand">
+            {if isset($brandLogo) && $brandLogo != ''}
+                <img class="logo" src="{$brandLogo}" alt="" width="36" height="36"/>
+            {elseif isset($brandMark) && $brandMark != ''}
+                <div class="brand-mark" aria-hidden="true">{$brandMark}</div>
+            {/if}
+            <div class="brand-text">
+                <span class="brand-title">{if isset($brandName)}{$brandName}{else}{$title}{/if}</span>
+                {if isset($appVersion) && $appVersion != ''}
+                    <span class="brand-version">{$appVersion}</span>
+                {/if}
+            </div>
+        </div>
         <div style="flex-grow: 1"></div>
         <div class="layout-header-right d-flex items-center gap-2">
             <div class="top-bar-utils d-flex items-center gap-2">
@@ -69,7 +81,15 @@
     </article>
 {/if}
 <script id="script"></script>
+{* 默认色源：仅在用户从未选过时写入，须在 theme-switcher 初始化之前 *}
+<script>
+(function () {
+    var seed = {if isset($defaultColor) && $defaultColor != ''}'{$defaultColor}'{else}''{/if};
+    if (seed && !localStorage.getItem('color')) {
+        localStorage.setItem('color', seed);
+    }
+})();
+</script>
 {include file="publicScript.tpl"}
 </body>
 </html>
-

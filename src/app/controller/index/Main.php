@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace app\controller\index;
 
+use app\Application;
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
 use app\database\model\BookModel;
+
+use function nova\framework\config;
+
 use nova\framework\http\Response;
 use nova\plugin\login\controller\BaseViewController;
 use nova\plugin\tpl\Pjax;
@@ -369,6 +373,20 @@ class Main extends BaseViewController
                 'icon' => 'tune',
                 'pjax' => true,
             ],
+        ];
+    }
+
+    protected function initData(): array
+    {
+        $name = Application::SYSTEM_NAME;
+        $version = (string)config('version');
+
+        return [
+            'brandName' => $name,
+            'brandLogo' => '/static/icons/android-chrome-192x192.png',
+            'appVersion' => $version !== '' ? 'v' . $version : '',
+            // 首次访问写入 localStorage；已选过色源的用户不受影响
+            'defaultColor' => (string)(config('ui.default_color') ?: '#5DA2FF'),
         ];
     }
 }
