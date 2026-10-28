@@ -111,6 +111,48 @@
         }
     }
 
+    /* 手机：工具栏只留图标、隐藏全选栏、三列卡片 */
+    @media (max-width: 600px) {
+        .book-toolbar {
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .book-toolbar > .title-large,
+        .book-toolbar-actions {
+            width: 100%;
+        }
+        .book-toolbar-actions {
+            justify-content: flex-end;
+        }
+        .book-toolbar-actions mdui-button::part(label),
+        .book-toolbar-actions mdui-button::part(end-icon) {
+            display: none;
+        }
+        .book-toolbar-actions mdui-button::part(button) {
+            padding-inline: 0;
+            width: 40px;
+            justify-content: center;
+        }
+        .book-toolbar-actions mdui-button::part(icon) {
+            margin: 0;
+        }
+        /* CardView 用内联 display:flex 控制，只能 !important 压掉 */
+        #bookTable .card-view-selection-bar {
+            display: none !important;
+        }
+        #bookTable .card-view-container {
+            --card-min-width: 100px !important;
+            gap: 8px;
+            padding-top: 8px;
+        }
+        #bookTable .card-view-item {
+            padding: 2px;
+        }
+        #bookTable .book-card-content {
+            padding: 4px;
+        }
+    }
+
     /* —— 编辑书籍弹窗 —— */
     .book-edit-form {
         display: flex;
