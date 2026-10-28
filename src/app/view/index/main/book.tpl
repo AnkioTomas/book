@@ -1,5 +1,12 @@
 <title id="title">书籍列表 - {$title}</title>
 <style id="style">
+    /* 自定义元素升级前隐藏对话框表单，避免进页 FOUC 闪一下整页表单 */
+    mdui-dialog-form:not(:defined),
+    douban-book-picker:not(:defined),
+    drag-upload:not(:defined) {
+        display: none !important;
+    }
+
     .book-toolbar {
         display: flex;
         justify-content: space-between;
