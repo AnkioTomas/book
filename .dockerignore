@@ -2,7 +2,6 @@
 .github
 dist
 docs
-**/framework/demo
 node_modules
 **/runtime
 src/config.php
