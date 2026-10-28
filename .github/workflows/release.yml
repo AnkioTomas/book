@@ -80,10 +80,31 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' "${{ steps.ver.outputs.version }}" | php nova.phar build all
+          # 剔除 UI 框架 demo（开发参考，不进发行包）
+          python3 - <<'PY'
+          import zipfile, os
+          from pathlib import Path
+          ver = os.environ["VERSION"]
+          name = f"book-{ver}"
+          for suffix in ("", "-windows", "-docker"):
+              zpath = Path("dist") / f"{name}{suffix}.zip"
+              if not zpath.exists():
+                  continue
+              tmp = zpath.with_suffix(".zip.tmp")
+              with zipfile.ZipFile(zpath, "r") as zin, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+                  for info in zin.infolist():
+                      if "/framework/demo/" in info.filename.replace("\\", "/") or info.filename.replace("\\", "/").endswith("/framework/demo"):
+                          continue
+                      zout.writestr(info, zin.read(info.filename))
+              tmp.replace(zpath)
+              print(f"stripped demo from {zpath}")
+          PY
           zip -j \
             dist/book-${{ steps.ver.outputs.version }}-docker.zip \
             Dockerfile docker-compose.yml nginx.conf php.ini
           ls -lh dist/book-${{ steps.ver.outputs.version }}*.zip
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

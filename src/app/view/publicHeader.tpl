@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="/static/bundle?file=framework/icons/fonts.css,framework/libs/mdui.css,framework/base.css,framework/utils/Loading.css,framework/pjax/nprogress.css,framework/layout.css&type=css&v={$__v}">
+<link rel="stylesheet" href="/static/bundle?file=framework/icons/fonts.css,framework/libs/mdui.css,framework/base.css,framework/motion.css,framework/utils/Loading.css,framework/pjax/nprogress.css,framework/layout.css&type=css&v={$__v}">
 
 <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png?v={$__v}"/>
 <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png?v={$__v}"/>

@@ -11,6 +11,9 @@ WORKDIR /app
 
 COPY src/ /app/
 
+# UI 框架 demo 仅开发参考，镜像内剔除
+RUN rm -rf /app/app/static/framework/demo
+
 RUN ln -s /data/config.php /app/config.php \
     && ln -s /data/runtime /app/runtime \
     && ln -s /data/uploads /app/uploads

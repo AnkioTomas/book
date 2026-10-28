@@ -1,10 +1,10 @@
-**/.git
+.git
 .github
-.idea
 dist
-tests
+docs
+**/framework/demo
+node_modules
+**/runtime
 src/config.php
-src/config.php.*
-src/runtime
-src/uploads
-src/calibre
+*.md
+!README.md
