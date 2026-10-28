@@ -4,12 +4,7 @@ declare(strict_types=1);
 
 namespace app\controller\index;
 
-use app\database\dao\BookDao;
-use app\database\model\BookModel;
-use app\utils\BookManager\BookManager;
-use app\utils\BookManager\CoverManager;
-use app\utils\BookOrganizer\Parser;
-use nova\framework\event\EventManager;
+use app\utils\BookIngest;
 use nova\framework\http\Response;
 use nova\plugin\login\controller\BaseAPIController;
 use nova\plugin\upload\FileDao;
@@ -19,23 +14,18 @@ class Upload extends BaseAPIController
 {
     public function upload(): Response
     {
-
-        // 使用目标 domain 的 workspace 初始化上传控制器
         $upload = UploadController::getInstance();
 
-        // 允许上传的电子书格式
         $allowedTypes = [
-            // 主流电子书格式
-            "ebooks" => [
-                'epub',  // EPUB - 最流行的开放格式
-                'mobi',  // MOBI - Amazon Kindle
-                'azw',   // AZW - Amazon Kindle
-                'azw3',  // AZW3 - Amazon Kindle (KF8)
+            'ebooks' => [
+                'epub',
+                'mobi',
+                'azw',
+                'azw3',
             ],
-            // PDF 和文档格式
-            "documents" => [
-                'pdf',   // PDF
-                'txt',   // 纯文本
+            'documents' => [
+                'pdf',
+                'txt',
             ],
         ];
 
@@ -44,61 +34,19 @@ class Upload extends BaseAPIController
 
     public function publish(): Response
     {
-
         $name = $this->request->post('name', '');
         $series = $this->request->post('series', '');
         $file = FileDao::getInstance()->getFile($name);
         if (empty($file)) {
-            return Response::asJson(["code" => 404, "msg" => "文件不存在"]);
+            return Response::asJson(['code' => 404, 'msg' => '文件不存在']);
         }
 
-        $path = $file->path;
-
-        if (!file_exists($path)) {
-            return Response::asJson(["code" => 404, "msg" => "文件不存在"]);
+        $result = BookIngest::fromLocalFile($file->path, $file->name, (string)$series);
+        if (!$result['ok']) {
+            $code = str_contains($result['msg'], '不存在') ? 404 : 400;
+            return Response::asJson(['code' => $code, 'msg' => $result['msg']]);
         }
 
-        $model = BookDao::getInstance()->getByFileName($file->name);
-        $isNew = empty($model);
-        if (BookManager::getInstance()->uploadBook($file->path, $file->name)) {
-            [$author, $title, $year, $ext] = Parser::filename($file->name);
-            // 优先 EPUB 内 OPF 的 dc:title / dc:creator，缺失时回退文件名解析
-            $meta = Parser::epubMeta($file->path, $file->name);
-            if (!empty($meta['title'])) {
-                $title = $meta['title'];
-            }
-            if (!empty($meta['author'])) {
-                $author = $meta['author'];
-            }
-            if (empty($title)) {
-                return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
-            }
-            if ($isNew) {
-                $model = new BookModel();
-                $model->deviceId = BookManager::getInstance()->deviceId;
-                $model->addTime = time() * 1000;
-                $model->update_at = time() * 1000;
-                $model->filename = $file->name;
-                $model->series = $series;
-
-                $model->bookName = $title;
-                $model->author = $author ?? "";
-                $model->downloadUrl = BookManager::getInstance()->downloadUrlFor($file->name);
-                $path = Parser::cover($path, $model);
-                if (!empty($path)) {
-                    CoverManager::getInstance()->uploadCover($path, $model->filename);
-                }
-                $id = (int)BookDao::getInstance()->insertModel($model);
-                $payload = ['id' => $id];
-                EventManager::trigger('book.uploaded', $payload);
-            }
-
-            BookDao::getInstance()->syncBooks();
-
-            return Response::asJson(["code" => 200, "msg" => "后台上传成功: $title"]);
-        } else {
-            return Response::asJson(["code" => 400, "msg" => "后台上传失败"]);
-        }
+        return Response::asJson(['code' => 200, 'msg' => $result['msg']]);
     }
-
 }

@@ -368,9 +368,9 @@ class Main extends BaseViewController
                 'sub' => $this->subMenus(),
             ],
             [
-                'title' => '书库与 Calibre',
+                'title' => '系统设置',
                 'url' => '/index/main/calibre',
-                'icon' => 'tune',
+                'icon' => 'settings',
                 'pjax' => true,
             ],
         ];

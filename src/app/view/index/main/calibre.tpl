@@ -62,6 +62,32 @@
             </form>
         </div>
 
+        <div class="col-xs-12 mb-2 mt-4">
+            <div class="title-medium mb-2">Z-Library（Z站）</div>
+            <div class="calibre-tip mb-3">
+                用于在书库页从 Z站搜索并下载电子书，下载完成后自动入库。浏览可不登录，下载需要账号。
+            </div>
+            <form class="row col-space16" id="zlibForm">
+                <div class="col-xs-12 col-md-6">
+                    <mdui-text-field label="邮箱" name="email" type="email" autocomplete="username"></mdui-text-field>
+                </div>
+                <div class="col-xs-12 col-md-6">
+                    <mdui-text-field label="密码" name="password" type="password" autocomplete="current-password"></mdui-text-field>
+                </div>
+                <div class="col-xs-12">
+                    <mdui-text-field
+                        label="镜像地址（可选）"
+                        name="base_url"
+                        helper="留空则自动竞速官方种子镜像；可填如 https://iread.ink"
+                    ></mdui-text-field>
+                </div>
+                <div class="col-xs-12 action-buttons">
+                    <mdui-button id="btnZlibTest" icon="login" variant="tonal" type="button">测试登录</mdui-button>
+                    <mdui-button id="btnZlibSave" icon="save" type="submit">保存 Z站账号</mdui-button>
+                </div>
+            </form>
+        </div>
+
         <div class="col-xs-12 title-medium mt-4 mb-2">Calibre 微服务</div>
         <div class="col-xs-12 mb-3">
             <div class="calibre-tip">

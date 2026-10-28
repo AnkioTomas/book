@@ -4,8 +4,25 @@
     mdui-dialog-form:not(:defined),
     douban-book-picker:not(:defined),
     meta-fill-picker:not(:defined),
+    zlib-picker:not(:defined),
     drag-upload:not(:defined) {
         display: none !important;
+    }
+
+    /* 宽弹窗：必须写在页面 style 里；组件内 style 打不穿 mdui 默认 560px */
+    mdui-dialog.zlib-dialog::part(panel),
+    mdui-dialog.meta-fill-dialog::part(panel) {
+        width: min(960px, 96vw) !important;
+        max-width: 960px !important;
+        height: min(80vh, 720px) !important;
+        max-height: 80vh !important;
+    }
+    mdui-dialog.zlib-dialog::part(body),
+    mdui-dialog.meta-fill-dialog::part(body) {
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
     }
 
     .book-toolbar {
@@ -228,6 +245,7 @@
         </div>
         <div class="book-toolbar-actions">
             <mdui-button id="btnAdd" icon="add" variant="filled">导入</mdui-button>
+            <mdui-button id="btnZlib" icon="cloud_download" variant="tonal">Z站</mdui-button>
             <mdui-button id="btnSync" icon="sync" variant="tonal">同步</mdui-button>
             <mdui-button id="btnToggleCategoryHidden" icon="visibility_off" variant="outlined" style="display:none">隐藏此分类</mdui-button>
             <mdui-dropdown>
@@ -357,6 +375,7 @@
     </mdui-dialog-form>
 
     <meta-fill-picker id="metaFillPicker"></meta-fill-picker>
+    <zlib-picker id="zlibPicker"></zlib-picker>
 
     <!-- 批量编辑对话框 -->
     <mdui-dialog-form id="batchEditDialog" label="批量编辑书籍">

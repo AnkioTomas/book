@@ -14,10 +14,11 @@ class MetaFillPicker extends HTMLElement {
 
         this.innerHTML = `
 <style>
-.meta-fill-dialog::part(panel){width:min(960px,96vw);max-width:960px;height:min(80vh,720px);max-height:80vh}
-.meta-fill-body{display:flex;flex-direction:column;gap:12px;min-height:0;height:min(68vh,600px)}
-.meta-fill-toolbar{display:flex;gap:8px;align-items:flex-end}
-.meta-fill-toolbar mdui-text-field{flex:1}
+.meta-fill-body{display:flex;flex-direction:column;gap:12px;min-height:0;height:min(68vh,600px);width:100%;box-sizing:border-box}
+.meta-fill-search{flex-shrink:0}
+.meta-fill-search mdui-text-field{width:100%;display:block}
+.meta-fill-search mdui-button-icon[slot="end-icon"]{width:2rem;height:2rem;font-size:1.25rem}
+.meta-fill-search mdui-button-icon[slot="end-icon"]::part(button){width:2rem;height:2rem}
 .meta-fill-main{display:flex;gap:0;flex:1;min-height:0;border:1px solid rgba(var(--mdui-color-outline-variant),0.4);border-radius:12px;overflow:hidden}
 .meta-fill-sources{width:9.5rem;flex-shrink:0;overflow:auto;background:rgba(var(--mdui-color-surface-container),1);border-right:1px solid rgba(var(--mdui-color-outline-variant),0.35)}
 .meta-fill-source{display:block;width:100%;text-align:left;padding:12px 14px;border:0;background:transparent;color:inherit;cursor:pointer;font:inherit}
@@ -32,6 +33,7 @@ class MetaFillPicker extends HTMLElement {
 .meta-fill-title{font-size:1rem;font-weight:600;margin-bottom:4px}
 .meta-fill-sub{font-size:.8125rem;color:rgba(var(--mdui-color-on-surface-variant));margin-bottom:4px}
 .meta-fill-intro{font-size:.75rem;line-height:1.4;color:rgba(var(--mdui-color-on-surface-variant))}
+.meta-fill-actions{display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;padding-top:4px}
 .meta-pick-list{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto;padding:4px 0}
 .meta-pick-row{display:flex;gap:10px;align-items:flex-start;padding:8px 4px;border-bottom:1px solid rgba(var(--mdui-color-outline-variant),0.25)}
 .meta-pick-row mdui-checkbox{flex-shrink:0;margin-top:2px}
@@ -39,15 +41,12 @@ class MetaFillPicker extends HTMLElement {
 .meta-pick-label{font-size:.8125rem;font-weight:600;margin-bottom:2px}
 .meta-pick-diff{font-size:.75rem;color:rgba(var(--mdui-color-on-surface-variant));line-height:1.4;word-break:break-all}
 </style>
-<mdui-dialog id="metaFillDialog" class="meta-fill-dialog" close-on-overlay-click>
-  <mdui-top-app-bar slot="header">
-    <mdui-top-app-bar-title>元数据补全</mdui-top-app-bar-title>
-    <mdui-button-icon id="metaFillClose" icon="close"></mdui-button-icon>
-  </mdui-top-app-bar>
+<mdui-dialog id="metaFillDialog" class="meta-fill-dialog" headline="元数据补全" close-on-overlay-click close-on-esc>
   <div class="meta-fill-body">
-    <div class="meta-fill-toolbar">
-      <mdui-text-field id="metaFillQuery" label="搜索书名" clearable></mdui-text-field>
-      <mdui-button id="metaFillSearchBtn" variant="filled" icon="search">搜索</mdui-button>
+    <div class="meta-fill-search">
+      <mdui-text-field id="metaFillQuery" label="搜索书名" clearable>
+        <mdui-button-icon slot="end-icon" icon="search" id="metaFillSearchBtn" title="搜索"></mdui-button-icon>
+      </mdui-text-field>
     </div>
     <div class="meta-fill-main">
       <div class="meta-fill-sources" id="metaFillSources"></div>
@@ -55,14 +54,13 @@ class MetaFillPicker extends HTMLElement {
         <div class="meta-fill-empty">选择左侧来源并搜索</div>
       </div>
     </div>
+    <div class="meta-fill-actions">
+      <mdui-button id="metaFillClose" variant="text">关闭</mdui-button>
+    </div>
   </div>
 </mdui-dialog>
 
-<mdui-dialog id="metaPickDialog" close-on-overlay-click>
-  <mdui-top-app-bar slot="header">
-    <mdui-top-app-bar-title>选择要覆盖的字段</mdui-top-app-bar-title>
-    <mdui-button-icon id="metaPickClose" icon="close"></mdui-button-icon>
-  </mdui-top-app-bar>
+<mdui-dialog id="metaPickDialog" headline="选择要覆盖的字段" close-on-overlay-click close-on-esc>
   <div class="meta-pick-list" id="metaPickList"></div>
   <mdui-button slot="action" id="metaPickCancel" variant="text">取消</mdui-button>
   <mdui-button slot="action" id="metaPickApply" variant="filled">应用所选</mdui-button>
@@ -71,7 +69,7 @@ class MetaFillPicker extends HTMLElement {
 
         var self = this;
         $('#metaFillClose', this).on('click', function () { self.close(); });
-        $('#metaPickClose, #metaPickCancel', this).on('click', function () {
+        $('#metaPickCancel', this).on('click', function () {
             $('#metaPickDialog', self)[0].open = false;
         });
         $('#metaFillSearchBtn', this).on('click', function () { self.runSearch(); });

@@ -13,6 +13,7 @@ window.pageLoadFiles = [
     'Layer',
     '/js/components/Book.js',
     '/js/components/MetaFillPicker.js',
+    '/js/components/ZlibPicker.js',
     'ContextMenu',
     'DragUpload'
 ];
@@ -30,6 +31,7 @@ window.pageOnLoad = function () {
     // 不是真实分类名的特殊 favorite 筛选值
     var SPECIAL_FAVORITES = ['', 'empty', 'incomplete', 'unorganized'];
     var $metaFill = $('#metaFillPicker');
+    var $zlibPicker = $('#zlibPicker');
     var $dragUpload = $('drag-upload');
     var bookCtxCleanup = null;
     var editExtrasReady = false;
@@ -503,6 +505,17 @@ window.pageOnLoad = function () {
             input.click();
         });
 
+        $('#btnZlib').on('click', function () {
+            if (!$zlibPicker.length || typeof $zlibPicker[0].open !== 'function') {
+                return $.toaster.error('Z站组件未加载');
+            }
+            var preset = String($('#searchForm [name=search]').val() || '').trim();
+            $zlibPicker[0].open(preset);
+        });
+        $zlibPicker.off('ingested').on('ingested', function () {
+            if (cardView) cardView.reload(true);
+        });
+
         $('#btnSync').on('click', syncWebdav);
 
         $('#btnRemoveDuplicates').on('click', function () {
@@ -739,9 +752,11 @@ window.pageOnLoad = function () {
         if (cardView) cardView.destroy();
         if ($dragUpload.length) $dragUpload[0].destroy();
         if ($metaFill.length && $metaFill[0].destroy) $metaFill[0].destroy();
+        if ($zlibPicker.length && $zlibPicker[0].destroy) $zlibPicker[0].destroy();
         $('#searchForm, [id^="btn"]').off();
         $(editDialog).off();
         $(setCategoryDialog).off();
         $metaFill.off();
+        $zlibPicker.off();
     };
 };
