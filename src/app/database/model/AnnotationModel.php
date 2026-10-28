@@ -7,9 +7,11 @@ namespace app\database\model;
 use nova\plugin\orm\object\Model;
 
 /**
- * KOReader 高亮、笔记和书签。
+ * 高亮、笔记和书签。
  *
- * 同一设备内，page_ref + datetime 是 KOReader 注解的稳定身份。
+ * 写入方：
+ * - KOReader 月读插件：device_id 由客户端上报，page_ref + datetime 为稳定身份
+ * - 静读天下 .an：device_id = moonreader，page_ref = 注解 id
  */
 class AnnotationModel extends Model
 {

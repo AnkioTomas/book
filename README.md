@@ -35,6 +35,7 @@
 - **Web 端上传**：拖拽 / 多选，大文件分片，支持 EPUB / MOBI / AZW / AZW3 / PDF / TXT，上传后自动入库并发布到 WebDAV
 - **在线阅读器**（Foliate.js）：支持 EPUB / MOBI / AZW / AZW3 / PDF
 - **阅读进度同步**：与静读天下共享同一份进度文件，双向 last-write-wins 仲裁
+- **笔记与高亮**：同步静读天下 WebDAV 上的 `.an` 注解到 Web 端「笔记与高亮」；亦可由 [KOReader 月读插件](https://github.com/AnkioTomas/moon) 上报（两路互不覆盖）
 - **个人 Token / Book API**：login 插件的长期 Bearer Token，供 [KOReader 插件（moon）](https://github.com/AnkioTomas/moon) 或其它第三方客户端调用书库接口（不直连 WebDAV）
 - **Web 安装向导**：首次部署通过浏览器填表完成配置，无需手动编辑配置文件
 
@@ -400,6 +401,15 @@ Authorization: Bearer <64 位十六进制 Token>
 
 同书同日多设备会按设备取 max 再汇总，避免重复导入把时长加两遍。KOReader 固定使用 `koreader` 设备标识。未匹配到书库的记录可在表格中筛选、改绑或删除。
 
+### 笔记与高亮
+
+侧栏 **笔记与高亮**（`/index/main/annotations`）聚合注解，来源可以是：
+
+1. **静读天下 WebDAV**：同步任务拉取 `.Moon+/Cache/<书名>.an`（与 `.po` 同目录），解析后以 `device_id=moonreader` 写入；静读天下是权威，本系统不回写 `.an`
+2. **KOReader 月读插件**：`POST /index/stats/annotations` 整本快照覆盖（`device_id` 由客户端上报，通常为 `koreader`）
+
+两路按 `device_id` 隔离，互不覆盖。请在静读天下开启注解/高亮的 WebDAV 同步，否则远端没有 `.an` 文件。
+
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
 | `POST` | `/index/stats/device` | 注册/校验设备（兼容） |
@@ -431,6 +441,7 @@ Authorization: Bearer <64 位十六进制 Token>
                          手机静读天下下次同步拉走更新
 
 阅读时长数据另线进入「多维统计」：KOReader 上报，或导入静读天下 `.mrpro`，或 Web 端手动/批量补录。
+笔记与高亮：静读天下同步 `.an` 到 WebDAV 后由本系统拉取；或 KOReader 月读插件直接上报。
 ```
 
 ---

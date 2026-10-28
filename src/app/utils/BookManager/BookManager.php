@@ -189,6 +189,7 @@ class BookManager extends BaseManager
         BookManager::getInstance()->deleteBook($filename);
         CoverManager::getInstance()->deleteCover($filename);
         ProgressManager::getInstance()->deleteProgress($filename);
+        AnnotationManager::getInstance()->deleteAnnotation($filename);
     }
 
 }

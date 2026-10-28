@@ -12,11 +12,18 @@ window.pageOnLoad = function () {
     var params = { search: '', type: '' };
     var searchTimer = null;
 
+    function markColor(c) {
+        if (!c) return 'rgb(var(--mdui-color-primary))';
+        if (COLORS[c]) return COLORS[c];
+        if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c) || /^rgba?\(/.test(c)) return c;
+        return 'rgb(var(--mdui-color-primary))';
+    }
+
     function renderItem(item) {
         var text = item.text || (item.type === 'bookmark' ? '书签' : '无高亮文本');
         var location = [item.chapter, item.pageno ? ('第 ' + item.pageno + ' 页') : ''].filter(Boolean).join(' · ');
         return '<div class="annotation-item d-flex gap-3">'
-            + '<div class="annotation-mark" style="background:' + (COLORS[item.color] || 'rgb(var(--mdui-color-primary))') + '"></div>'
+            + '<div class="annotation-mark" style="background:' + markColor(item.color) + '"></div>'
             + '<div class="min-w-0 flex-1">'
             + '<div class="d-flex items-center justify-between gap-2 mb-1">'
             + '<span class="label-small">' + TYPES[item.type] + '</span>'

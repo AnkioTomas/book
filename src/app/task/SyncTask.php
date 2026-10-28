@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace app\task;
 
+use app\database\dao\AnnotationDao;
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
 use app\database\model\BookModel;
 use app\database\model\ReadingProgressModel;
+use app\utils\BookManager\AnnotationManager;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\ProgressManager;
 use app\utils\Douban;
+use app\utils\MoonReaderAnnotation;
 use app\utils\WereadSearch;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
@@ -29,13 +32,16 @@ use Throwable;
  * - 进度仲裁复用 .po 串内的 ts 与本地 timestamp，新者胜。
  * - 增量：远端 books.sync 文件 mtime 未变则跳过远端书目处理；进度仅下载 mtime 比上次同步更新的 .po；
  *   仅在本地或远端确有变化时才回写 books.sync。
- * - books.sync / .po 为移动端共享契约；写入完整 BookModel 字段（groupBooks 为 JSON 数组，
+ * - 注解：单向拉 WebDAV `.Moon+/Cache/*.an` → annotation（device_id=moonreader），
+ *   内容 hash 不变则跳过；不回写 .an（静读天下是权威）。
+ * - books.sync / .po / .an 为移动端共享契约；写入完整 BookModel 字段（groupBooks 为 JSON 数组，
  *   系列信息以 <系列>#编号# 前缀编码在 category 中），仅本地仲裁用的 update_at 不写入。
  */
 class SyncTask extends TaskerAbstract
 {
     private const STATE_LAST_MS = 'book.sync.last_ms';
     private const STATE_META_MTIME = 'book.sync.meta_mtime';
+    private const STATE_AN_HASHES = 'book.sync.an_hashes';
 
     public function getTimeOut(): int
     {
@@ -217,6 +223,11 @@ class SyncTask extends TaskerAbstract
             $dirty = true;
         }
 
+        // 7b. 静读天下注解单向同步（.an → DB）。
+        TaskLogger::log('同步静读天下注解(.an)…');
+        $anSynced = $this->syncMoonAnnotations($localMap);
+        TaskLogger::log(sprintf('注解：更新 %d 本（含清空）', $anSynced));
+
         // 7.5 一次性：存量微信读书封面 s_ 缩略图升级为 t9_ 高清，并标记重新补传。
         $this->upgradeWereadCovers($localMap, $cache);
 
@@ -268,12 +279,13 @@ class SyncTask extends TaskerAbstract
     }
 
     /**
-     * 删除本地书籍记录及其进度（远端文件已被删除，本地仅清理本地数据）。
+     * 删除本地书籍记录及其进度、注解（远端文件已被删除，本地仅清理本地数据）。
      */
     private function deleteLocal(BookModel $book): void
     {
         BookDao::getInstance()->deleteById($book->id);
         ReadingProgressDao::getInstance()->delete()->where(['filename' => $book->filename])->commit();
+        AnnotationDao::getInstance()->deleteByFilename($book->filename);
     }
 
     /**
@@ -439,6 +451,96 @@ class SyncTask extends TaskerAbstract
         }
 
         return [$down, $up, $marked];
+    }
+
+    /**
+     * 静读天下注解单向同步：WebDAV `.an` → annotation 表。
+     *
+     * - device_id 固定 moonreader，与 KOReader 快照互不覆盖。
+     * - 以内容 hash 判增量（部分 WebDAV 改注解不刷新 mtime）。
+     * - 远端 .an 消失 → 清空该书 moonreader 注解。
+     * - 不回写 .an。
+     *
+     * @param  BookModel[] $localMap
+     * @return int 发生替换（含清空）的书本数
+     */
+    private function syncMoonAnnotations(array $localMap): int
+    {
+        $annotationManager = AnnotationManager::getInstance();
+        $sidecarToFull = [];
+        foreach (array_keys($localMap) as $full) {
+            $key = $annotationManager->sidecarKey($full);
+            if ($key !== '') {
+                $sidecarToFull[$key] = $full;
+            }
+        }
+
+        $anMap = $annotationManager->listRemoteAnnotations();
+        if ($anMap === null) {
+            TaskLogger::log('无法列出远端注解目录，本轮跳过 .an 同步', 'warn');
+            return 0;
+        }
+        TaskLogger::log('远端 .an ' . count($anMap) . ' 个');
+
+        $cache = Context::instance()->cache;
+        /** @var array<string,string> $hashes */
+        $hashes = $cache->get(self::STATE_AN_HASHES, []);
+        if (!is_array($hashes)) {
+            $hashes = [];
+        }
+
+        $changed = 0;
+        $skipped = 0;
+        $cleared = 0;
+        $dao = AnnotationDao::getInstance();
+
+        foreach ($sidecarToFull as $sidecar => $full) {
+            if (!isset($anMap[$sidecar])) {
+                if (!isset($hashes[$sidecar])) {
+                    continue;
+                }
+                $dao->replaceSnapshot($full, MoonReaderAnnotation::DEVICE, []);
+                unset($hashes[$sidecar]);
+                $cleared++;
+                $changed++;
+                TaskLogger::log('远端 .an 已消失，清空注解：' . $full);
+                continue;
+            }
+
+            $bytes = $annotationManager->getAnnotationBytes($full);
+            if ($bytes === '') {
+                TaskLogger::log('下载 .an 为空/失败：' . $full, 'warn');
+                continue;
+            }
+
+            $hash = hash('sha256', $bytes);
+            if (($hashes[$sidecar] ?? '') === $hash) {
+                $skipped++;
+                continue;
+            }
+
+            $models = MoonReaderAnnotation::parseToModels($bytes, $full);
+            $dao->replaceSnapshot($full, MoonReaderAnnotation::DEVICE, $models);
+            $hashes[$sidecar] = $hash;
+            $changed++;
+            TaskLogger::log(sprintf('入库注解 %s：%d 条', $full, count($models)));
+        }
+
+        // 书目里已不存在的 sidecar hash 清掉，避免无限膨胀。
+        foreach (array_keys($hashes) as $sidecar) {
+            if (!isset($sidecarToFull[$sidecar])) {
+                unset($hashes[$sidecar]);
+            }
+        }
+
+        $cache->set(self::STATE_AN_HASHES, $hashes);
+        TaskLogger::log(sprintf(
+            '注解同步汇总：变更 %d，清空 %d，hash 未变跳过 %d',
+            $changed,
+            $cleared,
+            $skipped
+        ));
+        return $changed;
     }
 
     /**

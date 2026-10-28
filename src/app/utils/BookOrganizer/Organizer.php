@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace app\utils\BookOrganizer;
 
+use app\database\dao\AnnotationDao;
 use app\database\dao\BookDao;
 use app\database\dao\ReadingProgressDao;
 use app\database\model\BookModel;
+use app\utils\BookManager\AnnotationManager;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\ProgressManager;
@@ -14,7 +16,7 @@ use nova\framework\core\Logger;
 use Throwable;
 
 /**
- * 单本整理：算路径 → MOVE 书/封面/进度 → 改 DB。
+ * 单本整理：算路径 → MOVE 书/封面/进度/注解 → 改 DB。
  */
 class Organizer
 {
@@ -119,6 +121,11 @@ class Organizer
                 } catch (Throwable $e) {
                     Logger::warning('[Organizer] moveProgress: ' . $e->getMessage());
                 }
+                try {
+                    AnnotationManager::getInstance()->moveAnnotation($from, $to, false);
+                } catch (Throwable $e) {
+                    Logger::warning('[Organizer] moveAnnotation: ' . $e->getMessage());
+                }
             }
 
             $book->filename = $to;
@@ -126,6 +133,7 @@ class Organizer
             $book->update_at = time() * 1000;
             BookDao::getInstance()->updateModel($book);
             ReadingProgressDao::getInstance()->renameFilename($from, $to);
+            AnnotationDao::getInstance()->renameFilename($from, $to);
 
             $taken[$to] = true;
             unset($taken[$from]);

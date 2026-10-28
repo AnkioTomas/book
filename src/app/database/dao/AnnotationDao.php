@@ -70,6 +70,26 @@ class AnnotationDao extends Dao
         return $this->select()->orderBy('datetime', 'DESC')->commit();
     }
 
+    public function deleteByFilename(string $filename): void
+    {
+        if ($filename === '') {
+            return;
+        }
+        $this->delete()->where(['book_filename' => $filename])->commit();
+    }
+
+    public function renameFilename(string $from, string $to): void
+    {
+        if ($from === '' || $to === '' || $from === $to) {
+            return;
+        }
+        $rows = $this->getByFilename($from);
+        foreach ($rows as $row) {
+            $row->book_filename = $to;
+            $this->updateModel($row);
+        }
+    }
+
     private function identity(AnnotationModel $annotation): string
     {
         return $annotation->page_ref . "\0" . $annotation->datetime;
