@@ -3,6 +3,7 @@
     /* 自定义元素升级前隐藏对话框表单，避免进页 FOUC 闪一下整页表单 */
     mdui-dialog-form:not(:defined),
     douban-book-picker:not(:defined),
+    meta-fill-picker:not(:defined),
     drag-upload:not(:defined) {
         display: none !important;
     }
@@ -93,6 +94,121 @@
             display: none;
         }
     }
+
+    /* —— 编辑书籍弹窗 —— */
+    .book-edit-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.15rem;
+    }
+    .book-edit-hero {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    .book-edit-cover {
+        flex: 0 0 6.75rem;
+        width: 6.75rem;
+        aspect-ratio: 2 / 3;
+        height: auto;
+        border-radius: 0.75rem;
+        overflow: hidden;
+        background: rgba(var(--mdui-color-surface-container-highest), 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        align-self: flex-start;
+    }
+    .book-edit-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center top;
+        display: none;
+    }
+    .book-edit-cover.has-cover img {
+        display: block;
+    }
+    .book-edit-cover-empty {
+        color: rgba(var(--mdui-color-on-surface-variant), 0.7);
+        font-size: 0.75rem;
+        text-align: center;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .book-edit-cover.has-cover .book-edit-cover-empty {
+        display: none;
+    }
+    .book-edit-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+    /* end-icon 默认 40px 会撑出 filled 背景；压到跟清空按钮同量级 */
+    .book-edit-form mdui-text-field mdui-button-icon[slot="end-icon"] {
+        width: 2rem;
+        height: 2rem;
+        font-size: 1.25rem;
+    }
+    .book-edit-form mdui-text-field mdui-button-icon[slot="end-icon"]::part(button) {
+        width: 2rem;
+        height: 2rem;
+    }
+    .book-edit-rate {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-top: 0.25rem;
+        min-height: 2.5rem;
+    }
+    .book-edit-rate-label {
+        font-size: var(--mdui-typescale-body-small-size, 0.75rem);
+        color: rgb(var(--mdui-color-on-surface-variant));
+        margin-right: 0.35rem;
+        flex-shrink: 0;
+    }
+    .book-edit-rate mdui-button-icon {
+        color: rgb(var(--mdui-color-primary));
+    }
+    .book-edit-tags {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .book-edit-tags-label {
+        font-size: var(--mdui-typescale-body-small-size, 0.75rem);
+        color: rgb(var(--mdui-color-on-surface-variant));
+    }
+    .book-edit-tag-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        min-height: 1.75rem;
+    }
+    .book-edit-tag-chips:empty::before {
+        content: '暂无标签';
+        font-size: 0.75rem;
+        color: rgba(var(--mdui-color-on-surface-variant), 0.55);
+    }
+    @media (max-width: 600px) {
+        .book-edit-hero {
+            flex-direction: column;
+            align-items: center;
+        }
+        .book-edit-cover {
+            flex-basis: 7.5rem;
+            width: 7.5rem;
+        }
+        .book-edit-main {
+            width: 100%;
+        }
+    }
 </style>
 
 <div id="container" class="container book-page">
@@ -141,117 +257,106 @@
 
     <!-- 编辑对话框 -->
     <mdui-dialog-form id="bookEditDialog" label="编辑书籍" saveName="保存" >
-        <form id="bookEditForm">
-            <mdui-text-field type="hidden" name="id" ></mdui-text-field>
+        <form id="bookEditForm" class="book-edit-form">
+            <mdui-text-field type="hidden" name="id"></mdui-text-field>
+            <!-- 实际提交字段，由 chip / 星级 UI 同步；视觉隐藏，保留 Form.js 读写 -->
+            <mdui-text-field class="d-none" name="category" id="editCategory"></mdui-text-field>
+            <mdui-text-field class="d-none" name="rate" id="editRate" type="number" min="0" max="5"></mdui-text-field>
 
-            <div class="row col-space12">
-                <div class="col-xs12 d-flex items-end gap-2">
+            <div class="book-edit-hero">
+                <div class="book-edit-cover" id="editCoverBox">
+                    <img id="editCoverPreview" alt="封面预览" referrerpolicy="no-referrer">
+                    <div class="book-edit-cover-empty">
+                        <mdui-icon name="image"></mdui-icon>
+                        无封面
+                    </div>
+                </div>
+                <div class="book-edit-main">
                     <mdui-text-field
-
                             label="书名"
                             name="bookName"
                             id="bookName"
                             required
-                            class="flex-1"
-                    ></mdui-text-field>
-                    <mdui-button-icon variant="filled" icon="search" id="douban" title="豆瓣搜索"></mdui-button-icon>
-                    <mdui-button-icon variant="tonal" icon="menu_book" id="weread" title="微信读书搜索"></mdui-button-icon>
-                    <mdui-button-icon variant="tonal" icon="auto_awesome" id="aiFill"></mdui-button-icon>
+                    >
+                        <mdui-button-icon
+                                slot="end-icon"
+                                icon="manage_search"
+                                id="metaFillBtn"
+                                title="元数据补全"
+                        ></mdui-button-icon>
+                    </mdui-text-field>
+                    <mdui-text-field label="作者" name="author"></mdui-text-field>
+                    <mdui-text-field label="封面 URL" name="coverUrl" id="editCoverUrl" clearable></mdui-text-field>
+                    <div class="book-edit-rate" id="editRateStars" role="group" aria-label="评分">
+                        <span class="book-edit-rate-label">评分</span>
+                    </div>
                 </div>
-
-                <div class="col-xs12">
-                    <mdui-text-field
-
-                            label="作者"
-                            name="author"
-                    ></mdui-text-field>
-                </div>
-
-                <div class="col-xs12">
-                    <mdui-text-field
-
-                            label="封面"
-                            name="coverUrl"
-                    ></mdui-text-field>
-                </div>
-
-                <div class="col-xs12">
-                    <mdui-text-field
-
-                            label="简介"
-                            name="description"
-                            rows="3"
-                            type="textarea"
-                    ></mdui-text-field>
-                </div>
-
-            <div class="col-xs12 col-sm6">
-                <mdui-search-input
-                        id="editFavorite"
-                        name="favorite"
-                        label="分类"
-                        placeholder="可选择或输入新值"
-                        search-uri="/index/book/searchFavorite"
-                        min-length="1"
-                        clearable
-                ></mdui-search-input>
             </div>
 
-            <div class="col-xs12 col-sm6">
-                <mdui-text-field
-                        id="editCategory"
-                        label="标签"
-                        name="category"
-                        type="textarea"
-                        rows="3"
-                        helper="多个标签用换行分隔"
-                        clearable
-                ></mdui-text-field>
-            </div>
+            <mdui-text-field
+                    label="简介"
+                    name="description"
+                    rows="3"
+                    type="textarea"
+            ></mdui-text-field>
 
-            <div class="col-xs12 col-sm8">
-                <mdui-dropdown id="seriesDropdown">
-                    <mdui-text-field
-
-                        slot="trigger"
-                        id="editSeries"
-                        label="系列名称"
-                        name="series"
-                        helper="可选择或输入新值"
-                        clearable
-                        icon="arrow_drop_down"
-                        end-icon
-                    ></mdui-text-field>
-                    <mdui-list id="seriesList"></mdui-list>
-                </mdui-dropdown>
-            </div>
-
+            <div class="row col-space12">
                 <div class="col-xs12 col-sm4">
+                    <mdui-search-input
+                            id="editFavorite"
+                            name="favorite"
+                            label="分类"
+                            placeholder="可选择或输入新值"
+                            search-uri="/index/book/searchFavorite"
+                            min-length="1"
+                            clearable
+                    ></mdui-search-input>
+                </div>
+                <div class="col-xs12 col-sm5">
+                    <mdui-dropdown id="seriesDropdown">
+                        <mdui-text-field
+                            slot="trigger"
+                            id="editSeries"
+                            label="系列名称"
+                            name="series"
+                            helper="可选择或输入新值"
+                            clearable
+                            icon="arrow_drop_down"
+                            end-icon
+                        ></mdui-text-field>
+                        <mdui-list id="seriesList"></mdui-list>
+                    </mdui-dropdown>
+                </div>
+                <div class="col-xs12 col-sm3">
                     <mdui-text-field
-
                             label="系列编号"
                             name="seriesNum"
                             type="number"
                             min="0"
                     ></mdui-text-field>
                 </div>
+            </div>
 
-                <div class="col-xs12">
-                    <mdui-text-field
-
-                            label="评分"
-                            name="rate"
-                            type="number"
-                            min="0"
-                            max="5"
-                            step="1"
-                    ></mdui-text-field>
-                </div>
+            <div class="book-edit-tags">
+                <div class="book-edit-tags-label">标签</div>
+                <div class="book-edit-tag-chips" id="editTagChips"></div>
+                <mdui-text-field
+                        id="editTagInput"
+                        label="添加标签"
+                        placeholder="回车添加"
+                >
+                    <mdui-button-icon
+                            slot="end-icon"
+                            icon="add"
+                            id="editTagAddBtn"
+                            title="添加"
+                    ></mdui-button-icon>
+                </mdui-text-field>
             </div>
         </form>
     </mdui-dialog-form>
 
-    <douban-book-picker id="doubanBookPicker"></douban-book-picker>
+    <meta-fill-picker id="metaFillPicker"></meta-fill-picker>
 
     <!-- 批量编辑对话框 -->
     <mdui-dialog-form id="batchEditDialog" label="批量编辑书籍">

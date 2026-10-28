@@ -12,7 +12,7 @@ window.pageLoadFiles = [
     "DialogForm",
     'Layer',
     '/js/components/Book.js',
-    '/js/components/DoubanBookPicker.js',
+    '/js/components/MetaFillPicker.js',
     'ContextMenu',
     'DragUpload'
 ];
@@ -29,11 +29,138 @@ window.pageOnLoad = function () {
     var setCategoryTargets = [];
     // 不是真实分类名的特殊 favorite 筛选值
     var SPECIAL_FAVORITES = ['', 'empty', 'incomplete', 'unorganized'];
-    var $doubanPicker = $('#doubanBookPicker');
+    var $metaFill = $('#metaFillPicker');
     var $dragUpload = $('drag-upload');
     var bookCtxCleanup = null;
-    var aiSource = null;
+    var editExtrasReady = false;
 
+    function coverPreviewSrc(url) {
+        url = String(url || '').trim();
+        if (!url) return '';
+        if (url.indexOf('/proxy/') === 0 || url.indexOf('/webdav/') === 0 || url.indexOf('data:') === 0) {
+            return url;
+        }
+        return '/proxy/' + encodeURIComponent(url);
+    }
+
+    function readEditTags() {
+        return String($('#editCategory').val() || '')
+            .split(/\n+/)
+            .map(function (t) { return t.trim(); })
+            .filter(Boolean);
+    }
+
+    function writeEditTags(tags) {
+        var seen = {};
+        var clean = [];
+        (tags || []).forEach(function (t) {
+            t = String(t || '').trim();
+            if (!t || seen[t]) return;
+            seen[t] = true;
+            clean.push(t);
+        });
+        $('#editCategory').val(clean.join('\n'));
+        renderEditTagChips(clean);
+    }
+
+    function renderEditTagChips(tags) {
+        var $box = $('#editTagChips');
+        $box.empty();
+        (tags || []).forEach(function (tag) {
+            var $chip = $('<mdui-chip variant="input" deletable></mdui-chip>');
+            $chip.attr('data-tag', tag);
+            $chip.text(tag);
+            $chip.on('delete', function () { removeEditTag(tag); });
+            $box.append($chip);
+        });
+    }
+
+    function addEditTag(raw) {
+        var tag = String(raw || '').trim();
+        if (!tag) return;
+        var tags = readEditTags();
+        if (tags.indexOf(tag) >= 0) return;
+        tags.push(tag);
+        writeEditTags(tags);
+    }
+
+    function removeEditTag(tag) {
+        writeEditTags(readEditTags().filter(function (t) { return t !== tag; }));
+    }
+
+    function renderEditRateStars(rate) {
+        rate = Math.max(0, Math.min(5, parseInt(rate, 10) || 0));
+        var $box = $('#editRateStars');
+        $box.find('mdui-button-icon[data-rate]').remove();
+        for (var i = 1; i <= 5; i++) {
+            var filled = i <= rate;
+            var $btn = $('<mdui-button-icon></mdui-button-icon>');
+            $btn.attr({
+                'data-rate': String(i),
+                icon: filled ? 'star' : 'star_border',
+                title: i + ' 星'
+            });
+            $box.append($btn);
+        }
+    }
+
+    function setEditRate(rate) {
+        rate = Math.max(0, Math.min(5, parseInt(rate, 10) || 0));
+        $('#editRate').val(String(rate));
+        renderEditRateStars(rate);
+    }
+
+    function syncCoverPreview() {
+        var url = $('#editCoverUrl').val();
+        var src = coverPreviewSrc(url);
+        var $box = $('#editCoverBox');
+        var $img = $('#editCoverPreview');
+        if (!src) {
+            $box.removeClass('has-cover');
+            $img.removeAttr('src');
+            return;
+        }
+        $img.attr('src', src);
+        $box.addClass('has-cover');
+        $img.off('error.editCover').on('error.editCover', function () {
+            $box.removeClass('has-cover');
+        });
+    }
+
+    function syncEditFormExtras() {
+        renderEditTagChips(readEditTags());
+        setEditRate($('#editRate').val());
+        syncCoverPreview();
+    }
+
+    function initEditFormExtras() {
+        if (editExtrasReady) return;
+        editExtrasReady = true;
+
+        $('#editCoverUrl').on('input change', syncCoverPreview);
+
+        $('#editRateStars').on('click', 'mdui-button-icon[data-rate]', function () {
+            var next = parseInt($(this).attr('data-rate'), 10) || 0;
+            var cur = parseInt($('#editRate').val(), 10) || 0;
+            setEditRate(cur === next ? 0 : next);
+        });
+
+        function commitTagInput() {
+            var $input = $('#editTagInput');
+            addEditTag($input.val());
+            $input.val('');
+        }
+
+        $('#editTagAddBtn').on('click', commitTagInput);
+        $('#editTagInput').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commitTagInput();
+            }
+        });
+
+        syncEditFormExtras();
+    }
 
     // AI 识别：提交后台任务，AI 自动检索并直接写库，进度在任务面板查看
     // onlyEmpty=true 时仅补空字段（缺失详情）
@@ -261,6 +388,7 @@ window.pageOnLoad = function () {
                         editDialog.setValue(book);
                         var fav = document.getElementById('editFavorite');
                         if (fav) fav.setValue(book.favorite || '', book.favorite || '');
+                        syncEditFormExtras();
                     }
                 },
                 {
@@ -519,12 +647,21 @@ window.pageOnLoad = function () {
             uploadBatch((e.originalEvent || e).detail);
         });
 
-        $doubanPicker.on('select', function (e) {
-            $.form.val('#bookEditForm', DoubanBookPicker.toFormData((e.originalEvent || e).detail));
-            $.toaster.success('已填充书籍信息');
+        $metaFill.on('apply', function (e) {
+            var data = (e.originalEvent || e).detail || {};
+            $.form.val('#bookEditForm', data);
+            syncEditFormExtras();
         });
 
         editDialog.submit('/index/book/update', function () { cardView.reload(false); });
+
+        initEditFormExtras();
+
+        $(editDialog).on('click', '#metaFillBtn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openMetaFill();
+        });
 
         batchDialog.submit(null, function (formData) {
             var selected = requireSelected('没有选中的书籍');
@@ -543,69 +680,13 @@ window.pageOnLoad = function () {
             batchRequest('/index/book/batchUpdate', batchData, '正在批量更新 ' + selected.length + ' 本书籍...');
         });
 
-        function openExternalSearch(url, title) {
-            var bookName = $("#bookName").val().trim();
+        function openMetaFill() {
+            var bookName = $('#bookName').val().trim();
             if (!bookName) return $.toaster.error('请先输入书名');
-            $(editDialog).showLoading();
-            $.request.postForm(url, { q: bookName }, function (data) {
-                $(editDialog).closeLoading();
-                if (data.code === 200) {
-                    $doubanPicker[0].open(data.data, title);
-                } else {
-                    $.toaster.error(data.msg);
-                }
-            });
+            if (!$metaFill.length || typeof $metaFill[0].open !== 'function') return;
+            var cur = $.form.val('#bookEditForm') || {};
+            $metaFill[0].open(bookName, cur);
         }
-
-        $(editDialog).on("click", "#douban", function () {
-            openExternalSearch("/index/douban/search", "豆瓣结果");
-        });
-        $(editDialog).on("click", "#weread", function () {
-            openExternalSearch("/index/weread/search", "微信读书结果");
-        });
-
-        $(editDialog).on("click", "#aiFill", function () {
-            var bookName = $("#bookName").val().trim();
-            if (!bookName) return $.toaster.error('请先输入书名');
-
-            $(editDialog).showLoading('AI 准备中…');
-
-            aiSource = $.request.sse('/index/book/aiFill', {
-                params: {
-                    bookName: bookName,
-                    author: $('#bookEditForm [name=author]').val().trim()
-                },
-                autoReconnect: false,
-                eventHandlers: {
-                    chunk: function (data) {
-                        if (!data || typeof data !== 'object') return;
-                        if (data.type === 'error') {
-                            aiSource.close();
-                            $(editDialog).closeLoading();
-                            $.toaster.error(data.text || 'AI 填充失败');
-                        } else {
-                            $(editDialog).updateLoading(data.text || 'AI 工作中…');
-                        }
-                    },
-                    result: function (data) {
-                        if (data && typeof data === 'object') {
-                            $.form.val('#bookEditForm', data);
-                            $.toaster.success('AI 已填充，请核对后保存');
-                        }
-                    },
-                    done: function () {
-                        aiSource.close();
-                        $(editDialog).closeLoading();
-                    }
-                },
-                onError: function () {
-                    if (aiSource) {
-                        $(editDialog).closeLoading();
-                        $.toaster.error('AI 连接中断');
-                    }
-                }
-            });
-        });
     }
 
     $.request.get('/index/book/filters', {}, function (res) {
@@ -654,13 +735,13 @@ window.pageOnLoad = function () {
     $.emitter.on('pjax:prevented', reload);
 
     window.pageOnUnLoad = function () {
-        if (aiSource) { aiSource.close(); aiSource = null; }
         if (bookCtxCleanup) bookCtxCleanup();
         if (cardView) cardView.destroy();
         if ($dragUpload.length) $dragUpload[0].destroy();
-        if ($doubanPicker.length) $doubanPicker[0].destroy();
+        if ($metaFill.length && $metaFill[0].destroy) $metaFill[0].destroy();
         $('#searchForm, [id^="btn"]').off();
         $(editDialog).off();
         $(setCategoryDialog).off();
+        $metaFill.off();
     };
 };

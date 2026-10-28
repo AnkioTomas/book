@@ -27,9 +27,7 @@ class MetadataFillTask extends AiTask
     ];
 
     private const array TOOL_LABELS = [
-        'search_douban'   => '检索豆瓣',
-        'search_weread'   => '检索微信读书',
-        'fetch_url'       => '抓取网页',
+        'search_meta'     => '检索元数据源',
         'get_book'        => '读取本地书籍',
         'list_books'      => '检索本地藏书',
         'list_categories' => '读取分类体系',
@@ -103,7 +101,7 @@ class MetadataFillTask extends AiTask
                 ? "注意：这是多卷书中的一卷（分卷标记：{$volume}）。只能选择分卷完全一致的候选（如「（中）」不能选「（上）」或「（下）」），"
                     . "输出的 bookName 必须保留该分卷标记；找不到同卷候选时宁可只填能确定的字段。\n"
                 : '')
-            . "优先用 search_douban 检索豆瓣；无结果或信息不全时用 search_weread 检索微信读书补全；必要时用 fetch_url。"
+            . "用 search_meta 按书类型选择合适的源检索（出版书优先豆瓣/微信读书，网文优先晋江/起点/番茄等），可换源重试，禁止自己抓网页。"
             . "在多个候选里挑选最匹配的一条。"
             . "最终只输出一个 JSON 对象，不要任何额外文字、解释或 Markdown 代码块，字段为："
             . "bookName(书名), author(作者), description(简介), publisher(出版社), publishYear(出版年), "
