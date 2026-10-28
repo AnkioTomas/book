@@ -121,7 +121,7 @@ class BookCard extends HTMLElement {
         var webdav = '/webdav/' + encodeURIComponent(row.filename || "");
         var cover = row.coverUrl ? '/proxy/' + encodeURIComponent(row.coverUrl) : webdav;
         var readAttr = row.hasReadTag ? ' read="1"' : '';
-        return '<book-card'
+        return '<book-card class="nova-lift"'
             + ' cover="' + $.escapeHtml(cover) + '"'
             + ' fallback="' + $.escapeHtml(webdav) + '"'
             + ' title="' + $.escapeHtml(row.bookName || "未命名书籍") + '"'

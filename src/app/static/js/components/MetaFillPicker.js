@@ -14,7 +14,7 @@ class MetaFillPicker extends HTMLElement {
 
         this.innerHTML = `
 <style>
-.meta-fill-body{display:flex;flex-direction:column;gap:12px;min-height:0;height:min(68vh,600px);width:100%;box-sizing:border-box}
+.meta-fill-body{display:flex;flex-direction:column;gap:12px;min-height:0;height:min(calc(var(--vh, 100vh) * 0.68),600px);width:100%;box-sizing:border-box}
 .meta-fill-search{flex-shrink:0}
 .meta-fill-search mdui-text-field{width:100%;display:block}
 .meta-fill-search mdui-button-icon[slot="end-icon"]{width:2rem;height:2rem;font-size:1.25rem}
@@ -40,6 +40,11 @@ class MetaFillPicker extends HTMLElement {
 .meta-pick-body{min-width:0;flex:1}
 .meta-pick-label{font-size:.8125rem;font-weight:600;margin-bottom:2px}
 .meta-pick-diff{font-size:.75rem;color:rgba(var(--mdui-color-on-surface-variant));line-height:1.4;word-break:break-all}
+@media (max-width:600px){
+.meta-fill-main{flex-direction:column}
+.meta-fill-sources{width:auto;display:flex;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid rgba(var(--mdui-color-outline-variant),0.35)}
+.meta-fill-source{width:auto;flex-shrink:0;white-space:nowrap;padding:10px 14px;min-height:44px}
+}
 </style>
 <mdui-dialog id="metaFillDialog" class="meta-fill-dialog" headline="元数据补全" close-on-overlay-click close-on-esc>
   <div class="meta-fill-body">

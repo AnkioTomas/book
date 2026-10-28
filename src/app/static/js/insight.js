@@ -253,13 +253,18 @@ window.pageOnLoad = function () {
         $.layer.confirm({
             msg: '确定删除「' + (row.title || row.filename) + '」的全部阅读记录？',
             yes: function () {
+                $('body').showLoading('正在删除…');
                 $.request.postForm('/index/stats/removeBook', { filename: row.filename }, function (res) {
+                    $('body').closeLoading();
                     if (!res || res.code !== 200) {
                         $.toaster.error((res && res.msg) || '删除失败');
                         return;
                     }
                     $.toaster.success(res.msg || '已删除');
                     reloadAll();
+                }, function () {
+                    $('body').closeLoading();
+                    $.toaster.error('删除失败');
                 });
             },
         });
@@ -280,6 +285,7 @@ window.pageOnLoad = function () {
     });
 
     function searchRemapLib(q) {
+        $('#remap-pick-list').html('搜索中…');
         $.request.get('/index/book/list', { page: 1, pageSize: 20, search: q || '' }, function (res) {
             var books = (res && res.code === 200 && res.data) || [];
             if (!books.length) {
@@ -294,6 +300,8 @@ window.pageOnLoad = function () {
                     + '<div class="body-small text-on-surface-variant text-ellipsis">'
                     + $.escapeHtml(b.author || '') + ' · ' + $.escapeHtml(b.filename || '') + '</div></div></div>';
             }).join(''));
+        }, function () {
+            $('#remap-pick-list').html('搜索失败');
         });
     }
     $('#remap-search').on('input', function () {
@@ -304,7 +312,9 @@ window.pageOnLoad = function () {
     $('#remap-pick-list').on('click', '.remap-pick-row', function () {
         var to = $(this).attr('data-file') || '';
         if (!to || !remapFrom) return;
+        $('body').showLoading('正在改绑…');
         $.request.postForm('/index/stats/remap', { from: remapFrom.filename, to: to }, function (res) {
+            $('body').closeLoading();
             if (!res || res.code !== 200) {
                 $.toaster.error((res && res.msg) || '改绑失败');
                 return;
@@ -312,6 +322,9 @@ window.pageOnLoad = function () {
             $.toaster.success(res.msg || '已改绑');
             $('#insight-remap-dialog')[0].open = false;
             reloadAll();
+        }, function () {
+            $('body').closeLoading();
+            $.toaster.error('改绑失败');
         });
     });
     $('#remap-cancel-btn').on('click', function () {
@@ -330,6 +343,7 @@ window.pageOnLoad = function () {
     }
 
     function searchCreateLib(q) {
+        $('#create-book-list').html('搜索中…');
         $.request.get('/index/book/list', { page: 1, pageSize: 20, search: q || '' }, function (res) {
             var books = (res && res.code === 200 && res.data) || [];
             if (!books.length) {
@@ -346,6 +360,8 @@ window.pageOnLoad = function () {
                     + '<div class="body-small text-on-surface-variant text-ellipsis">'
                     + $.escapeHtml(b.author || '') + '</div></div></div>';
             }).join(''));
+        }, function () {
+            $('#create-book-list').html('搜索失败');
         });
     }
 
@@ -427,7 +443,9 @@ window.pageOnLoad = function () {
                 minutes_max: minutesMax,
             };
             if (progress !== '') batchPayload.progress = progress;
+            $('body').showLoading('正在保存…');
             $.request.postForm('/index/stats/createBatch', batchPayload, function (res) {
+                $('body').closeLoading();
                 if (!res || res.code !== 200) {
                     $.toaster.error((res && res.msg) || '保存失败');
                     return;
@@ -436,6 +454,7 @@ window.pageOnLoad = function () {
                 closeCreateDialog();
                 reloadAll();
             }, function () {
+                $('body').closeLoading();
                 $.toaster.error('保存失败');
             });
             return;
@@ -453,7 +472,9 @@ window.pageOnLoad = function () {
         }
         var payload = { filename: createPickedFile, date: date, minutes: minutes };
         if (progress !== '') payload.progress = progress;
+        $('body').showLoading('正在保存…');
         $.request.postForm('/index/stats/create', payload, function (res) {
+            $('body').closeLoading();
             if (!res || res.code !== 200) {
                 $.toaster.error((res && res.msg) || '保存失败');
                 return;
@@ -462,6 +483,7 @@ window.pageOnLoad = function () {
             closeCreateDialog();
             reloadAll();
         }, function () {
+            $('body').closeLoading();
             $.toaster.error('保存失败');
         });
     });

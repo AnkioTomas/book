@@ -84,10 +84,10 @@
     </mdui-card>
 
     <h2 class="title-medium mb-2"  style="font-weight: bold">最近阅读</h2>
-    <div class="recently-read-grid">
+    <div class="recently-read-grid nova-stagger">
         {if $recentlyReadBooks}
         {foreach $recentlyReadBooks as $book}
-        <mdui-card class="p-2 rounded-lg bg-surface">
+        <mdui-card class="p-2 rounded-lg bg-surface nova-lift">
             <div class="d-flex gap-2">
                 <image-loader src="{$book.coverUrl}" class="recently-read-cover"></image-loader>
                 <div class="d-flex flex-col flex-1 min-w-0">

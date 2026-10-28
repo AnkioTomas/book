@@ -16,7 +16,7 @@ window.pageOnLoad = () => {
         }
         const ext = '.' + (filename.split('.').pop() || '').toLowerCase();
         if (!supportedReaderExt.includes(ext)) {
-            $.toaster.warning('该文件格式暂不支持阅读器打开');
+            $.toaster.warn('该文件格式暂不支持阅读器打开');
             return;
         }
         const readerUrl = `/index/book/reader?file=${encodeURIComponent(filename)}&title=${encodeURIComponent(title || filename)}`;

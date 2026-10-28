@@ -14,7 +14,7 @@ class ZlibPicker extends HTMLElement {
         this._ready = true;
         this.innerHTML = `
 <style>
-.zlib-body{display:flex;flex-direction:column;gap:12px;min-height:0;height:min(68vh,600px);width:100%;box-sizing:border-box}
+.zlib-body{display:flex;flex-direction:column;gap:12px;min-height:0;height:min(calc(var(--vh, 100vh) * 0.68),600px);width:100%;box-sizing:border-box}
 .zlib-search{flex-shrink:0}
 .zlib-search mdui-text-field{width:100%;display:block}
 .zlib-search mdui-button-icon[slot="end-icon"]{width:2rem;height:2rem;font-size:1.25rem}
@@ -155,6 +155,12 @@ class ZlibPicker extends HTMLElement {
         var book = this._results[index];
         if (!book || this._busy) return;
         this._busy = true;
+        var $btn = $('[data-zlib-dl="' + index + '"]', this);
+        $btn.attr('loading', '');
+        var done = function () {
+            self._busy = false;
+            $btn.removeAttr('loading');
+        };
         $.request.postForm('/index/zlib/download', {
             id: book.id,
             hash: book.hash,
@@ -162,13 +168,13 @@ class ZlibPicker extends HTMLElement {
             author: book.author || '',
             extension: book.extension || 'epub'
         }, function (res) {
-            self._busy = false;
+            done();
             if (res.code !== 200) {
                 return $.toaster.error(res.msg || '提交失败');
             }
             $.toaster.success(res.msg || '已提交后台下载');
         }, function () {
-            self._busy = false;
+            done();
             $.toaster.error('下载请求失败');
         });
     }

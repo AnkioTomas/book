@@ -2,7 +2,6 @@
 <style id="style">
     /* 自定义元素升级前隐藏对话框表单，避免进页 FOUC 闪一下整页表单 */
     mdui-dialog-form:not(:defined),
-    douban-book-picker:not(:defined),
     meta-fill-picker:not(:defined),
     zlib-picker:not(:defined),
     drag-upload:not(:defined) {
@@ -14,8 +13,8 @@
     mdui-dialog.meta-fill-dialog::part(panel) {
         width: min(960px, 96vw) !important;
         max-width: 960px !important;
-        height: min(80vh, 720px) !important;
-        max-height: 80vh !important;
+        height: min(var(--80vh, 80vh), 720px) !important;
+        max-height: var(--80vh, 80vh) !important;
     }
     mdui-dialog.zlib-dialog::part(body),
     mdui-dialog.meta-fill-dialog::part(body) {

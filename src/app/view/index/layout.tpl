@@ -2,7 +2,7 @@
 <html lang="zh-CN" class="mdui-theme-auto scroll-line">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
     <meta name="renderer" content="webkit"/>
     <title id="title">{$title}</title>
     {include file="publicHeader.tpl"}

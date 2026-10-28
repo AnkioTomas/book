@@ -231,9 +231,9 @@ window.pageOnLoad = function () {
     function openReader(row) {
         var filename = row.filename || '';
         var ext = '.' + (filename.split('.').pop() || '').toLowerCase();
-        if (!filename) return $.toaster.warning('文件名缺失，无法打开阅读器');
+        if (!filename) return $.toaster.warn('文件名缺失，无法打开阅读器');
         if (ext === '.txt' || !BOOK_EXTENSIONS.includes(ext)) {
-            return $.toaster.warning('该文件格式暂不支持阅读器打开');
+            return $.toaster.warn('该文件格式暂不支持阅读器打开');
         }
         window.open(
             '/index/book/reader?file=' + encodeURIComponent(filename) + '&title=' + encodeURIComponent(row.bookName || filename),
@@ -269,8 +269,13 @@ window.pageOnLoad = function () {
 
     // 刮削是慢 I/O，走后台任务，进度在任务面板查看
     function batchScrape(books) {
+        $("body").showLoading('正在提交刮削任务…');
         $.request.postForm('/index/book/scrapeCover', { ids: bookIds(books) }, function (res) {
+            $("body").closeLoading();
             res.code === 200 ? $.toaster.success(res.msg) : $.toaster.error(res.msg || '刮削提交失败');
+        }, function () {
+            $("body").closeLoading();
+            $.toaster.error('刮削提交失败');
         });
     }
 
@@ -314,7 +319,9 @@ window.pageOnLoad = function () {
         $btn.off('click').on('click', function () {
             var toHide = !hidden;
             var doIt = function () {
+                $("body").showLoading(toHide ? '正在隐藏分类…' : '正在取消隐藏…');
                 $.request.postForm('/index/book/categoryHidden', { name: current, hidden: toHide ? '1' : '0' }, function (res) {
+                    $("body").closeLoading();
                     if (res.code !== 200) return $.toaster.error(res.msg || '操作失败');
                     $.toaster.success(res.msg);
                     var list = filterOptions.hiddenFavorites || [];
@@ -326,6 +333,7 @@ window.pageOnLoad = function () {
                     filterOptions.hiddenFavorites = list;
                     initCategoryHiddenToggle();
                 }, function () {
+                    $("body").closeLoading();
                     $.toaster.error('请求失败');
                 });
             };
@@ -469,14 +477,17 @@ window.pageOnLoad = function () {
     }
 
     function syncWebdav() {
+        $("body").showLoading('正在提交同步…');
         $.request.postForm('/index/book/sync', {}, function (res) {
-            if (res.code === 200) {
-                $.toaster.success(res.msg);
-            } else if (res.code === 201) {
+            $("body").closeLoading();
+            if (res.code === 200 || res.code === 201) {
                 $.toaster.success(res.msg);
             } else {
-                $.toaster.error(res.msg);
+                $.toaster.error(res.msg || '同步提交失败');
             }
+        }, function () {
+            $("body").closeLoading();
+            $.toaster.error('同步请求失败');
         });
     }
 

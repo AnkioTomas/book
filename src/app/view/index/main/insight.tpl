@@ -9,6 +9,11 @@
     @media (max-width: 860px) {
         .cal-layout { grid-template-columns: 1fr; }
     }
+    @media (max-width: 600px) {
+        /* 窄屏：缩小卡片内边距与格子间距，让日历格子保持可点大小 */
+        .cal-layout > mdui-card { padding: .5rem !important; }
+        .cal-grid { gap: 4px; }
+    }
     .cal-nav button {
         border: 0; cursor: pointer; color: rgb(var(--mdui-color-primary));
         padding: .25rem .6rem; border-radius: 8px;
@@ -33,7 +38,10 @@
     .day-meta { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
     .insight-book-cover { width: 32px; height: 44px; border-radius: 4px; overflow: hidden; vertical-align: middle; }
     .remap-pick-row { cursor: pointer; border-bottom: 1px solid rgba(var(--mdui-color-outline), .12); }
-    .remap-pick-row:hover { background: rgba(var(--mdui-color-primary), .06); }
+    .remap-pick-row:active { background: rgba(var(--mdui-color-primary), .1); }
+    @media (hover: hover) {
+        .remap-pick-row:hover { background: rgba(var(--mdui-color-primary), .06); }
+    }
     .remap-pick-list { max-height: 280px; overflow: auto; }
     .create-stat-form mdui-text-field { width: 100%; margin-bottom: .5rem; }
     .create-book-label { font-size: .85rem; color: rgb(var(--mdui-color-on-surface-variant)); }
