@@ -7,6 +7,7 @@ import {
     ensureWereadFont,
     fetchWereadCatalog,
     isWereadTypeface,
+    wereadFontFaceCss,
     wereadId,
     wereadTypeface,
 } from './fonts.js'
@@ -126,8 +127,11 @@ const buildPageCss = (settings, theme) => {
     const justify = settings.justify ? 'justify' : 'start'
     const recolor = theme.scheme === 'dark'
     const fontFamily = cssFamilyForTypeface(settings.typeface, FALLBACK_STACK)
+    // @font-face 必须进 iframe 文档；只挂父页对正文无效
+    const faceCss = wereadFontFaceCss(settings.typeface)
     const fontRule = fontFamily
         ? `
+${faceCss}
 body { font-family: ${fontFamily} !important; }
 body *:not(pre, code, kbd, samp, tt, pre *, code *, math, math *, svg, svg *) {
     font-family: inherit !important;

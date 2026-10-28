@@ -2,13 +2,20 @@
  * 微信读书字体（与月读 ui/fonts/catalog.lua 同源）
  * 列表：https://weread.qq.com/feconfig/font/list?type=web_v2
  * 包体：cdn.weread.qq.com/.../*.zip → 内含 .woff
+ *
+ * 注意：正文在 foliate iframe 里渲染，@font-face 必须写进 setStyles 的 CSS，
+ * 只挂在父页面 document.head 对 iframe 无效。
  */
 
 const LIST_URL = 'https://weread.qq.com/feconfig/font/list?type=web_v2'
-const CACHE_NAME = 'weread-fonts-v1'
+/** v2：丢掉早期可能把 HTML 错误页当成 woff 缓存的脏数据 */
+const CACHE_NAME = 'weread-fonts-v2'
 const PREFIX = 'weread:'
 
-/** @type {Map<string, {family: string, blobUrl: string}>} */
+// 清掉 v1 脏缓存（只跑一次，失败忽略）
+caches.delete('weread-fonts-v1').catch(() => {})
+
+/** @type {Map<string, {family: string, blobUrl: string, format: string}>} */
 const ready = new Map()
 /** @type {Promise<object[]>|null} */
 let catalogPromise = null
@@ -53,6 +60,26 @@ export function fetchWereadCatalog() {
     return catalogPromise
 }
 
+async function blobMagic(blob, n = 4) {
+    if (!blob || blob.size < n) return null
+    return new Uint8Array(await blob.slice(0, n).arrayBuffer())
+}
+
+/** wOFF / wOF2 */
+async function isWoffBlob(blob) {
+    const u8 = await blobMagic(blob)
+    if (!u8) return false
+    return u8[0] === 0x77 && u8[1] === 0x4f && u8[2] === 0x46
+        && (u8[3] === 0x46 || u8[3] === 0x32)
+}
+
+function formatOfWoff(blob) {
+    const t = blob.type || ''
+    if (t.includes('woff2')) return 'woff2'
+    if (t.includes('woff')) return 'woff'
+    return 'woff'
+}
+
 async function extractWoffBlob(zipBlob) {
     const {configure, ZipReader, BlobReader, BlobWriter} = await import('./vendor/zip.js')
     configure({useWebWorkers: false})
@@ -63,7 +90,9 @@ async function extractWoffBlob(zipBlob) {
             && !/__macosx|\._/i.test(e.filename))
         if (!entry) throw new Error('zip 内没有 woff')
         const type = /\.woff2$/i.test(entry.filename) ? 'font/woff2' : 'font/woff'
-        return await entry.getData(new BlobWriter(type))
+        const blob = await entry.getData(new BlobWriter(type))
+        if (!(await isWoffBlob(blob))) throw new Error('解压结果不是 woff')
+        return blob
     } finally {
         await reader.close().catch(() => {})
     }
@@ -74,7 +103,12 @@ async function readCachedWoff(id) {
         const cache = await caches.open(CACHE_NAME)
         const res = await cache.match(id)
         if (!res) return null
-        return await res.blob()
+        const blob = await res.blob()
+        if (!(await isWoffBlob(blob))) {
+            await cache.delete(id)
+            return null
+        }
+        return blob
     } catch {
         return null
     }
@@ -91,22 +125,37 @@ async function writeCachedWoff(id, blob) {
     }
 }
 
-function installFace(id, blob) {
+async function installFace(id, blob) {
     const family = wereadFamilyName(id)
     if (ready.has(id)) return ready.get(id)
     const blobUrl = URL.createObjectURL(blob)
-    const format = (blob.type || '').includes('woff2') || blobUrl.includes('woff2')
-        ? 'woff2'
-        : 'woff'
+    const format = formatOfWoff(blob)
+    // 父页也挂一份，方便设置面板预览；真正正文靠 wereadFontFaceCss 注入 iframe
     const style = document.createElement('style')
     style.dataset.wereadFont = id
-    style.textContent =
-        `@font-face{font-family:'${family}';src:url('${blobUrl}') format('${format}');` +
-        `font-display:swap;font-weight:400;font-style:normal;}`
+    style.textContent = fontFaceRule(family, blobUrl, format)
     document.head.append(style)
-    const info = {family, blobUrl}
+    try {
+        await document.fonts.load(`16px "${family}"`)
+    } catch {
+        /* 部分环境 fonts.load 对自定义族名挑剔，CSS 仍可用 */
+    }
+    const info = {family, blobUrl, format}
     ready.set(id, info)
     return info
+}
+
+function fontFaceRule(family, blobUrl, format) {
+    return `@font-face{font-family:'${family}';src:url('${blobUrl}') format('${format}');`
+        + `font-display:swap;font-weight:400;font-style:normal;}`
+}
+
+/** 给 iframe setStyles 用的 @font-face 片段；字体未就绪时返回空串 */
+export function wereadFontFaceCss(typeface) {
+    if (!isWereadTypeface(typeface)) return ''
+    const info = ready.get(wereadId(typeface))
+    if (!info) return ''
+    return fontFaceRule(info.family, info.blobUrl, info.format)
 }
 
 /**
@@ -129,8 +178,8 @@ export async function ensureWereadFont(itemOrId, meta = {}) {
             throw new Error('字体下载失败 HTTP ' + res.status)
         }
         const zipBlob = await res.blob()
-        const magic = new Uint8Array(await zipBlob.slice(0, 4).arrayBuffer())
-        if (magic[0] !== 0x50 || magic[1] !== 0x4b) {
+        const magic = await blobMagic(zipBlob)
+        if (!magic || magic[0] !== 0x50 || magic[1] !== 0x4b) {
             throw new Error('字体代理返回非 zip（' + (res.headers.get('content-type') || 'unknown') + '）')
         }
         blob = await extractWoffBlob(zipBlob)
