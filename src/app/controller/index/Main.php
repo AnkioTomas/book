@@ -219,6 +219,16 @@ class Main extends BaseViewController
         return $this->viewResponse->asTpl();
     }
 
+    public function bookSetting(): Response
+    {
+        return $this->viewResponse->asTpl();
+    }
+
+    public function zlibSetting(): Response
+    {
+        return $this->viewResponse->asTpl();
+    }
+
     public function book(): Response
     {
         return $this->viewResponse->asTpl();
@@ -368,10 +378,29 @@ class Main extends BaseViewController
                 'sub' => $this->subMenus(),
             ],
             [
-                'title' => '系统设置',
-                'url' => '/index/main/calibre',
-                'icon' => 'settings',
+                'title' => '书库设置',
+                'icon' => 'tune',
                 'pjax' => true,
+                'sub' => [
+                    [
+                        'title' => '上传识别',
+                        'icon' => 'auto_awesome',
+                        'url' => '/index/main/bookSetting',
+                        'pjax' => true,
+                    ],
+                    [
+                        'title' => 'Z站',
+                        'icon' => 'cloud_download',
+                        'url' => '/index/main/zlibSetting',
+                        'pjax' => true,
+                    ],
+                    [
+                        'title' => 'Calibre',
+                        'icon' => 'electrical_services',
+                        'url' => '/index/main/calibre',
+                        'pjax' => true,
+                    ],
+                ],
             ],
         ];
     }
