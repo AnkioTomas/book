@@ -1,304 +1,188 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<meta name="color-scheme" content="light dark">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self'; style-src 'self' blob: 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob: data: *; frame-src blob: data:; object-src blob: data:; form-action 'none';">
-<title>E-Book Reader</title>
-<style>
-:root {
-    --active-bg: rgba(0, 0, 0, .05);
-}
-@supports (color-scheme: light dark) {
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --active-bg: rgba(255, 255, 255, .1);
-        }
-    }
-}
-html {
-    height: 100%;
-}
-body {
-    margin: 0 auto;
-    height: 100%;
-    font: menu;
-    font-family: system-ui, sans-serif;
-}
-#drop-target {
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    visibility: hidden;
-}
-#drop-target h1 {
-    font-weight: 900;
-}
-#file-button {
-    font: inherit;
-    background: none;
-    border: 0;
-    padding: 0;
-    text-decoration: underline;
-    cursor: pointer;
-}
-.icon {
-    display: block;
-    fill: none;
-    stroke: currentcolor;
-    stroke-width: 2px;
-}
-.empty-state-icon {
-    margin: auto;
-}
-.toolbar {
-    box-sizing: border-box;
-    position: absolute;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    height: 48px;
-    padding: 6px;
-    transition: opacity 250ms ease;
-    visibility: hidden;
-}
-.toolbar button {
-    padding: 3px;
-    border-radius: 6px;
-    background: none;
-    border: 0;
-    color: GrayText;
-}
-.toolbar button:hover {
-    background: rgba(0, 0, 0, .1);
-    color: currentcolor;
-}
-#header-bar {
-    top: 0;
-}
-#nav-bar {
-    bottom: 0;
-}
-#progress-slider {
-    flex-grow: 1;
-    margin: 0 12px;
-    visibility: hidden;
-}
-#side-bar {
-    visibility: hidden;
-    box-sizing: border-box;
-    position: absolute;
-    z-index: 2;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 320px;
-    transform: translateX(-320px);
-    display: flex;
-    flex-direction: column;
-    background: Canvas;
-    color: CanvasText;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, .2), 0 0 40px rgba(0, 0, 0, .2);
-    transition: visibility 0s linear 300ms, transform 300ms ease;
-}
-#side-bar.show {
-    visibility: visible;
-    transform: translateX(0);
-    transition-delay: 0s;
-}
-#dimming-overlay {
-    visibility: hidden;
-    position: fixed;
-    z-index: 2;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, .2);
-    opacity: 0;
-    transition: visibility 0s linear 300ms, opacity 300ms ease;
-}
-#dimming-overlay.show {
-    visibility: visible;
-    opacity: 1;
-    transition-delay: 0s;
-}
-#side-bar-header {
-    padding: 1rem;
-    display: flex;
-    border-bottom: 1px solid rgba(0, 0, 0, .1);
-    align-items: center;
-}
-#side-bar-cover {
-    height: 10vh;
-    min-height: 60px;
-    max-height: 180px;
-    border-radius: 3px;
-    border: 0;
-    background: lightgray;
-    box-shadow: 0 0 1px rgba(0, 0, 0, .1), 0 0 16px rgba(0, 0, 0, .1);
-    margin-inline-end: 1rem;
-}
-#side-bar-cover:not([src]) {
-    display: none;
-}
-#side-bar-title {
-    margin: .5rem 0;
-    font-size: inherit;
-}
-#side-bar-author {
-    margin: .5rem 0;
-    font-size: small;
-    color: GrayText;
-}
-#toc-view {
-    padding: .5rem;
-    overflow-y: scroll;
-}
-#toc-view li, #toc-view ol {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-#toc-view a, #toc-view span {
-    display: block;
-    border-radius: 6px;
-    padding: 8px;
-    margin: 2px 0;
-}
-#toc-view a {
-    color: CanvasText;
-    text-decoration: none;
-}
-#toc-view a:hover {
-    background: var(--active-bg);
-}
-#toc-view span {
-    color: GrayText;
-}
-#toc-view svg {
-    margin-inline-start: -24px;
-    padding-inline-start: 5px;
-    padding-inline-end: 6px;
-    fill: CanvasText;
-    cursor: default;
-    transition: transform .2s ease;
-    opacity: .5;
-}
-#toc-view svg:hover {
-    opacity: 1;
-}
-#toc-view [aria-current] {
-    font-weight: bold;
-    background: var(--active-bg);
-}
-#toc-view [aria-expanded="false"] svg {
-    transform: rotate(-90deg);
-}
-#toc-view [aria-expanded="false"] + [role="group"] {
-    display: none;
-}
-.menu-container {
-    position: relative;
-}
-.menu, .menu ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.menu {
-    visibility: hidden;
-    position: absolute;
-    right: 0;
-    background: Canvas;
-    color: CanvasText;
-    border-radius: 6px;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, .2), 0 0 16px rgba(0, 0, 0, .1);
-    padding: 6px;
-    cursor: default;
-}
-.menu.show {
-    visibility: visible;
-}
-.menu li {
-    padding: 6px 12px;
-    padding-left: 24px;
-    border-radius: 6px;
-}
-.menu li:hover {
-    background: var(--active-bg);
-}
-.menu li[aria-checked="true"] {
-    background-position: center left;
-    background-repeat: no-repeat;
-    background-image: url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22%2F%3E%3C%2Fsvg%3E');
-}
-.popover {
-    background: Canvas;
-    color: CanvasText;
-    border-radius: 6px;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, .2), 0 0 16px rgba(0, 0, 0, .1), 0 0 32px rgba(0, 0, 0, .1);
-}
-.popover-arrow-down {
-    fill: Canvas;
-    filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, .2));
-}
-.popover-arrow-up {
-    fill: Canvas;
-    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .2));
-}
-</style>
-<input type="file" id="file-input" hidden>
-<div id="drop-target" class="filter">
+<html lang="zh-CN" class="mdui-theme-auto">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob:; script-src 'self'; style-src 'self' blob: 'unsafe-inline'; font-src 'self' blob: data:; img-src 'self' blob: data: https://cdn.weread.qq.com; connect-src 'self' blob: data: *; frame-src blob: data:; object-src blob: data:; form-action 'none';">
+    <title>阅读</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png"/>
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png"/>
+    <link rel="icon" type="image/ico" href="/static/icons/favicon.ico"/>
+    <link rel="stylesheet" href="/static/framework/icons/fonts.css">
+    <link rel="stylesheet" href="/static/framework/libs/mdui.css">
+    <link rel="stylesheet" href="reader.css">
+    <script src="/static/framework/libs/mdui.global.min.js"></script>
+</head>
+<body>
+<input type="file" id="file-input" hidden accept=".epub,.mobi,.azw,.azw3,.pdf,.fb2,.cbz">
+
+<div id="drop-target">
     <div>
-        <svg class="icon empty-state-icon" width="72" height="72" aria-hidden="true">
-            <path d="M36 18s-6-6-12-6-15 6-15 6v42s9-6 15-6 12 6 12 6c4-4 8-6 12-6s12 2 15 6V18c-6-4-12-6-15-6-4 0-8 2-12 6m0 0v42"/>
-        </svg>
-        <h1>Drop a book here!</h1>
-        <p>Or <button id="file-button">choose a file</button> to open it.</p>
+        <mdui-icon name="menu_book" class="empty-icon" style="font-size:72px"></mdui-icon>
+        <h1>打开一本书</h1>
+        <p>拖放到此处，或 <button type="button" id="file-button">选择文件</button></p>
     </div>
 </div>
-<div id="dimming-overlay" aria-hidden="true"></div>
-<div id="side-bar">
-    <div id="side-bar-header">
-        <img id="side-bar-cover">
-        <div>
-            <h1 id="side-bar-title"></h1>
-            <p id="side-bar-author"></p>
+
+<div id="status" class="status" hidden>
+    <div class="status-card">
+        <div id="status-loading" class="status-spin" hidden>
+            <mdui-circular-progress style="width:28px;height:28px"></mdui-circular-progress>
+            <span>正在打开…</span>
+        </div>
+        <div id="status-error" hidden>
+            <p class="status-title">无法打开这本书</p>
+            <p class="status-desc" id="status-error-msg">文件可能已损坏，或格式不受支持。</p>
+            <mdui-button class="mt-4" href="/index/main/book" variant="filled" style="margin-top:1.5rem">返回书库</mdui-button>
         </div>
     </div>
-    <div id="toc-view"></div>
 </div>
-<div id="header-bar" class="toolbar">
-    <button id="side-bar-button" aria-label="Show sidebar">
-        <svg class="icon" width="24" height="24" aria-hidden="true">
-            <path d="M 4 6 h 16 M 4 12 h 16 M 4 18 h 16"/>
-        </svg>
-    </button>
-    <div id="menu-button" class="menu-container">
-        <button aria-label="Show settings" aria-haspopup="true">
-            <svg class="icon" width="24" height="24" aria-hidden="true">
-                <path d="M5 12.7a7 7 0 0 1 0-1.4l-1.8-2 2-3.5 2.7.5a7 7 0 0 1 1.2-.7L10 3h4l.9 2.6 1.2.7 2.7-.5 2 3.4-1.8 2a7 7 0 0 1 0 1.5l1.8 2-2 3.5-2.7-.5a7 7 0 0 1-1.2.7L14 21h-4l-.9-2.6a7 7 0 0 1-1.2-.7l-2.7.5-2-3.4 1.8-2Z"/>
-                <circle cx="12" cy="12" r="3"/>
-            </svg>
-        </button>
+
+<div id="reader-root"></div>
+<div id="folio" aria-live="polite"></div>
+
+<div id="toc-scrim" class="scrim" aria-hidden="true"></div>
+<aside id="toc-panel" class="side-panel" aria-label="目录" hidden>
+    <div class="panel-head">
+        <h2>目录</h2>
+        <mdui-button-icon icon="close" id="toc-close" aria-label="关闭目录"></mdui-button-icon>
     </div>
-</div>
-<div id="nav-bar" class="toolbar">
-    <button id="left-button" aria-label="Go left">
-        <svg class="icon" width="24" height="24" aria-hidden="true">
-            <path d="M 15 6 L 9 12 L 15 18"/>
-        </svg>
+    <div class="panel-meta">
+        <img id="side-bar-cover" alt="">
+        <div class="meta-text">
+            <div id="side-bar-title" class="title-small" style="font-weight:600"></div>
+            <p id="side-bar-author" class="meta-author"></p>
+        </div>
+    </div>
+    <div class="panel-body" id="toc-view"></div>
+</aside>
+
+<aside id="settings-panel" class="side-panel see-through" data-side="end" aria-label="阅读设置" hidden>
+    <div class="panel-head">
+        <h2>阅读设置</h2>
+        <mdui-button-icon icon="close" id="settings-close" aria-label="关闭设置"></mdui-button-icon>
+    </div>
+    <div class="panel-body" id="settings-body">
+        <section class="settings-section">
+            <span class="label">主题</span>
+            <div class="seg" role="radiogroup" aria-label="主题" data-setting="theme">
+                <button type="button" data-value="auto" aria-checked="true">自动</button>
+                <button type="button" data-value="light" aria-checked="false">浅色</button>
+                <button type="button" data-value="dark" aria-checked="false">深色</button>
+            </div>
+        </section>
+        <section class="settings-section">
+            <span class="label">版式</span>
+            <div class="seg" role="radiogroup" aria-label="版式" data-setting="flow">
+                <button type="button" data-value="paginated" aria-checked="true">分页</button>
+                <button type="button" data-value="scrolled" aria-checked="false">滚动</button>
+            </div>
+        </section>
+        <section class="settings-section">
+            <span class="label">字体</span>
+            <div class="weread-font-status search-status" id="weread-font-status">正在加载字体列表…</div>
+            <div class="weread-font-list" role="radiogroup" aria-label="字体" data-setting="typeface" id="weread-font-list"></div>
+        </section>
+        <section class="settings-section">
+            <span class="label">文字</span>
+            <div class="settings-row">
+                <span class="row-label">字号</span>
+                <mdui-slider id="set-font-size" min="14" max="28" step="1" value="18"></mdui-slider>
+                <span class="row-value" id="set-font-size-val">18</span>
+            </div>
+            <div class="settings-row">
+                <span class="row-label">行距</span>
+                <mdui-slider id="set-line-height" min="1.2" max="2.2" step="0.1" value="1.6"></mdui-slider>
+                <span class="row-value" id="set-line-height-val">1.6</span>
+            </div>
+            <div class="settings-row">
+                <span class="row-label">对齐</span>
+                <div class="seg" role="radiogroup" aria-label="对齐" data-setting="justify">
+                    <button type="button" data-value="false" aria-checked="false">左齐</button>
+                    <button type="button" data-value="true" aria-checked="true">两端</button>
+                </div>
+            </div>
+            <div class="settings-row">
+                <span class="row-label">断字</span>
+                <mdui-switch id="set-hyphenate" checked></mdui-switch>
+            </div>
+        </section>
+        <section class="settings-section">
+            <span class="label">进度显示</span>
+            <div class="seg" role="radiogroup" aria-label="进度显示" data-setting="progressMode">
+                <button type="button" data-value="percent" aria-checked="true">百分比</button>
+                <button type="button" data-value="page" aria-checked="false">页码</button>
+                <button type="button" data-value="none" aria-checked="false">隐藏</button>
+            </div>
+        </section>
+    </div>
+</aside>
+
+<div id="search-scrim" class="scrim" aria-hidden="true"></div>
+<aside id="search-panel" class="side-panel" data-side="end" aria-label="书内搜索" hidden>
+    <div class="panel-head">
+        <h2>搜索</h2>
+        <mdui-button-icon icon="close" id="search-close" aria-label="关闭搜索"></mdui-button-icon>
+    </div>
+    <div id="search-input-wrap">
+        <mdui-text-field id="search-input" label="在书中查找" variant="outlined" clearable></mdui-text-field>
+        <div class="search-status" id="search-status"></div>
+    </div>
+    <div class="panel-body" id="search-results"></div>
+</aside>
+
+<aside id="notes-panel" class="side-panel" data-side="end" aria-label="高亮与笔记" hidden>
+    <div class="panel-head">
+        <h2>高亮与笔记</h2>
+        <mdui-button-icon icon="close" id="notes-close" aria-label="关闭笔记"></mdui-button-icon>
+    </div>
+    <div class="panel-body" id="notes-list"></div>
+</aside>
+
+<div id="sel-bar" class="sel-bar" hidden role="toolbar" aria-label="高亮工具">
+    <button type="button" class="sel-dot" data-hl="yellow" style="--dot:#d6a900" aria-label="黄色高亮"></button>
+    <button type="button" class="sel-dot" data-hl="green" style="--dot:#39875b" aria-label="绿色高亮"></button>
+    <button type="button" class="sel-dot" data-hl="blue" style="--dot:#3678c8" aria-label="蓝色高亮"></button>
+    <button type="button" class="sel-dot" data-hl="orange" style="--dot:#c46a19" aria-label="橙色高亮"></button>
+    <button type="button" class="sel-dot" data-hl="red" style="--dot:#c43c39" aria-label="红色高亮"></button>
+    <button type="button" class="sel-action" data-hl="underline" aria-label="下划线">U</button>
+    <button type="button" class="sel-action" data-hl="note" aria-label="写笔记">
+        <mdui-icon name="edit_note"></mdui-icon>
     </button>
-    <input id="progress-slider" type="range" min="0" max="1" step="any" list="tick-marks">
-    <datalist id="tick-marks"></datalist>
-    <button id="right-button" aria-label="Go right">
-        <svg class="icon" width="24" height="24" aria-hidden="true">
-            <path d="M 9 6 L 15 12 L 9 18"/>
-        </svg>
-    </button>
 </div>
+
+<mdui-dialog id="note-dialog" headline="笔记">
+    <div id="note-quote" class="note-quote"></div>
+    <mdui-text-field id="note-text" label="写下想法" rows="4" variant="outlined"></mdui-text-field>
+    <mdui-button slot="action" variant="text" id="note-delete">删除</mdui-button>
+    <mdui-button slot="action" variant="text" id="note-cancel">取消</mdui-button>
+    <mdui-button slot="action" variant="filled" id="note-save">保存</mdui-button>
+</mdui-dialog>
+
+<header id="chrome-top" class="chrome-bar" aria-label="阅读工具栏">
+    <div class="cluster cluster-start">
+        <mdui-button-icon icon="arrow_back" id="btn-back" aria-label="返回"></mdui-button-icon>
+        <mdui-button-icon icon="toc" id="btn-toc" aria-label="目录"></mdui-button-icon>
+    </div>
+    <p class="chrome-title" id="chrome-title"></p>
+    <div class="cluster cluster-end">
+        <mdui-button-icon icon="search" id="btn-search" aria-label="搜索"></mdui-button-icon>
+        <mdui-button-icon icon="sticky_note_2" id="btn-notes" aria-label="高亮与笔记"></mdui-button-icon>
+        <mdui-button-icon icon="text_fields" id="btn-settings" aria-label="阅读设置"></mdui-button-icon>
+        <mdui-button-icon icon="fullscreen" id="btn-fullscreen" aria-label="全屏" class="max-sm-hide"></mdui-button-icon>
+    </div>
+</header>
+
+<footer id="chrome-bottom" class="chrome-bar" aria-label="翻页与进度">
+    <mdui-button-icon icon="first_page" id="btn-first" aria-label="开头"></mdui-button-icon>
+    <mdui-button-icon icon="chevron_left" id="btn-prev-chapter" aria-label="上一章"></mdui-button-icon>
+    <mdui-slider id="progress-slider" min="0" max="1" step="0.001" value="0" disabled aria-label="阅读进度"></mdui-slider>
+    <mdui-button-icon icon="chevron_right" id="btn-next-chapter" aria-label="下一章"></mdui-button-icon>
+    <mdui-button-icon icon="last_page" id="btn-last" aria-label="结尾"></mdui-button-icon>
+</footer>
+
 <script src="reader.js" type="module"></script>
+</body>
+</html>

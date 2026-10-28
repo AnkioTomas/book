@@ -20,6 +20,7 @@ use app\utils\BookOrganizer\Organizer;
 use nova\framework\core\Context;
 
 use nova\framework\core\File;
+use nova\framework\core\Logger;
 use nova\framework\core\Text;
 use nova\framework\http\Response;
 use nova\plugin\corn\schedule\TaskerAbstract;
@@ -30,6 +31,18 @@ use nova\plugin\tpl\Pjax;
 
 class Book extends ApiController
 {
+    /**
+     * 微信读书字体 zip 是公开 CDN 资源，代理不必登录。
+     * 未登录时若 302 到 SSO，fetch 会把 HTML 当 zip → zip.js EOCD 报错。
+     */
+    public function init(): ?Response
+    {
+        if (str_ends_with($this->request->getPath(), '/wereadFontZip')) {
+            return null;
+        }
+        return parent::init();
+    }
+
     /**
      * 获取书籍列表（支持分页、搜索、筛选）
      * GET /book/list?page=1&pageSize=20&search=xxx&series=xxx&category=xxx&favorite=xxx&author=xxx&finished=1|0
@@ -424,6 +437,110 @@ class Book extends ApiController
             . '&frac=' . $percent;
 
         return Pjax::redirectTo($readerUrl);
+    }
+
+    /**
+     * 代理微信读书字体 zip（cdn.weread.qq.com 对浏览器有 CORS，需同源转发）。
+     * 与月读 ui/fonts/catalog.lua 同源：https://cdn.weread.qq.com/app/assets/app_fonts_web/{id}.zip
+     * GET /index/book/wereadFontZip?id=syst
+     */
+    public function wereadFontZip(): Response
+    {
+        $id = trim((string)$this->request->get('id', ''));
+        if ($id === '' || !preg_match('/^[A-Za-z0-9_-]{1,64}$/', $id)) {
+            return Response::asText('参数错误', [], 400);
+        }
+
+        // 独立目录，避开 reader/ 里按 ctime 清临时书文件的逻辑
+        $cacheDir = RUNTIME_PATH . DS . 'weread_fonts';
+        File::mkDir($cacheDir);
+        $localPath = $cacheDir . DS . $id . '.zip';
+
+        if (!$this->isValidZipFile($localPath)) {
+            if (!$this->downloadWereadFontZip($id, $localPath)) {
+                return Response::asText('字体下载失败', [], 502);
+            }
+        }
+
+        return Response::asFile($localPath, $id . '.zip');
+    }
+
+    /** 流式拉 CDN zip 到磁盘，校验魔数与 EOCD 后再落盘。 */
+    private function downloadWereadFontZip(string $id, string $localPath): bool
+    {
+        $url = 'https://cdn.weread.qq.com/app/assets/app_fonts_web/' . $id . '.zip';
+        $tmp = $localPath . '.part';
+        if (is_file($tmp)) {
+            unlink($tmp);
+        }
+
+        $fp = fopen($tmp, 'wb');
+        if ($fp === false) {
+            Logger::warning('[wereadFontZip] 无法创建临时文件 ' . $tmp);
+            return false;
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_FILE => $fp,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT => 120,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            CURLOPT_HTTPHEADER => [
+                'Referer: https://weread.qq.com/',
+                'Origin: https://weread.qq.com',
+                'Accept: */*',
+            ],
+        ]);
+        $ok = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        fclose($fp);
+
+        if ($ok !== true || $code !== 200 || !$this->isValidZipFile($tmp)) {
+            Logger::warning('[wereadFontZip] 上游失败 id=' . $id . ' code=' . $code . ' err=' . $err);
+            if (is_file($tmp)) {
+                unlink($tmp);
+            }
+            return false;
+        }
+
+        if (is_file($localPath)) {
+            unlink($localPath);
+        }
+        if (!rename($tmp, $localPath)) {
+            if (is_file($tmp)) {
+                unlink($tmp);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private function isValidZipFile(string $path): bool
+    {
+        if (!is_file($path) || filesize($path) < 64) {
+            return false;
+        }
+        $fh = fopen($path, 'rb');
+        if ($fh === false) {
+            return false;
+        }
+        $head = fread($fh, 4);
+        if ($head !== "PK\x03\x04" && $head !== "PK\x05\x06") {
+            fclose($fh);
+            return false;
+        }
+        // EOCD 在末尾（含 comment 最多约 64KB+22）
+        $size = filesize($path);
+        $tailLen = (int)min($size, 65557);
+        fseek($fh, -$tailLen, SEEK_END);
+        $tail = fread($fh, $tailLen);
+        fclose($fh);
+        return is_string($tail) && str_contains($tail, "PK\x05\x06");
     }
 
     /**
