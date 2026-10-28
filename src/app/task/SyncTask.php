@@ -462,7 +462,7 @@ class SyncTask extends TaskerAbstract
      * - 不回写 .an。
      *
      * @param  BookModel[] $localMap
-     * @return int 发生替换（含清空）的书本数
+     * @return int         发生替换（含清空）的书本数
      */
     private function syncMoonAnnotations(array $localMap): int
     {
