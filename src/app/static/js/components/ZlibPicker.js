@@ -155,7 +155,6 @@ class ZlibPicker extends HTMLElement {
         var book = this._results[index];
         if (!book || this._busy) return;
         this._busy = true;
-        $(this).showLoading('正在下载并入库…');
         $.request.postForm('/index/zlib/download', {
             id: book.id,
             hash: book.hash,
@@ -164,15 +163,12 @@ class ZlibPicker extends HTMLElement {
             extension: book.extension || 'epub'
         }, function (res) {
             self._busy = false;
-            $(self).closeLoading();
             if (res.code !== 200) {
-                return $.toaster.error(res.msg || '入库失败');
+                return $.toaster.error(res.msg || '提交失败');
             }
-            $.toaster.success(res.msg || '入库成功');
-            self.dispatchEvent(new CustomEvent('ingested', { detail: res.data || {}, bubbles: true }));
+            $.toaster.success(res.msg || '已提交后台下载');
         }, function () {
             self._busy = false;
-            $(self).closeLoading();
             $.toaster.error('下载请求失败');
         });
     }

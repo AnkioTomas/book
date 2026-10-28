@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace app\controller\index;
 
-use app\utils\BookIngest;
+use app\task\ZlibDownloadTask;
 use app\utils\meta\MetaHit;
 use app\utils\zlib\ZlibClient;
 
 use function nova\framework\config;
 
 use nova\framework\http\Response;
+use nova\plugin\corn\schedule\TaskerAbstract;
+use nova\plugin\corn\schedule\TaskerManager;
+use nova\plugin\corn\schedule\TaskerTime;
 use nova\plugin\login\controller\BaseAPIController;
-use RuntimeException;
 use Throwable;
-
-use const ROOT_PATH;
 
 /**
  * Z-Library：配置 / 搜索 / 下载并入库。
@@ -118,10 +118,10 @@ class Zlib extends BaseAPIController
      * POST /index/zlib/download
      * id=&hash= 或 stable_id=id:hash
      * 可选 title/author/extension 用于文件名
+     * 立即入队后台任务，不阻塞请求。
      */
     public function download(): Response
     {
-        @set_time_limit(300);
         $id = trim((string)$this->request->post('id', ''));
         $hash = trim((string)$this->request->post('hash', ''));
         $stable = trim((string)$this->request->post('stable_id', ''));
@@ -132,52 +132,24 @@ class Zlib extends BaseAPIController
             return Response::asJson(['code' => 400, 'msg' => '缺少书籍 id/hash']);
         }
 
-        $client = ZlibClient::getInstance();
         $title = trim((string)$this->request->post('title', ''));
         $author = MetaHit::cleanAuthor((string)$this->request->post('author', ''));
         $ext = strtolower(trim((string)$this->request->post('extension', 'epub')));
 
-        try {
-            if ($title === '') {
-                $detail = $client->detail($id, $hash);
-                $title = (string)($detail['title'] ?? 'book');
-                if ($author === '') {
-                    $author = MetaHit::cleanAuthor((string)($detail['author'] ?? ''));
-                }
-                if ($ext === '' || $ext === 'epub') {
-                    $ext = (string)($detail['extension'] ?? 'epub');
-                }
-            }
+        $key = 'Z站下载_' . substr(md5($id . ':' . $hash), 8, 8);
+        $this->queueTask($key, new ZlibDownloadTask($id, $hash, $title, $author, $ext));
 
-            $filename = ZlibClient::safeFilename($title, $author, $ext);
-            $tmpDir = ROOT_PATH . '/runtime/zlib';
-            if (!is_dir($tmpDir) && !mkdir($tmpDir, 0755, true) && !is_dir($tmpDir)) {
-                throw new RuntimeException('无法创建临时目录');
-            }
-            $tmp = $tmpDir . '/' . md5($id . ':' . $hash . microtime(true)) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
+        $label = $title !== '' ? '《' . $title . '》' : '所选书籍';
+        return Response::asJson([
+            'code' => 200,
+            'msg' => '已提交后台下载 ' . $label . '，可在任务面板查看进度',
+        ]);
+    }
 
-            $client->download($id, $hash, $tmp);
-            $result = BookIngest::fromLocalFile($tmp, $filename);
-            @unlink($tmp);
-
-            if (!$result['ok']) {
-                return Response::asJson(['code' => 400, 'msg' => $result['msg']]);
-            }
-
-            return Response::asJson([
-                'code' => 200,
-                'msg' => $result['msg'],
-                'data' => [
-                    'id' => $result['id'] ?? 0,
-                    'title' => $result['title'] ?? $title,
-                    'isNew' => $result['isNew'] ?? false,
-                ],
-            ]);
-        } catch (Throwable $e) {
-            if (isset($tmp) && is_file($tmp)) {
-                @unlink($tmp);
-            }
-            return Response::asJson(['code' => 500, 'msg' => $e->getMessage()]);
-        }
+    /** 用户触发的一次性后台任务：入 Tasker 调度队列 */
+    private function queueTask(string $name, TaskerAbstract $task): void
+    {
+        TaskerManager::del($name);
+        TaskerManager::add(TaskerTime::after(1), $task, $name);
     }
 }

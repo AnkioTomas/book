@@ -512,10 +512,6 @@ window.pageOnLoad = function () {
             var preset = String($('#searchForm [name=search]').val() || '').trim();
             $zlibPicker[0].open(preset);
         });
-        $zlibPicker.off('ingested').on('ingested', function () {
-            if (cardView) cardView.reload(true);
-        });
-
         $('#btnSync').on('click', syncWebdav);
 
         $('#btnRemoveDuplicates').on('click', function () {
