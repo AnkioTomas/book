@@ -330,7 +330,20 @@ class Main extends BaseViewController
 
     protected function getMenu(): array
     {
+        // 插件菜单由 AdminPage 挂进 type=system 组（无插件则不出现该组）
         return [
+            [
+                'title' => '继续阅读',
+                'url' => '/index/main/dashboard',
+                'icon' => 'dashboard',
+                'pjax' => true,
+            ],
+            [
+                'title' => '笔记与高亮',
+                'url' => '/index/main/annotations',
+                'icon' => 'format_quote',
+                'pjax' => true,
+            ],
             [
                 'title' => '统计',
                 'url' => '/index/main/stats',
@@ -344,18 +357,6 @@ class Main extends BaseViewController
                 'pjax' => true,
             ],
             [
-                'title' => '笔记与高亮',
-                'url' => '/index/main/annotations',
-                'icon' => 'format_quote',
-                'pjax' => true,
-            ],
-            [
-                'title' => '继续阅读',
-                'url' => '/index/main/dashboard',
-                'icon' => 'dashboard',
-                'pjax' => true,
-            ],
-            [
                 'title' => '书库管理',
                 'url' => '/index/main/book',
                 'icon' => 'library_books',
@@ -363,9 +364,9 @@ class Main extends BaseViewController
                 'sub' => $this->subMenus(),
             ],
             [
-                'title' => '系统设置',
+                'title' => '书库与 Calibre',
                 'url' => '/index/main/calibre',
-                'icon' => 'settings',
+                'icon' => 'tune',
                 'pjax' => true,
             ],
         ];

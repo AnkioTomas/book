@@ -11,7 +11,7 @@
         {if !empty($node.sub)}
             <mdui-collapse>
                 <mdui-collapse-item value="item-{$currentPath}">
-                    <mdui-list-item slot="header" rounded icon="{$node.icon}">
+                    <mdui-list-item slot="header" rounded icon="{isset($node.icon) ? $node.icon : ''}">
                         <span>{$node.title}</span>
                         <mdui-icon slot="end-icon" name="keyboard_arrow_left"></mdui-icon>
                     </mdui-list-item>
@@ -24,7 +24,7 @@
         {else}
             <mdui-list-item
                     rounded
-                    icon="{$node.icon}"
+                    icon="{isset($node.icon) ? $node.icon : ''}"
                     data-link="{isset($node.url) ? $node.url : '' }"
                     data-pjax="{isset($node.pjax) ? 'true' : 'false'}"
                     data-match="{if isset($node.match)}{$node.match}{/if}">
