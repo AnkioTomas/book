@@ -100,10 +100,10 @@
     }
 
     @media (max-width: 768px) {
-        .card-view-container {
-            --card-min-width: 130px !important;
+        #bookTable .card-view-container {
+            --card-min-width: 130px;
         }
-        .card-view-item {
+        #bookTable .card-view-item {
             padding: 4px;
         }
         .btn-download {
@@ -136,12 +136,12 @@
         .book-toolbar-actions mdui-button::part(icon) {
             margin: 0;
         }
-        /* CardView 用内联 display:flex 控制，只能 !important 压掉 */
+        /* 手机：藏选择栏，三列封面卡 */
         #bookTable .card-view-selection-bar {
-            display: none !important;
+            display: none;
         }
         #bookTable .card-view-container {
-            --card-min-width: 100px !important;
+            --card-min-width: 100px;
             gap: 8px;
             padding-top: 8px;
         }
