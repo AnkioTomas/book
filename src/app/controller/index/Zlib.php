@@ -135,7 +135,12 @@ class Zlib extends BaseAPIController
         $author = MetaHit::cleanAuthor((string)$this->request->post('author', ''));
         $ext = strtolower(trim((string)$this->request->post('extension', 'epub')));
 
-        $key = 'Z站下载_' . substr(md5($id . ':' . $hash), 8, 8);
+        // 手动再下时取消同书延后/旧版随机名任务，避免限额恢复后下两遍
+        TaskerManager::del(ZlibDownloadTask::delayedTaskName($title, $id));
+        TaskerManager::del(ZlibDownloadTask::legacyDelayedTaskName($id, $hash));
+        TaskerManager::del(ZlibDownloadTask::legacyDownloadTaskName($id, $hash));
+
+        $key = ZlibDownloadTask::downloadTaskName($title, $id);
         $this->queueTask($key, new ZlibDownloadTask($id, $hash, $title, $author, $ext));
 
         $label = $title !== '' ? '《' . $title . '》' : '所选书籍';

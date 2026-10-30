@@ -69,7 +69,7 @@ final class MetaHit
     }
 
     /**
-     * 去掉豆瓣等常见的国籍前缀：`[日]` `(英)` `（美）` `【法】`。
+     * 去掉豆瓣等常见的国籍前缀：`[日]` `(英)` `（美）` `【美】` `［法］` `〔德〕`。
      */
     public static function cleanAuthor(string $author): string
     {
@@ -78,16 +78,22 @@ final class MetaHit
             return '';
         }
 
+        // 半角 [] () / 全角 （）【】［］〔〕
+        $prefix = '/^(?:\[[^\]]{1,8}\]|\([^)]{1,8}\)|（[^）]{1,8}）|【[^】]{1,8}】|［[^］]{1,8}］|〔[^〕]{1,8}〕)\s*/u';
+
         $parts = preg_split('/\s*[\/、,，&]\s*/u', $author) ?: [$author];
         $out = [];
         foreach ($parts as $part) {
             $part = trim((string)$part);
-            $part = preg_replace(
-                '/^(?:\[[^\]]{1,8}\]|\([^)]{1,8}\)|（[^）]{1,8}）|【[^】]{1,8}】)\s*/u',
-                '',
-                $part
-            ) ?? $part;
-            $part = trim($part);
+            // 连续前缀多剥几次，例如 【美】【英】某某
+            for ($i = 0; $i < 3; $i++) {
+                $next = preg_replace($prefix, '', $part) ?? $part;
+                $next = trim($next);
+                if ($next === $part) {
+                    break;
+                }
+                $part = $next;
+            }
             if ($part !== '') {
                 $out[] = $part;
             }
