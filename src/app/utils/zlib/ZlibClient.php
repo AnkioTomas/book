@@ -186,35 +186,44 @@ final class ZlibClient extends Instance
 
         $cfg = $this->cfg();
         $client = HttpClient::init()
-            ->timeout(120)
+            ->timeout(300)
             ->setHeader('User-Agent', self::USER_AGENT)
-            ->setHeader('Accept', '*/*');
+            ->setHeader('Accept', '*/*')
+            ->setHeader('Referer', ($this->pinnedBase ?: self::SEED_URLS[0]) . '/');
+        // Cookie 用 CURLOPT_COOKIE：跨域跳转到 CDN 时比裸 Header 更稳
         if ($this->hasSession()) {
-            $client->setHeader(
-                'Cookie',
+            $client->setOption(
+                CURLOPT_COOKIE,
                 'remix_userid=' . $cfg['user_id'] . '; remix_userkey=' . $cfg['user_key']
             );
         }
         $origin = $this->originOf($link) ?? '';
         if ($origin !== '' && isset(self::MIRROR_AUTH[$origin])) {
             $client->setHeader('Authorization', 'Basic ' . base64_encode(self::MIRROR_AUTH[$origin]));
+            // 跳转到其它域名时仍带上 Authorization（部分镜像需要）
+            $client->setOption(CURLOPT_UNRESTRICTED_AUTH, true);
         }
+        $client->setOption(CURLOPT_FOLLOWLOCATION, true);
+        $client->setOption(CURLOPT_MAXREDIRS, self::MAX_REDIRECT_HOPS);
 
         try {
             $ok = (new HttpDownloadManager($client))->download($link, $dest);
         } catch (Throwable $e) {
             @unlink($dest);
-            throw new RuntimeException('下载失败: ' . $e->getMessage(), 0, $e);
+            $host = parse_url($link, PHP_URL_HOST) ?: 'unknown';
+            throw new RuntimeException('下载失败(' . $host . '): ' . $e->getMessage(), 0, $e);
         }
         if (!$ok || !is_file($dest) || filesize($dest) < 64) {
+            $size = is_file($dest) ? filesize($dest) : 0;
             @unlink($dest);
-            throw new RuntimeException('下载失败或文件过小');
+            $host = parse_url($link, PHP_URL_HOST) ?: 'unknown';
+            throw new RuntimeException('下载失败或文件过小(' . $host . ', ' . $size . ' bytes)');
         }
 
         $head = (string)file_get_contents($dest, false, null, 0, 256);
         if (stripos($head, '<html') !== false || stripos($head, '<!DOCTYPE') !== false) {
             @unlink($dest);
-            throw new RuntimeException('已达下载限额或返回了网页');
+            throw new RuntimeException('已达下载限额或返回了网页（请检查 Z站账号额度/登录态）');
         }
     }
 

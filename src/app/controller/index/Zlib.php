@@ -13,7 +13,6 @@ use function nova\framework\config;
 use nova\framework\http\Response;
 use nova\plugin\corn\schedule\TaskerAbstract;
 use nova\plugin\corn\schedule\TaskerManager;
-use nova\plugin\corn\schedule\TaskerTime;
 use nova\plugin\login\controller\BaseAPIController;
 use Throwable;
 
@@ -146,10 +145,10 @@ class Zlib extends BaseAPIController
         ]);
     }
 
-    /** 用户触发的一次性后台任务：入 Tasker 调度队列 */
+    /** 用户触发的一次性后台任务：空 cron ≈ 10 秒后执行 */
     private function queueTask(string $name, TaskerAbstract $task): void
     {
         TaskerManager::del($name);
-        TaskerManager::add(TaskerTime::after(1), $task, $name);
+        TaskerManager::add('', $task, $name);
     }
 }

@@ -25,8 +25,6 @@ use nova\framework\core\Text;
 use nova\framework\http\Response;
 use nova\plugin\corn\schedule\TaskerAbstract;
 use nova\plugin\corn\schedule\TaskerManager;
-
-use nova\plugin\corn\schedule\TaskerTime;
 use nova\plugin\tpl\Pjax;
 
 class Book extends ApiController
@@ -974,11 +972,11 @@ class Book extends ApiController
         ]);
     }
 
-    /** 用户触发的一次性后台任务：入 Tasker 调度队列（空 cron = 约 10 秒后执行一次） */
+    /** 用户触发的一次性后台任务：空 cron ≈ 10 秒后执行（勿用 after()，会绑死日历分钟、易漏跑） */
     private function queueTask(string $name, TaskerAbstract $task): void
     {
         TaskerManager::del($name);
-        TaskerManager::add(TaskerTime::after(1), $task, $name);
+        TaskerManager::add('', $task, $name);
     }
 
 }
