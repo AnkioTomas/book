@@ -17,6 +17,7 @@ use app\task\OrganizeTask;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\ProgressManager;
 use app\utils\BookOrganizer\Organizer;
+use app\utils\meta\MetaHit;
 use nova\framework\core\Context;
 
 use nova\framework\core\File;
@@ -950,6 +951,67 @@ class Book extends ApiController
                 'deletedCount' => $deletedCount,
                 'deletedBooks' => $deletedBooks
             ]
+        ]);
+    }
+
+    /**
+     * 清理作者名中国籍前缀：`[日]` `(英)` `（美）` `【法】`。
+     * POST /book/cleanAuthors  ids=json array（可选；空则处理全库）
+     */
+    public function cleanAuthors(): Response
+    {
+        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
+        $dao = BookDao::getInstance();
+        if ($ids === []) {
+            $books = $dao->select()->commit();
+        } else {
+            $books = [];
+            foreach ($ids as $id) {
+                $book = $dao->getById($id);
+                if ($book !== null) {
+                    $books[] = $book;
+                }
+            }
+        }
+
+        $updated = 0;
+        $samples = [];
+        foreach ($books as $book) {
+            $before = (string)$book->author;
+            $after = MetaHit::cleanAuthor($before);
+            if ($after === $before) {
+                continue;
+            }
+            $book->author = $after;
+            $book->update_at = time() * 1000;
+            if (!$dao->updateModel($book)) {
+                continue;
+            }
+            $updated++;
+            if (count($samples) < 20) {
+                $samples[] = [
+                    'id' => (int)$book->id,
+                    'bookName' => (string)$book->bookName,
+                    'before' => $before,
+                    'after' => $after,
+                ];
+            }
+        }
+
+        if ($updated > 0) {
+            $dao->syncBooks();
+        }
+
+        $scope = $ids === [] ? '全库' : ('选中的 ' . count($books) . ' 本');
+        return Response::asJson([
+            'code' => 200,
+            'msg' => $updated > 0
+                ? "已清理 {$scope} 中 {$updated} 本的作者国籍前缀"
+                : ($ids === [] ? '全库作者名无需清理' : '选中书籍的作者名无需清理'),
+            'data' => [
+                'updated' => $updated,
+                'samples' => $samples,
+            ],
         ]);
     }
 

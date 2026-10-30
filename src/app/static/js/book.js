@@ -525,6 +525,32 @@ window.pageOnLoad = function () {
         });
         $('#btnSync').on('click', syncWebdav);
 
+        $('#btnCleanAuthors').on('click', function () {
+            var selected = cardView.getSelectedRows();
+            var hasSel = selected && selected.length;
+            var tip = hasSel
+                ? '将对选中的 ' + selected.length + ' 本去掉作者名中的国籍前缀，例如 [日]、（美）、(英)、【法】。'
+                : '未选中书籍时，将对书库全部书籍清理作者国籍前缀，例如 [日]、（美）、(英)、【法】。';
+            confirm(tip, '清理作者国籍前缀', function () {
+                var payload = hasSel
+                    ? { ids: JSON.stringify(selected.map(function (b) { return b.id; })) }
+                    : {};
+                $("body").showLoading("正在清理作者名...");
+                $.request.postForm('/index/book/cleanAuthors', payload, function (res) {
+                    $("body").closeLoading();
+                    if (res.code === 200) {
+                        $.toaster.success(res.msg);
+                        cardView.reload(true);
+                    } else {
+                        $.toaster.error(res.msg || '清理失败');
+                    }
+                }, function () {
+                    $("body").closeLoading();
+                    $.toaster.error('清理请求失败');
+                });
+            });
+        });
+
         $('#btnRemoveDuplicates').on('click', function () {
             confirm(
                 '确定要删除重复书籍吗？<br><small class="text-on-surface-variant">将保留相同书名+作者中最后导入的版本</small>',
