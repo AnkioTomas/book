@@ -175,24 +175,23 @@ class BookDao extends Dao
                        ->where(['category != ""'])
                        ->commit(object: false);
 
-        // category 可能包含多个标签，需要拆分
-        $tags = [];
+        // 不用标签做数组键。纯数字标签当键会被收成 int，strict 下 rawurlencode 直接炸。
+        $list = [];
         $hasFinished = false;
         foreach ($result as $row) {
             $parts = preg_split('/[\n\s]+/', trim($row['category']));
             foreach ($parts as $part) {
                 $clean = trim($part);
-                if ($clean === '') {
+                if ($clean === '' || in_array($clean, $list, true)) {
                     continue;
                 }
                 if ($clean === BookModel::TAG_FINISHED) {
                     $hasFinished = true;
                     continue;
                 }
-                $tags[$clean] = true;
+                $list[] = $clean;
             }
         }
-        $list = array_keys($tags);
         if ($hasFinished) {
             array_unshift($list, BookModel::TAG_FINISHED);
         }
