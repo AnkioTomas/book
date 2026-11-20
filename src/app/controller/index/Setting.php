@@ -12,9 +12,9 @@ use nova\plugin\login\controller\BaseAPIController;
 
 /**
  * 书库行为开关（与 AI 服务商配置无关）
- * GET/POST /index/booksetting/bookConfig
+ * GET/POST /index/setting/bookConfig
  */
-class BookSetting extends BaseAPIController
+class Setting extends BaseAPIController
 {
     public function bookConfig(): Response
     {

@@ -3,5 +3,5 @@ window.pageLoadFiles = [
 ];
 
 window.pageOnLoad = function () {
-    $.form.manage('/index/booksetting/bookConfig', '#bookForm');
+    $.form.manage('/index/setting/bookConfig', '#bookForm');
 };
