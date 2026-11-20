@@ -259,25 +259,7 @@ if (!-e $request_filename) {
 
 ---
 
-## 十一、可选：Calibre 封面微服务
-
-非 EPUB（MOBI / AZW / AZW3）封面提取需要 `ebook-service`：
-
-1. 宝塔 **软件商店** 安装 **Docker 管理器**（若尚未安装）。
-2. SSH 执行：
-
-   ```bash
-   cd /www/wwwroot/book.example.com/src/calibre/ebook-service
-   docker compose up -d
-   ```
-
-3. Book 后台 → **Calibre 配置** → 填入 `http://127.0.0.1:8080` → **测试连接**。
-
-不需要 MOBI/AZW 封面能力可跳过。
-
----
-
-## 十二、常见问题
+## 十一、常见问题
 
 **404 / No input file specified**
 

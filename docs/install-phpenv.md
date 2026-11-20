@@ -192,25 +192,7 @@ Book 使用 Nova 框架的单入口路由，必须配置重写规则。
 
 ---
 
-## 九、可选：Calibre 封面微服务
-
-非 EPUB 格式（MOBI / AZW / AZW3）的封面提取需要 Calibre 微服务。Windows 本机可选：
-
-1. 安装 Docker Desktop for Windows。
-2. 在项目目录执行：
-
-   ```bash
-   cd src/calibre/ebook-service
-   docker compose up -d
-   ```
-
-3. 登录 Book 后台 → **Calibre 配置**，填入 `http://127.0.0.1:8080` 并测试连接。
-
-不需要处理 MOBI/AZW 封面时可跳过。
-
----
-
-## 十、常见问题
+## 九、常见问题
 
 **打开网站 404 / No input file specified**
 

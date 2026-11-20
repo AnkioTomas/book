@@ -70,11 +70,6 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/img_6.png" width="900" /><br/>
-  <sub><b>Calibre 配置</b> — 微服务地址设置与连接测试</sub>
-</p>
-
-<p align="center">
   <img src="docs/screenshots/img_7.png" width="900" /><br/>
   <sub><b>后台任务</b> — WebDAV 同步日志，增量同步全过程可追溯</sub>
 </p>
@@ -95,7 +90,7 @@
 | Web 服务器 | Nginx 或 Apache（必须支持 URL 重写）；单容器镜像用内置 Workerman，Docker Compose 包为 Nginx + PHP-FPM，Windows 绿色包自带 Nginx |
 | WebDAV | 坚果云 / Nextcloud / 群晖 / 阿里云盘网关，任选其一 |
 | 静读天下 App | Android，支持 WebDAV 同步的版本即可 |
-| Docker（可选） | 整站 Docker 部署，或仅跑 Calibre `ebook-service` 做 MOBI/AZW 封面提取 |
+| Docker（可选） | 整站 Docker 部署 |
 
 ---
 
@@ -166,23 +161,6 @@ docker run -d --name book -p 9528:9528 -v /path/to/book-data:/data book
 | Nginx / Apache | Web 服务器，需 URL 重写 |
 
 > Windows 绿色包 / Docker 包已自带运行时，按对应教程启动即可。
-
-### 可选
-
-- **`ebook-service` 容器**：位于 `src/calibre/ebook-service/`，封装 Calibre CLI 提供 HTTP 接口，用于：
-  - MOBI / AZW / AZW3 等非 EPUB 格式的封面提取
-  - 格式转换（如需要）
-
-  启动方式：
-
-  ```bash
-  cd src/calibre/ebook-service
-  docker compose up -d
-  ```
-
-  服务监听 `8080` 端口，安装完成后可在系统「Calibre 配置」页面填入地址并测试连接。
-
-  不需要 Calibre 能力时，**这个容器可以完全不装**，系统只会失去非 EPUB 格式的封面提取功能。
 
 ---
 
@@ -458,8 +436,7 @@ Authorization: Bearer <64 位十六进制 Token>
 - 查看 `src/runtime/log/` 是否记录了密码错误 / 验证码错误
 
 **封面提取失败：**
-- 非 EPUB 格式需要 `ebook-service` 容器
-- 在系统「Calibre 配置」页面测试连接
+- 目前内置解析 EPUB / MOBI / AZW / AZW3 的封面，PDF 等其他格式暂不支持，可在书籍详情里手动设置封面
 
 **AI 功能不工作：**
 - 确认 `config.php` 中 `ai.currentProvider` 和对应的 `api_key`、`api_url`、`api_model` 都已填写
@@ -479,14 +456,12 @@ book/
 ├── src/
 │   ├── app/
 │   │   ├── ai/                 # AI Agent、工具集、任务（元数据填充、分类）
-│   │   ├── controller/         # 控制器（书籍、上传、豆瓣、Calibre、阅读统计）
+│   │   ├── controller/         # 控制器（书籍、上传、豆瓣、阅读统计）
 │   │   ├── database/           # 数据模型与 DAO（Book、ReadingProgress、PageStat）
 │   │   ├── task/               # 后台任务（同步、封面刮削、AI 识别/分类）
 │   │   ├── utils/              # 工具类（豆瓣、BookManager、ReadingStats、MoonReaderImport、安装向导）
 │   │   ├── static/             # 前端资源（JS、Foliate 阅读器、UI 组件）
 │   │   └── Application.php     # 应用入口，路由注册，定时任务注册
-│   ├── calibre/
-│   │   └── ebook-service/      # 可选 Calibre 微服务（docker compose）
 │   ├── nova/                   # Nova 框架 + 插件（submodule）
 │   ├── public/                 # Web 入口，Nginx root 指向这里
 │   ├── runtime/                # 缓存、日志、admin_password.txt
@@ -513,7 +488,6 @@ book/
 - **前端**：MDUI 2.x + Foliate.js（在线阅读器）
 - **AI**：OpenRouter / ChatGPT（通过 nova-ai 插件，Agent + Tool Calling 架构）
 - **存储**：WebDAV（坚果云 / Nextcloud / 群晖 ……）
-- **可选**：Calibre（封装在 `ebook-service` Python 微服务里）
 
 ---
 

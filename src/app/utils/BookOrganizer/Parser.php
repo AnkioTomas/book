@@ -5,12 +5,8 @@ declare(strict_types=1);
 namespace app\utils\BookOrganizer;
 
 use app\database\model\BookModel;
-use app\utils\EbookServiceClient;
-
-use function nova\framework\config;
 
 use nova\framework\core\File;
-use nova\framework\core\Logger;
 
 class Parser
 {
@@ -120,48 +116,12 @@ class Parser
     }
 
     /**
-     * 读取 EPUB 的 OPF 元数据（dc:title / dc:creator）。非 EPUB、无 zip 扩展或解析失败时返回空数组。
-     * @return array{title?:string, author?:string}
+     * 从书籍文件本身读取元数据（EPUB / MOBI / AZW3），读不到时返回空数组。
+     * @return array{title?:string, author?:string, publisher?:string, description?:string, language?:string, isbn?:string, year?:string}
      */
     public static function epubMeta(string $bookPath, string $filename = ''): array
     {
-        $ext = strtolower(pathinfo($filename !== '' ? $filename : $bookPath, PATHINFO_EXTENSION));
-        if ($ext !== 'epub' || !class_exists(\ZipArchive::class) || !is_file($bookPath)) {
-            return [];
-        }
-        $zip = new \ZipArchive();
-        if ($zip->open($bookPath) !== true) {
-            return [];
-        }
-        try {
-            $container = $zip->getFromName('META-INF/container.xml');
-            if ($container === false || !preg_match('/full-path\s*=\s*"([^"]+)"/i', $container, $m)) {
-                return [];
-            }
-            $opf = $zip->getFromName($m[1]);
-            if ($opf === false) {
-                return [];
-            }
-            $out = [];
-            if (preg_match('/<dc:title[^>]*>(.*?)<\/dc:title>/is', $opf, $t)) {
-                $title = trim(html_entity_decode(strip_tags($t[1]), ENT_QUOTES | ENT_XML1, 'UTF-8'));
-                if ($title !== '') {
-                    $out['title'] = $title;
-                }
-            }
-            if (preg_match('/<dc:creator[^>]*>(.*?)<\/dc:creator>/is', $opf, $c)) {
-                $author = trim(html_entity_decode(strip_tags($c[1]), ENT_QUOTES | ENT_XML1, 'UTF-8'));
-                if ($author !== '' && !in_array(mb_strtolower($author), ['unknown', '未知', 'anonymous'], true)) {
-                    $out['author'] = $author;
-                }
-            }
-            return $out;
-        } catch (\Throwable $e) {
-            Logger::debug('[Parser] 读取 OPF 失败: ' . $e->getMessage());
-            return [];
-        } finally {
-            $zip->close();
-        }
+        return EbookMeta::read($bookPath, $filename);
     }
 
     public static function cover(string $bookPath, BookModel $model): string
@@ -170,13 +130,14 @@ class Parser
         $path = RUNTIME_PATH . DS. "images" . DS ;
         File::mkdir($path);
         $file = $path . $key . ".png";
-        $client = new EbookServiceClient(config('calibre'));
-        try {
-            $client->extractCoverToFile($bookPath, $file);
-            return $file;
-        } catch (\RuntimeException $exception) {
-            Logger::debug($exception->getMessage());
-            return '';
+        if (is_file($file)) {
+            File::del($file);
         }
+
+        if (EbookMeta::extractCover($bookPath, $file, $model->filename)) {
+            return $file;
+        }
+
+        return '';
     }
 }

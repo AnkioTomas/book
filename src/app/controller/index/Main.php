@@ -214,11 +214,6 @@ class Main extends BaseViewController
         return $this->viewResponse->asTpl('annotations');
     }
 
-    public function calibre(): Response
-    {
-        return $this->viewResponse->asTpl();
-    }
-
     public function bookSetting(): Response
     {
         return $this->viewResponse->asTpl();
@@ -392,12 +387,6 @@ class Main extends BaseViewController
                         'title' => 'Z站',
                         'icon' => 'cloud_download',
                         'url' => '/index/main/zlibSetting',
-                        'pjax' => true,
-                    ],
-                    [
-                        'title' => 'Calibre',
-                        'icon' => 'electrical_services',
-                        'url' => '/index/main/calibre',
                         'pjax' => true,
                     ],
                 ],

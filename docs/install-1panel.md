@@ -236,27 +236,7 @@ chmod -R 755 runtime uploads
 
 ---
 
-## 十、可选：Calibre 封面微服务
-
-非 EPUB 格式封面提取需要 `ebook-service`：
-
-```bash
-cd /opt/1panel/www/sites/book/index/src/calibre/ebook-service
-docker compose up -d
-```
-
-1Panel 服务器需已安装 Docker。服务默认监听 `8080`。
-
-在 Book 后台 → **Calibre 配置**：
-
-- 若 PHP 与 Docker 在同一台机器：`http://127.0.0.1:8080`
-- 若在 1Panel Docker 网络内互通：填容器服务名或内网 IP（以实际 `docker compose ps` 为准）
-
-点击 **测试连接** 确认可用。
-
----
-
-## 十一、常见问题
+## 十、常见问题
 
 **访问首页 404**
 

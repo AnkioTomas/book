@@ -89,20 +89,7 @@
 
 ---
 
-## 六、可选：Calibre 封面微服务
-
-非 EPUB 封面提取需要 Docker Desktop：
-
-```bat
-cd tinyphp\www\calibre\ebook-service
-docker compose up -d
-```
-
-后台 → **Calibre 配置** → `http://127.0.0.1:8080` → 测试连接。
-
----
-
-## 七、常见问题
+## 六、常见问题
 
 **打开 localhost 无法访问**
 

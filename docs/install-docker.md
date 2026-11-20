@@ -123,20 +123,7 @@ docker compose down
 
 ---
 
-## 五、可选：Calibre 封面微服务
-
-非 EPUB（MOBI / AZW / AZW3）封面提取需要另起 `ebook-service`：
-
-```bash
-cd src/calibre/ebook-service
-docker compose up -d
-```
-
-在 Book 后台 → **Calibre 配置** 填写可达地址（同机常见 `http://127.0.0.1:8080` 或 compose 网络内服务名），点 **测试连接**。
-
----
-
-## 六、常见问题
+## 五、常见问题
 
 **9528 端口冲突**
 
