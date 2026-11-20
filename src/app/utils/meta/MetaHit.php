@@ -10,7 +10,7 @@ namespace app\utils\meta;
 final class MetaHit
 {
     /**
-     * @param  array<string, mixed> $row
+     * @param  array<string, mixed>      $row
      * @return array<string, mixed>|null
      */
     public static function normalize(array $row, string $source): ?array

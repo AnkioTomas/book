@@ -114,7 +114,7 @@ final class ZlibClient extends Instance
     }
 
     /**
-     * @param array{order?: string, extension?: string} $filters
+     * @param  array{order?: string, extension?: string} $filters
      * @return list<array<string, mixed>>
      */
     public function search(string $query, int $page = 1, int $limit = 20, string $language = '', array $filters = []): array
@@ -310,7 +310,7 @@ final class ZlibClient extends Instance
     }
 
     /**
-     * @param array<string, scalar>|null $form
+     * @param  array<string, scalar>|null $form
      * @return array<string, mixed>
      */
     private function jsonRequest(string $method, string $path, ?array $form, bool $withSession, bool $serial): array
@@ -346,8 +346,8 @@ final class ZlibClient extends Instance
     }
 
     /**
-     * @param list<string> $bases
-     * @param array<string, scalar>|null $form
+     * @param  list<string>               $bases
+     * @param  array<string, scalar>|null $form
      * @return array<string, mixed>
      */
     private function raceJson(string $method, string $path, ?array $form, bool $withSession, array $bases): array
@@ -427,7 +427,7 @@ final class ZlibClient extends Instance
     }
 
     /**
-     * @param array<string, scalar>|null $form
+     * @param  array<string, scalar>|null $form
      * @return array<string, mixed>
      */
     private function requestOnce(string $base, string $method, string $path, ?array $form, bool $withSession): array
@@ -443,7 +443,7 @@ final class ZlibClient extends Instance
     /**
      * 手动跟随重定向（跨主机钉住新 origin）。
      *
-     * @param array<string, scalar>|null $form
+     * @param  array<string, scalar>|null $form
      * @return array<string, mixed>
      */
     private function parseResponse(
@@ -769,7 +769,7 @@ final class ZlibClient extends Instance
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>          $data
      * @return array{0: ?string, 1: ?string}
      */
     private function sessionOf(array $data): array
@@ -794,7 +794,7 @@ final class ZlibClient extends Instance
     }
 
     /**
-     * @param array<string, mixed> $wire
+     * @param  array<string, mixed>       $wire
      * @return list<array<string, mixed>>
      */
     private function mapList(array $wire): array
@@ -820,7 +820,7 @@ final class ZlibClient extends Instance
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param  array<string, mixed>      $row
      * @return array<string, mixed>|null
      */
     private function mapBook(array $row): ?array
