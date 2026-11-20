@@ -116,7 +116,7 @@ class Parser
     }
 
     /**
-     * 从书籍文件本身读取元数据（EPUB / MOBI / AZW3），读不到时返回空数组。
+     * 从书籍文件本身读取元数据（EPUB / MOBI / AZW3 / PDF），读不到时返回空数组。
      * @return array{title?:string, author?:string, publisher?:string, description?:string, language?:string, isbn?:string, year?:string}
      */
     public static function epubMeta(string $bookPath, string $filename = ''): array

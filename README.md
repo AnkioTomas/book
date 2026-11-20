@@ -436,7 +436,7 @@ Authorization: Bearer <64 位十六进制 Token>
 - 查看 `src/runtime/log/` 是否记录了密码错误 / 验证码错误
 
 **封面提取失败：**
-- 目前内置解析 EPUB / MOBI / AZW / AZW3 的封面，PDF 等其他格式暂不支持，可在书籍详情里手动设置封面
+- 内置解析 EPUB / MOBI / AZW / AZW3 / PDF 的封面；PDF 取第一张内嵌大图（JPEG 或 8 位 RGB/灰度图），纯文字 PDF 没有内嵌图时使用默认封面，也可在书籍详情里手动设置
 
 **AI 功能不工作：**
 - 确认 `config.php` 中 `ai.currentProvider` 和对应的 `api_key`、`api_url`、`api_model` 都已填写
