@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\task;
 
 use app\database\dao\BookDao;
+use app\database\model\BookModel;
 use app\utils\BookManager\BookManager;
 use app\utils\BookManager\CoverManager;
 use app\utils\BookOrganizer\Parser;
@@ -51,33 +52,82 @@ class CoverScrapeTask extends TaskerAbstract
             $pos = '（' . ($index + 1) . '/' . $total . '）《' . $title . '》';
             TaskLogger::log($pos . '开始刮削…');
 
-            $tempPath = RUNTIME_PATH . DS . 'temp' . DS . $book->filename;
-            if (!BookManager::getInstance()->downloadBook($book->filename, $tempPath)) {
-                $fail++;
-                TaskLogger::log($pos . '下载书籍失败', 'error');
-                continue;
-            }
-
-            $coverPath = Parser::cover($tempPath, $book);
-            if (empty($coverPath)) {
-                File::del($tempPath);
-                $fail++;
-                TaskLogger::log($pos . '提取封面失败', 'warn');
-                continue;
-            }
-
-            if (CoverManager::getInstance()->uploadCover($coverPath, $book->filename)) {
+            $error = self::scrapeOne($book);
+            if ($error === null) {
                 $ok++;
                 TaskLogger::log($pos . '刮削成功');
             } else {
                 $fail++;
-                TaskLogger::log($pos . '上传封面失败', 'error');
+                TaskLogger::log($pos . $error, 'error');
             }
-            File::del($tempPath);
         }
 
         $dao->syncBooks();
         TaskLogger::log("刮削完成：成功 {$ok}，失败 {$fail}");
+    }
+
+    /**
+     * 从书籍文档元数据提取封面并上传，成功返回 null，失败返回原因。
+     */
+    public static function scrapeOne(object $book): ?string
+    {
+        $tempPath = RUNTIME_PATH . DS . 'temp' . DS . $book->filename;
+        if (!BookManager::getInstance()->downloadBook($book->filename, $tempPath)) {
+            return '下载书籍失败';
+        }
+
+        try {
+            $coverPath = Parser::cover($tempPath, $book);
+            if (empty($coverPath)) {
+                return '文档中没有可提取的封面';
+            }
+            return CoverManager::getInstance()->uploadCover($coverPath, $book->filename) ? null : '上传封面失败';
+        } finally {
+            File::del($tempPath);
+        }
+    }
+
+    /**
+     * 从文档元数据同步书名/作者/简介和封面（同步执行）。
+     * 返回 ['changes' => 变更描述列表, 'error' => 失败原因|null]；元数据与封面都没取到才算失败。
+     */
+    public static function syncFromDocument(BookModel $book): array
+    {
+        $tempPath = RUNTIME_PATH . DS . 'temp' . DS . $book->filename;
+        if (!BookManager::getInstance()->downloadBook($book->filename, $tempPath)) {
+            return ['changes' => [], 'error' => '下载书籍失败'];
+        }
+
+        $changes = [];
+        try {
+            $meta = Parser::epubMeta($tempPath, $book->filename);
+            $labels = ['title' => ['bookName', '书名'], 'author' => ['author', '作者'], 'description' => ['description', '简介']];
+            foreach ($labels as $key => [$field, $label]) {
+                $value = trim((string)($meta[$key] ?? ''));
+                if ($value !== '' && $value !== $book->$field) {
+                    $changes[] = $key === 'description'
+                        ? "{$label}已更新"
+                        : "{$label}：" . ($book->$field !== '' ? $book->$field : '空') . ' → ' . $value;
+                    $book->$field = $value;
+                }
+            }
+
+            $coverPath = Parser::cover($tempPath, $book);
+            if ($coverPath !== '' && CoverManager::getInstance()->uploadCover($coverPath, $book->filename)) {
+                $changes[] = '封面已更新';
+            }
+        } finally {
+            File::del($tempPath);
+        }
+
+        if ($changes === [] && $meta === []) {
+            return ['changes' => [], 'error' => '文档中没有可读取的元数据或封面'];
+        }
+        if ($changes !== []) {
+            $book->update_at = time() * 1000;
+            BookDao::getInstance()->updateModel($book);
+        }
+        return ['changes' => $changes, 'error' => null];
     }
 
     public function onStop(): void

@@ -118,12 +118,13 @@ class BookCard extends HTMLElement {
     }
 
     static formatRow(row) {
+        // 封面优先级由服务端 /webdav 决定（本地缓存 → WebDAV → coverUrl → 默认封面）；
+        // 带上 update_at 作版本号，封面更新后才不会命中浏览器旧缓存
         var webdav = '/webdav/' + encodeURIComponent(row.filename || "");
-        var cover = row.coverUrl ? '/proxy/' + encodeURIComponent(row.coverUrl) : webdav;
+        var cover = webdav + '?v=' + (row.update_at || 0);
         var readAttr = row.hasReadTag ? ' read="1"' : '';
         return '<book-card class="nova-lift"'
             + ' cover="' + $.escapeHtml(cover) + '"'
-            + ' fallback="' + $.escapeHtml(webdav) + '"'
             + ' title="' + $.escapeHtml(row.bookName || "未命名书籍") + '"'
             + ' author="' + $.escapeHtml(row.author || "未知作者") + '"'
             + ' description="' + $.escapeHtml(row.description || "") + '"' + readAttr

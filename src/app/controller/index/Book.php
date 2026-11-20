@@ -15,6 +15,7 @@ use app\task\AiIdentifyTask;
 use app\task\CoverScrapeTask;
 use app\task\OrganizeTask;
 use app\utils\BookManager\BookManager;
+use app\utils\BookManager\CoverManager;
 use app\utils\BookManager\ProgressManager;
 use app\utils\BookOrganizer\Organizer;
 use app\utils\meta\MetaHit;
@@ -561,10 +562,16 @@ class Book extends ApiController
             return Response::asJson(['code' => 404, 'msg' => '书籍不存在']);
         }
 
+        $oldCoverUrl = $book->coverUrl;
         $this->applyEditableFields($book, $data);
         $book->update_at = time() * 1000;
 
         if (BookDao::getInstance()->updateModel($book)) {
+            // 封面地址变了就立即下载并覆盖 WebDAV 封面，否则 /webdav 优先返回的仍是旧封面
+            if ($book->coverUrl !== '' && $book->coverUrl !== $oldCoverUrl
+                && CoverManager::getInstance()->uploadCover($book->coverUrl, $book->filename)) {
+                Context::instance()->cache->delete("coverUrl/{$book->coverUrl}");
+            }
             BookDao::getInstance()->syncBooks();
             return Response::asJson(['code' => 200, 'msg' => '更新成功']);
         }
@@ -1031,6 +1038,32 @@ class Book extends ApiController
         return Response::asJson([
             'code' => 200,
             'msg'  => '已提交后台封面刮削任务（' . count($ids) . ' 本），可在任务面板查看进度',
+        ]);
+    }
+
+    /**
+     * 从文档元数据同步单本封面（同步执行）
+     */
+    public function syncCover(): Response
+    {
+        $ids = $this->parseIds((string)$this->request->post('ids', '[]'));
+        $book = count($ids) === 1 ? BookDao::getInstance()->getById($ids[0]) : null;
+        if ($book === null) {
+            return Response::asJson(['code' => 400, 'msg' => '书籍不存在']);
+        }
+
+        $result = CoverScrapeTask::syncFromDocument($book);
+        if ($result['error'] !== null) {
+            return Response::asJson(['code' => 500, 'msg' => $result['error']]);
+        }
+        if ($result['changes'] === []) {
+            return Response::asJson(['code' => 200, 'msg' => '文档元数据与当前信息一致，无需更新', 'data' => ['changes' => []]]);
+        }
+        BookDao::getInstance()->syncBooks();
+        return Response::asJson([
+            'code' => 200,
+            'msg' => '已同步：' . implode('；', $result['changes']),
+            'data' => ['changes' => $result['changes']],
         ]);
     }
 

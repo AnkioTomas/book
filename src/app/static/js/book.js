@@ -36,8 +36,15 @@ window.pageOnLoad = function () {
     var bookCtxCleanup = null;
     var editExtrasReady = false;
 
+    var editingBook = null;
+
     function coverPreviewSrc(url) {
         url = String(url || '').trim();
+        var book = editingBook;
+        // 未改动封面 URL 时预览服务端实际封面（本地缓存 → WebDAV → URL），与书架一致
+        if (book && book.filename && (!url || url === String(book.coverUrl || ''))) {
+            return '/webdav/' + encodeURIComponent(book.filename) + '?v=' + (book.update_at || 0);
+        }
         if (!url) return '';
         if (url.indexOf('/proxy/') === 0 || url.indexOf('/webdav/') === 0 || url.indexOf('data:') === 0) {
             return url;
@@ -279,6 +286,23 @@ window.pageOnLoad = function () {
         });
     }
 
+    // 单本同步执行，直接返回结果
+    function syncCover(book) {
+        $("body").showLoading('正在从文档元数据同步封面…');
+        $.request.postForm('/index/book/syncCover', { ids: bookIds([book]) }, function (res) {
+            $("body").closeLoading();
+            if (res.code === 200) {
+                $.toaster.success(res.msg);
+                cardView.reload();
+            } else {
+                $.toaster.error(res.msg || '同步失败');
+            }
+        }, function () {
+            $("body").closeLoading();
+            $.toaster.error('同步失败');
+        });
+    }
+
     function batchReadState(books, read) {
         batchRequest('/index/book/batchRead', { ids: bookIds(books), read: read ? '1' : '0' }, read ? '正在标记已读…' : '正在标记未读…');
     }
@@ -394,6 +418,7 @@ window.pageOnLoad = function () {
                     text: '编辑',
                     icon: 'edit',
                     action: function () {
+                        editingBook = book;
                         editDialog.open();
                         editDialog.setValue(book);
                         var fav = document.getElementById('editFavorite');
@@ -422,7 +447,7 @@ window.pageOnLoad = function () {
                     }
                 },
                 { type: 'divider' },
-                { text: '刮削封面', icon: 'image', action: function () { batchScrape([book]); } },
+                { text: '从文档元数据同步', icon: 'sync', action: function () { syncCover(book); } },
                 {
                     text: book.hasReadTag ? '标记未读' : '标记已读',
                     icon: book.hasReadTag ? 'radio_button_unchecked' : 'task_alt',
