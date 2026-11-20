@@ -12,6 +12,29 @@ use nova\plugin\http\HttpException;
 
 class Douban
 {
+    /**
+     * 豆瓣封面优先取大图（l），没有再退回小图（s）
+     *
+     * @return string[] 按优先级排列的候选地址
+     */
+    public static function coverCandidates(string $uri): array
+    {
+        if (!preg_match('#/view/subject/[sml]/public/#', $uri)) {
+            return [$uri];
+        }
+        $list = [];
+        foreach (['l', 'm', 's'] as $size) {
+            $list[] = preg_replace('#/view/subject/[sml]/public/#', "/view/subject/{$size}/public/", $uri);
+        }
+        // 原地址若本身就是更小的尺寸，也要保留为最后兜底
+        return array_values(array_unique(array_merge($list, [$uri])));
+    }
+
+    public static function largeCover(?string $uri): string
+    {
+        return $uri ? self::coverCandidates($uri)[0] : '';
+    }
+
     public static function download($uri): string
     {
         $uri = urldecode($uri);
@@ -31,27 +54,30 @@ class Douban
             return '';
         }
 
-        try {
-            $client = HttpClient::init()
-                ->timeout(15)
-                ->setHeader('User-Agent', self::getRandomUserAgent())
-                ->setHeader('X-Forwarded-For', self::getRandomIP())
-                ->setHeader("Referer", $uri)
-                ->send($uri);
-        } catch (HttpException $e) {
-            Logger::warning("Douban download failed: {$uri} : " . $e->getMessage());
-            $cache->set($failKey, true, 600);
-            return '';
+        foreach (self::coverCandidates($uri) as $candidate) {
+            try {
+                $client = HttpClient::init()
+                    ->timeout(15)
+                    ->setHeader('User-Agent', self::getRandomUserAgent())
+                    ->setHeader('X-Forwarded-For', self::getRandomIP())
+                    ->setHeader("Referer", $candidate)
+                    ->send($candidate);
+            } catch (HttpException $e) {
+                Logger::warning("Douban download failed: {$candidate} : " . $e->getMessage());
+                continue;
+            }
+
+            if ($client->getHttpCode() !== 200) {
+                Logger::warning("Douban download failed: {$candidate} : HTTP " . $client->getHttpCode());
+                continue;
+            }
+
+            File::write($file, $client->getBody());
+            return $file;
         }
 
-        if ($client->getHttpCode() !== 200) {
-            Logger::warning("Douban download failed: {$uri} : HTTP " . $client->getHttpCode());
-            $cache->set($failKey, true, 600);
-            return '';
-        }
-
-        File::write($file, $client->getBody());
-        return $file;
+        $cache->set($failKey, true, 600);
+        return '';
     }
 
     /**

@@ -165,7 +165,7 @@ class DoubanSearch extends Instance
         $info = $this->parsePublishInfo($subjectCast ? $subjectCast->textContent : '');
 
         $coverNode = $xpath->query(".//div[@class='pic']//img", $result)->item(0);
-        $coverUrl = $coverNode?->getAttribute('src');
+        $coverUrl = Douban::largeCover($coverNode?->getAttribute('src'));
 
         $ratingNode = $xpath->query(".//div[@class='rating-info']//span[@class='rating_nums']", $result)->item(0);
         $rating = $ratingNode ? trim($ratingNode->textContent) : null;
