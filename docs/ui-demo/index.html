@@ -249,7 +249,6 @@
           </div>
         </mdui-collapse-item>
       </mdui-collapse>
-      <mdui-list-item rounded icon="tune" data-page="calibre">书库与 Calibre</mdui-list-item>
       <mdui-collapse>
         <mdui-collapse-item value="system">
           <mdui-list-item slot="header" rounded icon="settings">
@@ -422,21 +421,6 @@
                 </mdui-card>
               </div>`).join("")}
           </div>
-        </div>`,
-    },
-    calibre: {
-      title: "书库与 Calibre",
-      html: () => `
-        <div class="nova-page-enter" style="max-width:40rem">
-          <div class="headline-small mb-2">书库与 Calibre</div>
-          <p class="body-medium text-on-surface-variant mb-4">设置页保持表单密度，壳层负责气质，不在这里堆装饰。</p>
-          <mdui-card variant="filled" class="p-4">
-            <mdui-text-field label="Calibre Content Server" value="http://127.0.0.1:8080" class="mb-3"></mdui-text-field>
-            <mdui-checkbox checked>上传后自动刮削元数据</mdui-checkbox>
-            <div class="mt-3">
-              <mdui-button icon="save">保存</mdui-button>
-            </div>
-          </mdui-card>
         </div>`,
     },
   };
