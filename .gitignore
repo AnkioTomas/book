@@ -7,3 +7,4 @@ src/config.php.tmp.*
 /dist
 .idea/
 .php-cs-fixer.cache
+src/config/

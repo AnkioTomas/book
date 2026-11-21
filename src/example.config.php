@@ -10,7 +10,7 @@ return array(
     array(
         0 => '0.0.0.0',
     ),
-    'version' => '1.0.9',
+    'version' => '1.2.11',
     'framework_start' =>
     array(
         0 => 'nova\\plugin\\installer\\InstallerManager',
