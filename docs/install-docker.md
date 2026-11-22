@@ -20,8 +20,8 @@ docker run -d --name book \
 浏览器打开 `http://<NAS地址>:9528`，按安装向导完成配置（见「四、安装向导」）。
 
 - **端口**：容器内固定 `9528`，主机端口可以随意映射（例如 `-p 8080:9528`）。
-- **数据目录** `/data`：`config.php`、`runtime/`（SQLite 库、缓存、日志）、`uploads/`（上传的书）全部在这里。升级时删除容器、拉取新镜像、挂载同一目录重建即可，配置和数据不会丢。
-- **数据库**：默认 SQLite；镜像已包含 `pdo_mysql`，也可以连接外部 MySQL。
+- **数据目录** `/data`：`config.php`、`config/`（拆分节点配置）、`runtime/`（SQLite 库、缓存、日志）、`uploads/`（上传的书）全部在这里。升级时删除容器、拉取新镜像、挂载同一目录重建即可，配置和数据不会丢。
+- **数据库**：默认 SQLite；镜像已包含 `pdo_sqlite` 与 `pdo_mysql`，也可以连接外部 MySQL。
 - **升级**：请拉取新版本镜像重建容器，不要使用后台的「在线更新」。在线更新只会改动容器内的代码，重建容器后就会还原。
 
 unRAID 用户在 Docker 页面「Add Container」：Repository 填 `ghcr.io/ankiotomas/book:latest`，添加一个 Port（Container Port `9528`）和一个 Path（Container Path `/data`，Host Path 例如 `/mnt/user/appdata/book`）。

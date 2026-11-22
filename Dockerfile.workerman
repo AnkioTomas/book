@@ -4,18 +4,20 @@ RUN apk add --no-cache freetype libjpeg-turbo libpng libzip \
     && apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS freetype-dev libjpeg-turbo-dev libpng-dev libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" gd opcache zip pcntl pdo_mysql \
+    && docker-php-ext-install -j"$(nproc)" gd opcache zip pcntl pdo_mysql pdo_sqlite \
     && apk del .build-deps
 
 WORKDIR /app
 
 COPY src/ /app/
 
+# 主配置、节点目录、runtime、uploads 全部落在 /data，容器重建不丢
 RUN ln -s /data/config.php /app/config.php \
+    && ln -s /data/config /app/config \
     && ln -s /data/runtime /app/runtime \
     && ln -s /data/uploads /app/uploads
 
 VOLUME /data
 EXPOSE 9528
 
-CMD ["sh", "-c", "mkdir -p /data/runtime /data/uploads && exec sh /app/nova/plugin/workerman/workerman.sh start"]
+CMD ["sh", "-c", "mkdir -p /data/runtime /data/uploads /data/config && exec sh /app/nova/plugin/workerman/workerman.sh start"]
