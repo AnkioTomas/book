@@ -3,7 +3,17 @@ window.pageLoadFiles = [
 ];
 
 window.pageOnLoad = function () {
-    $.form.manage('/index/zlib/config', '#zlibForm');
+    $.form.manage('/index/zlib/config', '#zlibForm', {
+        afterSet: function (response) {
+            var last = (response.data && response.data.last_good) ? String(response.data.last_good) : '';
+            var $hint = $('#zlibLastGoodHint');
+            if (last) {
+                $hint.text('上次成功节点：' + last).show();
+            } else {
+                $hint.hide().text('');
+            }
+        }
+    });
 
     $('#btnZlibTest').on('click', function () {
         var data = $.form.get('#zlibForm');

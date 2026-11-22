@@ -40,9 +40,10 @@
                         name="base_url"
                         type="text"
                         variant="outlined"
-                        helper="可选，留空自动竞速"
+                        helper="可选；留空则从可用镜像列表串行选用，成功后自动记住"
                     ></mdui-text-field>
                 </div>
+                <div class="col-xs-12" id="zlibLastGoodHint" style="display:none;font-size:.875rem;color:rgb(var(--mdui-color-on-surface-variant))"></div>
                 <div class="col-xs-12 action-buttons">
                     <mdui-button id="btnZlibTest" icon="login" variant="tonal" type="button">测试登录</mdui-button>
                     <mdui-button icon="save" type="submit">保存修改</mdui-button>

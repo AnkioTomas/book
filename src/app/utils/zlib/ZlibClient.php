@@ -14,59 +14,25 @@ use Throwable;
 
 /**
  * Z-Library eAPI 客户端（移植自月读 store/zlib/client.lua）。
- * 同步实现：镜像竞速 + 登录会话 + 搜索/详情/下载。
+ * 镜像来源：api.ankio.net/zlib/mirrors；串行试节点；成功写入 last_good。
  */
 final class ZlibClient extends Instance
 {
     private const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36';
 
-    private const RACE_WIDTH = 5;
-    private const SERIAL_ATTEMPTS = 3;
+    private const MIRRORS_API = 'https://api.ankio.net/zlib/mirrors';
+    private const MIRRORS_TTL = 6 * 3600;
+    private const SERIAL_ATTEMPTS = 10;
     private const MAX_REDIRECT_HOPS = 5;
     private const DEAD_TTL = 7 * 24 * 3600;
     private const TIMEOUT = 25;
 
-    /** @var list<string> */
-    private const SEED_URLS = [
-        'https://iread.ink',
-        'https://zh.per101.ru',
-        'https://zlib.bz',
-        'https://lexlib.tw',
-        'https://librella.fi',
-        'https://lexlib.fi',
-        'https://bookabooki.tw',
-        'https://bookabooki.fi',
-        'https://librella.tw',
-        'https://fuckfbi.ru',
-        'https://zh.z-lib.gd',
-        'https://z-library.la',
-        'https://zh.z-library.sk',
+    /** API 不可用且无缓存时的兜底（短列表，不维护全量）。 */
+    private const FALLBACK_URLS = [
+        'https://z-lib.by',
         'https://z-library.sk',
-        'https://thai-books.sk',
-        'https://frenchbooks.sk',
-        'https://portuguese-books.sk',
-        'https://urdu-books.sk',
-        'https://spanish-books.sk',
-        'https://italian-books.sk',
-        'https://czechbooks.sk',
-        'https://z-lib.sk',
-        'https://german-books.sk',
-        'https://1lib.sk',
-        'https://z-lib.gd',
-        'https://z-lib.gl',
-        'https://z-lib.bz',
-        'https://z-lib.do',
-        'https://z-lib.fo',
-        'https://z-library.hn',
-        'https://japanese-books.sk',
-        'https://1lib.su',
-        'https://zlib.by',
-        'https://101ml.su',
-        'https://zlib.re',
-        'https://library-oceania.sk',
-        'https://library-latin.sk',
-        'https://library-asia.sk',
-        'https://lib-africa.sk',
+        'https://z-library.la',
+        'https://iread.ink',
     ];
 
     /** @var array<string, string> origin => user:pass */
@@ -189,7 +155,7 @@ final class ZlibClient extends Instance
             ->timeout(300)
             ->setHeader('User-Agent', self::USER_AGENT)
             ->setHeader('Accept', '*/*')
-            ->setHeader('Referer', ($this->pinnedBase ?: self::SEED_URLS[0]) . '/');
+            ->setHeader('Referer', $this->preferredBase() . '/');
         // Cookie 用 CURLOPT_COOKIE：跨域跳转到 CDN 时比裸 Header 更稳
         if ($this->hasSession()) {
             $client->setOption(
@@ -234,7 +200,7 @@ final class ZlibClient extends Instance
         }
 
         $cfg = $this->cfg();
-        $base = $this->pinnedBase ?: $this->normalizeBase((string)($cfg['base_url'] ?? '')) ?: self::SEED_URLS[0];
+        $base = $this->preferredBase();
 
         $attempts = [
             [
@@ -310,19 +276,17 @@ final class ZlibClient extends Instance
     }
 
     /**
+     * 串行试镜像：失败换下一个，成功记住 last_good。
+     *
      * @param  array<string, scalar>|null $form
      * @return array<string, mixed>
      */
     private function jsonRequest(string $method, string $path, ?array $form, bool $withSession, bool $serial): array
     {
-        $race = !$serial && $this->pinnedBase === null;
-        $bases = $this->baseCandidates($race ? self::RACE_WIDTH : self::SERIAL_ATTEMPTS);
+        // $serial 保留兼容旧调用；一律串行试节点
+        $bases = $this->baseCandidates(self::SERIAL_ATTEMPTS);
         if ($bases === []) {
             throw new RuntimeException('没有可用镜像');
-        }
-
-        if ($race && count($bases) > 1) {
-            return $this->raceJson($method, $path, $form, $withSession, $bases);
         }
 
         $lastErr = '网络请求失败';
@@ -330,8 +294,7 @@ final class ZlibClient extends Instance
         foreach ($bases as $base) {
             try {
                 $data = $this->requestOnce($base, $method, $path, $form, $withSession);
-                $this->pinnedBase = $this->originOf($base) ?? $base;
-                $this->revivePinned($failed);
+                $this->rememberSuccess($base);
                 return $data;
             } catch (RuntimeException $e) {
                 $lastErr = $e->getMessage();
@@ -341,87 +304,6 @@ final class ZlibClient extends Instance
                 }
             }
         }
-        $this->blacklist($failed);
-        throw new RuntimeException($lastErr);
-    }
-
-    /**
-     * @param  list<string>               $bases
-     * @param  array<string, scalar>|null $form
-     * @return array<string, mixed>
-     */
-    private function raceJson(string $method, string $path, ?array $form, bool $withSession, array $bases): array
-    {
-        $mh = curl_multi_init();
-        $handles = [];
-        $failed = [];
-
-        foreach ($bases as $base) {
-            $ch = $this->buildCurl($base, $method, $path, $form, $withSession);
-            curl_multi_add_handle($mh, $ch);
-            $handles[(int)$ch] = ['ch' => $ch, 'base' => $base];
-        }
-
-        $winner = null;
-        $lastErr = '网络请求失败';
-        $running = null;
-        do {
-            $status = curl_multi_exec($mh, $running);
-            if ($status > CURLM_OK) {
-                break;
-            }
-            while ($info = curl_multi_info_read($mh)) {
-                /** @var \CurlHandle $ch */
-                $ch = $info['handle'];
-                $meta = $handles[(int)$ch] ?? null;
-                if ($meta === null) {
-                    continue;
-                }
-                $base = $meta['base'];
-                $raw = curl_multi_getcontent($ch);
-                $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $err = curl_error($ch);
-                curl_multi_remove_handle($mh, $ch);
-                curl_close($ch);
-                unset($handles[(int)$ch]);
-
-                if ($winner !== null) {
-                    continue;
-                }
-
-                try {
-                    $data = $this->parseResponse($base, $method, $path, $form, $withSession, $raw ?: '', $code, $err, 0);
-                    $winner = $data;
-                    $this->pinnedBase = $this->originOf($base) ?? $base;
-                    // 未完成的车道只取消，不当失败（避免误伤可用镜像）
-                    foreach ($handles as $left) {
-                        curl_multi_remove_handle($mh, $left['ch']);
-                        curl_close($left['ch']);
-                    }
-                    $handles = [];
-                    $running = 0;
-                } catch (RuntimeException $e) {
-                    $lastErr = $e->getMessage();
-                    $failed[$base] = time();
-                }
-            }
-            if ($running > 0) {
-                curl_multi_select($mh, 1.0);
-            }
-        } while ($running > 0 && $winner === null);
-
-        foreach ($handles as $left) {
-            curl_multi_remove_handle($mh, $left['ch']);
-            curl_close($left['ch']);
-        }
-        curl_multi_close($mh);
-
-        if ($winner !== null) {
-            $this->blacklist($failed);
-            $this->revivePinned([]);
-            return $winner;
-        }
-
         $this->blacklist($failed);
         throw new RuntimeException($lastErr);
     }
@@ -582,16 +464,35 @@ final class ZlibClient extends Instance
         return $ch;
     }
 
+    /** 手动 base_url > 本次 pinned > 上次成功 last_good > 列表首项。 */
+    private function preferredBase(): string
+    {
+        $cfg = $this->cfg();
+        foreach ([
+            (string)($cfg['base_url'] ?? ''),
+            (string)($this->pinnedBase ?? ''),
+            (string)($cfg['last_good'] ?? ''),
+        ] as $u) {
+            $n = $this->normalizeBase($u);
+            if ($n !== '') {
+                return $n;
+            }
+        }
+        $list = $this->remoteMirrors();
+        return $list[0] ?? self::FALLBACK_URLS[0];
+    }
+
     /** @return list<string> */
     private function baseCandidates(int $cap): array
     {
         $cfg = $this->cfg();
         $dead = is_array($cfg['dead_bases'] ?? null) ? $cfg['dead_bases'] : [];
         $now = time();
+        $manual = $this->normalizeBase((string)($cfg['base_url'] ?? ''));
         $out = [];
         $seen = [];
 
-        $add = function (?string $u) use (&$out, &$seen, $dead, $now, $cfg): void {
+        $add = function (?string $u) use (&$out, &$seen, $dead, $now, $manual): void {
             if ($u === null) {
                 return;
             }
@@ -602,7 +503,7 @@ final class ZlibClient extends Instance
             $died = (int)($dead[$u] ?? 0);
             $skip = $died > 0
                 && ($now - $died) < self::DEAD_TTL
-                && $u !== $this->normalizeBase((string)($cfg['base_url'] ?? ''))
+                && $u !== $manual
                 && $u !== $this->pinnedBase;
             if (!isset($seen[$u]) && !$skip) {
                 $seen[$u] = true;
@@ -610,9 +511,14 @@ final class ZlibClient extends Instance
             }
         };
 
-        $add((string)($cfg['base_url'] ?? ''));
+        // 手动节点优先，其次上次成功，再扫 API 延迟排序列表
+        $add($manual);
         $add($this->pinnedBase);
-        foreach (self::SEED_URLS as $seed) {
+        $add((string)($cfg['last_good'] ?? ''));
+        foreach ($this->remoteMirrors() as $m) {
+            $add($m);
+        }
+        foreach (self::FALLBACK_URLS as $seed) {
             $add($seed);
         }
 
@@ -623,6 +529,89 @@ final class ZlibClient extends Instance
         }
 
         return array_slice($out, 0, max(1, $cap));
+    }
+
+    /**
+     * 从 Ankio API 拉可用镜像（按 latency 升序），本地缓存 6h。
+     *
+     * @return list<string>
+     */
+    private function remoteMirrors(): array
+    {
+        $cfg = $this->cfg();
+        $cached = [];
+        if (is_array($cfg['mirrors'] ?? null)) {
+            foreach ($cfg['mirrors'] as $m) {
+                if (is_string($m) && $m !== '') {
+                    $cached[] = $this->normalizeBase($m);
+                }
+            }
+        }
+        $at = (int)($cfg['mirrors_at'] ?? 0);
+        if ($cached !== [] && (time() - $at) < self::MIRRORS_TTL) {
+            return $cached;
+        }
+
+        try {
+            $resp = HttpClient::init()
+                ->timeout(10)
+                ->setHeader('User-Agent', self::USER_AGENT)
+                ->setHeader('Accept', 'application/json')
+                ->get()
+                ->send(self::MIRRORS_API);
+            if ($resp === null || $resp->getHttpCode() !== 200) {
+                return $cached !== [] ? $cached : self::FALLBACK_URLS;
+            }
+            $json = json_decode($resp->getBody(), true);
+            $rows = is_array($json['data']['mirrors'] ?? null) ? $json['data']['mirrors'] : [];
+            $fresh = [];
+            $seen = [];
+            foreach ($rows as $m) {
+                if (!is_string($m)) {
+                    continue;
+                }
+                $n = $this->normalizeBase($m);
+                if ($n === '' || isset($seen[$n])) {
+                    continue;
+                }
+                $seen[$n] = true;
+                $fresh[] = $n;
+            }
+            if ($fresh === []) {
+                return $cached !== [] ? $cached : self::FALLBACK_URLS;
+            }
+            $cfg['mirrors'] = $fresh;
+            $cfg['mirrors_at'] = time();
+            $this->saveCfg($cfg);
+            return $fresh;
+        } catch (Throwable) {
+            return $cached !== [] ? $cached : self::FALLBACK_URLS;
+        }
+    }
+
+    private function rememberSuccess(string $base): void
+    {
+        $origin = $this->originOf($base) ?? $this->normalizeBase($base);
+        if ($origin === '') {
+            return;
+        }
+        $this->pinnedBase = $origin;
+
+        $cfg = $this->cfg();
+        $changed = false;
+        if ((string)($cfg['last_good'] ?? '') !== $origin) {
+            $cfg['last_good'] = $origin;
+            $changed = true;
+        }
+        $dead = is_array($cfg['dead_bases'] ?? null) ? $cfg['dead_bases'] : [];
+        if (isset($dead[$origin])) {
+            unset($dead[$origin]);
+            $cfg['dead_bases'] = $dead;
+            $changed = true;
+        }
+        if ($changed) {
+            $this->saveCfg($cfg);
+        }
     }
 
     /** @param array<string, int> $failed */
@@ -643,22 +632,6 @@ final class ZlibClient extends Instance
         if ($this->pinnedBase !== null) {
             unset($dead[$this->pinnedBase]);
         }
-        $cfg['dead_bases'] = $dead;
-        $this->saveCfg($cfg);
-    }
-
-    /** @param array<string, int> $failed */
-    private function revivePinned(array $failed): void
-    {
-        if ($this->pinnedBase === null) {
-            return;
-        }
-        $cfg = $this->cfg();
-        $dead = is_array($cfg['dead_bases'] ?? null) ? $cfg['dead_bases'] : [];
-        if (!isset($dead[$this->pinnedBase]) && $failed === []) {
-            return;
-        }
-        unset($dead[$this->pinnedBase]);
         $cfg['dead_bases'] = $dead;
         $this->saveCfg($cfg);
     }

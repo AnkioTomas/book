@@ -35,6 +35,7 @@ class Zlib extends BaseAPIController
                     'email' => (string)($cfg['email'] ?? ''),
                     'password' => (string)($cfg['password'] ?? ''),
                     'base_url' => (string)($cfg['base_url'] ?? ''),
+                    'last_good' => (string)($cfg['last_good'] ?? ''),
                     'has_session' => ZlibClient::getInstance()->hasSession(),
                 ],
             ]);
@@ -51,7 +52,11 @@ class Zlib extends BaseAPIController
             'email' => $email,
             'password' => $password,
             'base_url' => $baseUrl,
+            // 运行时状态：手动保存配置时保留
+            'last_good' => (string)($old['last_good'] ?? ''),
             'dead_bases' => is_array($old['dead_bases'] ?? null) ? $old['dead_bases'] : [],
+            'mirrors' => is_array($old['mirrors'] ?? null) ? $old['mirrors'] : [],
+            'mirrors_at' => (int)($old['mirrors_at'] ?? 0),
             // 改账号清会话
             'user_id' => '',
             'user_key' => '',
