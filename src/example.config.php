@@ -27,7 +27,6 @@ return array(
         'repo' => 'AnkioTomas/book',
         'name' => 'book',
         'asset' => '{name}-{version}.zip',
-        'token' => '',
     ),
     'db' =>
     array(
