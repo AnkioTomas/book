@@ -56,6 +56,7 @@ return array(
         'url' => '',
         'username' => '',
         'password' => '',
+        'path' => '/Apps/Books',
     ),
     // 书库行为（与 AI 服务商配置分离）
     'book' =>

@@ -102,6 +102,13 @@ EOT,
                     'required' => true,
                     'desc' => '坚果云请使用应用密码，不要用登录密码',
                 ],
+                'webdav.path' => [
+                    'title' => '书库路径',
+                    'type' => 'input',
+                    'default' => '/Apps/Books',
+                    'required' => false,
+                    'desc' => '须与静读天下的 WebDAV 目录一致，留空则用 /Apps/Books',
+                ],
             ],
         ],
         '基本设置' => [
