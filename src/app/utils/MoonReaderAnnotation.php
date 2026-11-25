@@ -9,18 +9,21 @@ use app\database\model\AnnotationModel;
 /**
  * 静读天下（Moon+ Reader）.an 注解文件 → AnnotationModel。
  *
- * 格式契约（对照真实 .an，并参考 MIT 的 MoonReader_NoteSync / siyuan-moon-sync）：
+ * 格式契约（对照静读天下 v10.7 BookDb.exportNotesToText / deletedNotesToText）：
  * - 文件体多为 zlib / raw deflate 压缩的 UTF-8 文本
  * - 段分隔：单独一行 `#`
- * - 每段前 10 行：id, title, fullPath, lowerPath, chapter, 0, position, length, color, timestamp(ms)
- * - 其后 1～2 行正文：有笔记时先笔记后高亮；仅一行则是高亮
- * - 正文后的裸数字是尾部元数据，丢弃
+ * - 每段严格对应 SQLite `notes` 表 16 列：
+ *   [0]_id, [1]book, [2]filename, [3]lowerFilename, [4]lastChapter, [5]lastSplitIndex,
+ *   [6]lastPosition, [7]highlightLength, [8]highlightColor, [9]time(ms),
+ *   [10]bookmark, [11]note, [12]original, [13]underline, [14]strikethrough, [15]bak
+ * - 末尾可能追加删除墓碑段：[15] 为 `*DELETED*`，必须跳过
  *
  * device_id 固定为 {@see DEVICE}，与 KOReader 快照互不覆盖。
  */
 class MoonReaderAnnotation
 {
     public const DEVICE = 'moonreader';
+    private const DELETED_MARKER = '*DELETED*';
 
     /**
      * @return AnnotationModel[]
@@ -75,22 +78,25 @@ class MoonReaderAnnotation
      */
     public static function parseNotes(string $text): array
     {
-        $sections = preg_split("/\n#\r?\n/", $text);
+        $sections = preg_split("/\r?\n#\r?\n/", "\n" . $text);
         if ($sections === false || count($sections) < 2) {
             return [];
         }
 
         $notes = [];
         for ($i = 1, $n = count($sections); $i < $n; $i++) {
-            $section = trim($sections[$i]);
-            if ($section === '') {
+            $section = $sections[$i];
+            if (trim($section) === '') {
                 continue;
             }
             $lines = array_map(
                 static fn (string $l): string => rtrim($l, "\r"),
                 explode("\n", $section)
             );
-            if (count($lines) < 10) {
+            if (count($lines) < 11) {
+                continue;
+            }
+            if (trim($lines[15] ?? '') === self::DELETED_MARKER) {
                 continue;
             }
 
@@ -102,28 +108,11 @@ class MoonReaderAnnotation
                 continue;
             }
 
-            $p = 10;
-            while ($p < count($lines) && self::isBlank($lines[$p])) {
-                $p++;
-            }
-
-            $content = [];
-            while (count($content) < 2 && $p < count($lines)) {
-                $line = trim($lines[$p]);
-                if (self::isBlank($line) || self::isBareNumber($line)) {
-                    break;
-                }
-                $content[] = $line;
-                $p++;
-            }
-
-            $userNote = '';
-            $highlight = '';
-            if (count($content) >= 2) {
-                $userNote = self::normalizeBody($content[0]);
-                $highlight = self::normalizeBody(implode("\n", array_slice($content, 1)));
-            } elseif (count($content) === 1) {
-                $highlight = self::normalizeBody($content[0]);
+            $bookmark = self::normalizeBody($lines[10] ?? '');
+            $userNote = self::normalizeBody($lines[11] ?? '');
+            $highlight = self::normalizeBody($lines[12] ?? '');
+            if ($highlight === '' && $bookmark !== '') {
+                $highlight = $bookmark;
             }
 
             if ($userNote === '' && $highlight === '') {
@@ -219,18 +208,11 @@ class MoonReaderAnnotation
         return trim(preg_replace('/<BR>/i', "\n", $s) ?? $s);
     }
 
-    private static function isBlank(string $l): bool
-    {
-        return trim($l) === '';
-    }
-
-    private static function isBareNumber(string $l): bool
-    {
-        return preg_match('/^-?\d+$/', trim($l)) === 1;
-    }
-
     private static function looksLikeAnText(string $s): bool
     {
-        return str_contains($s, "\n#\n") || str_contains($s, "\n#\r\n");
+        return str_starts_with($s, "#\n")
+            || str_starts_with($s, "#\r\n")
+            || str_contains($s, "\n#\n")
+            || str_contains($s, "\n#\r\n");
     }
 }

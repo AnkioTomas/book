@@ -268,19 +268,31 @@ class Book extends ApiController
             return Response::asJson(['code' => 400, 'msg' => '参数错误', 'data' => []]);
         }
 
-        // 进度有两个写入方：静读天下写 .po 文件，本站客户端写数据库。
-        // 取时间戳新的那一份；locator 只存在于数据库，.po 更新时它已经过期，必须丢弃，
-        // 否则会把读者送回上一次在别的设备上停下的位置。
-        $text = ProgressManager::getInstance()->getProgressText($filename);
-        $remote = empty($text) ? null : ReadingProgressModel::fromString($text);
+        // 进度有两个写入方：静读天下写 .po，本站写数据库。
+        // 串里星号前是设备号，不是版本。谁新只看文件 mtime 和库里的 timestamp。
+        // locator 只在数据库里；远端 .po 更新后它已经过期，必须丢掉。
+        $progressManager = ProgressManager::getInstance();
+        $text = $progressManager->getProgressText($filename);
+        $remote = $text !== '' ? ReadingProgressModel::fromString($text) : null;
+        if ($remote !== null && $remote->deviceId === '') {
+            $remote = null;
+        }
         $local = ReadingProgressDao::getInstance()->getByFilename($filename);
+        $remoteMs = ($remote === null ? 0 : ($progressManager->getProgressMtime($filename) ?? 0)) * 1000;
 
         if ($remote === null && $local === null) {
             return Response::asJson(['code' => 200, 'msg' => 'success', 'data' => null]);
         }
-        $item = $remote;
         $locator = '';
-        if ($local !== null && ($remote === null || $local->timestamp >= $remote->timestamp)) {
+        if ($remote !== null && ($local === null || $remoteMs > $local->timestamp)) {
+            $remote->filename = $filename;
+            $remote->timestamp = $remoteMs > 0 ? $remoteMs : (int)(microtime(true) * 1000);
+            if ($local !== null && $local->id > 0) {
+                $remote->id = $local->id;
+            }
+            ReadingProgressDao::getInstance()->insertModel($remote, true);
+            $item = $remote;
+        } else {
             $item = $local;
             $locator = $local->locator;
         }
@@ -294,6 +306,7 @@ class Book extends ApiController
                 'spine' => $item->spineIndex,
                 'page' => $item->pageIndex,
                 'offset' => $item->offset,
+                'shape' => $item->shape,
                 'locator' => $locator,
                 'timestamp' => $item->timestamp,
             ],
@@ -316,13 +329,6 @@ class Book extends ApiController
         $frac = $data["frac"] ?? 0;
         $frac = round(floatval($frac) * 100, 2);
 
-        $spine  = $data["spine"] ?? 0;
-        $spine = intval($spine);
-
-        $page  = $data["page"] ?? 0;
-        $page = intval($page);
-        $offset = intval($data["offset"] ?? 0);
-
         $percent = $data["percent"] ?? '0%';
         $percent = rtrim(trim((string)$percent), '%');
         if ($percent === '') {
@@ -330,28 +336,43 @@ class Book extends ApiController
         }
 
         // 精确定位坐标（XPointer / CFI）。不进 raw 串：那是静读天下的 .po 格式，
-        // 只认 {ts}*{spine}@{page}#{offset}:{pct}%，多塞一个字段会让它解析失败。
+        // 只认 {设备号}*{章}@{分片}#{字符偏移}:{百分比}%，多塞一个字段会让它解析失败。
         $locator = trim((string)($data["locator"] ?? ''));
+        $layout = trim((string)($data['layout'] ?? ''));
 
         $progress = ReadingProgressDao::getInstance()->getByFilename($filename);
         if (empty($progress)) {
             $progress = new ReadingProgressModel();
             $progress->filename = $filename;
-            $progress->timestamp = time() * 1000;
             $progress->id = ReadingProgressDao::getInstance()->insertModel($progress);
         }
 
+        if ($layout === 'short' || $layout === 'nohash' || $layout === 'full') {
+            $progress->shape = $layout;
+        }
         $progress->percent = $frac;
-        $progress->spineIndex   = $spine;
         $progress->percentText = $percent;
-        $progress->pageIndex = $page;
-        $progress->offset = $offset;
+        if ($progress->shape === 'short') {
+            $progress->spineIndex = 0;
+            $progress->offset = 0;
+            $progress->pageIndex = intval($data['page'] ?? 0);
+        } else {
+            $progress->spineIndex = intval($data['spine'] ?? 0);
+            if (array_key_exists('page', $data)) {
+                $progress->pageIndex = intval($data['page']);
+            }
+            if (array_key_exists('offset', $data)) {
+                $progress->offset = intval($data['offset']);
+            }
+        }
         $progress->locator = $locator;
-        $progress->timestamp = time() * 1000;
+        // 写成自己的设备号。沿用静读天下的设备号再改位置，它会当成自己写的而丢掉。
+        $progress->deviceId = ProgressManager::getInstance()->deviceId;
+        $progress->timestamp = (int)(microtime(true) * 1000);
         $progress->raw = $progress->toString();
 
         ReadingProgressDao::getInstance()->insertModel($progress, true);
-        ProgressManager::getInstance()->uploadProgressText($filename, $progress->toString());
+        ProgressManager::getInstance()->uploadProgressText($filename, $progress->raw);
 
         // $frac 已是 0–100；$frac >= 99 即阅读进度 ≥ 99%
         if (BookDao::getInstance()->markFinishedByProgress($filename, $frac)) {

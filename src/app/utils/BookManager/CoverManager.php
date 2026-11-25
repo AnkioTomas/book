@@ -7,6 +7,7 @@ namespace app\utils\BookManager;
 use app\utils\Douban;
 use nova\framework\core\Context;
 use nova\framework\core\File;
+use nova\framework\core\Logger;
 
 class CoverManager extends BaseManager
 {
@@ -35,6 +36,9 @@ class CoverManager extends BaseManager
 
         if (!$this->client->upload($file, $this->remotePath($filename))) {
             return false;
+        }
+        if (!$this->touchDeviceMarker('covers.id')) {
+            Logger::warning('[CoverManager] 更新 .Moon+/covers.id 失败');
         }
         // 远端封面已经换了，本地缓存必须作废，否则页面永远显示旧图，
         // 或者继续命中此前下载失败留下的空文件。
@@ -98,7 +102,11 @@ class CoverManager extends BaseManager
         $this->dropCache($to);
         $src = $this->moon . '/Cover/' . $srcKey . '_2.png';
         $dst = $this->moon . '/Cover/' . $dstKey . '_2.png';
-        return $this->client->move($src, $dst, $overwrite);
+        $ok = $this->client->move($src, $dst, $overwrite);
+        if ($ok && !$this->touchDeviceMarker('covers.id')) {
+            Logger::warning('[CoverManager] 更新 .Moon+/covers.id 失败');
+        }
+        return $ok;
     }
 
     private function remotePath(string $filename): string

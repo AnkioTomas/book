@@ -29,7 +29,7 @@ use Throwable;
  * - 删除传播以「远端实际 epub 文件列表」为权威信号（一次目录列举），本地有记录但远端文件已消失即删除本地。
  *   无法列出远端目录（网络/认证失败）时整体中止，绝不把「无法确认」当成「不存在」。
  * - 元数据 last-write-wins：本地 update_at > 上次同步时间则本地为准，否则以远端 books.sync 为准。
- * - 进度仲裁复用 .po 串内的 ts 与本地 timestamp，新者胜。
+ * - 进度版本看 .po 文件 mtime。串内星号前是设备号，阅读时不变。
  * - 增量：远端 books.sync 文件 mtime 未变则跳过远端书目处理；进度仅下载 mtime 比上次同步更新的 .po；
  *   仅在本地或远端确有变化时才回写 books.sync。
  * - 注解：单向拉 WebDAV `.Moon+/Cache/*.an` → annotation（device_id=moonreader），
@@ -146,6 +146,7 @@ class SyncTask extends TaskerAbstract
             . ' → 是否下载 books.sync=' . (($remoteMetaChanged || $missing) ? '是' : '否'));
 
         $metaMap = [];
+        $metaByBase = [];
         if ($remoteMetaChanged || $missing) {
             TaskLogger::log('下载远端 books.sync 做元数据比对…');
             $remoteList = $bookManager->list();
@@ -153,9 +154,14 @@ class SyncTask extends TaskerAbstract
                 TaskLogger::log('无法下载远端书目文件，跳过元数据比对（不影响裸文件补全）', 'warn');
             } else {
                 foreach ($remoteList as $entry) {
-                    $fn = $entry['filename'] ?? '';
-                    if ($fn !== '') {
-                        $metaMap[$fn] = $entry;
+                    $resolved = $this->resolveEntryPath($bookManager, $entry);
+                    if ($resolved !== '') {
+                        $metaMap[$resolved] = $entry;
+                        $base = $bookManager->sidecarKey($resolved);
+                        // 仅当条目未带子目录时进入 basename 兜底索引，避免跨分类同名书互相误匹配
+                        if ($base !== '' && $resolved === $base && !isset($metaByBase[$base])) {
+                            $metaByBase[$base] = $entry;
+                        }
                     }
                 }
                 TaskLogger::log('远端书目解析 ' . count($metaMap) . ' 条元数据');
@@ -169,11 +175,11 @@ class SyncTask extends TaskerAbstract
                 continue;
             }
             $local = $localMap[$filename] ?? null;
-            $entry = $metaMap[$filename] ?? null;
+            $entry = $metaMap[$filename] ?? $metaByBase[$bookManager->sidecarKey($filename)] ?? null;
 
             if ($local === null) {
                 if ($entry !== null) {
-                    $localMap[$filename] = $this->pullRemote($entry);
+                    $localMap[$filename] = $this->pullRemote($filename, $entry);
                     $pulled++;
                 } else {
                     $localMap[$filename] = $this->pullBare($filename);
@@ -181,7 +187,7 @@ class SyncTask extends TaskerAbstract
                 }
                 $dirty = true;
             } elseif ($remoteMetaChanged && $entry !== null && $local->update_at <= $lastMs) {
-                $localMap[$filename] = $this->pullRemote($entry, $local);
+                $localMap[$filename] = $this->pullRemote($filename, $entry, $local);
                 $dirty = true;
                 $pulled++;
             }
@@ -244,7 +250,7 @@ class SyncTask extends TaskerAbstract
             TaskLogger::log('回写 books.sync（' . count($localMap) . ' 条）');
             $payload = [];
             foreach ($localMap as $book) {
-                $payload[] = $this->toRemoteEntry($book);
+                $payload[] = $this->toRemoteEntry($book, $bookManager, $lastMs);
             }
             try {
                 $writeOk = $bookManager->updateBookList($payload);
@@ -295,9 +301,13 @@ class SyncTask extends TaskerAbstract
      * 再被 upsert 全字段写回，本地封面地址就没了。它是纯本地字段，本地非空即为权威；
      * 本地为空才回退到远端值，兼容旧版本已经写进 books.sync 的存量数据。
      */
-    private function pullRemote(array $entry, ?BookModel $local = null): BookModel
+    private function pullRemote(string $filename, array $entry, ?BookModel $local = null): BookModel
     {
         $book = new BookModel($entry);
+        $book->filename = $filename;
+        if ($book->downloadUrl === '' || str_starts_with($book->downloadUrl, '[WebDav]')) {
+            $book->downloadUrl = BookManager::getInstance()->downloadUrlFor($filename);
+        }
         $book->splitCategory2Series();
         if ($local !== null && $local->coverUrl !== '') {
             $book->coverUrl = $local->coverUrl;
@@ -307,6 +317,24 @@ class SyncTask extends TaskerAbstract
         $book->update_at = 0; // 来自远端，标记为本地未修改
         BookDao::getInstance()->insertModel($book, true);
         return $book;
+    }
+
+    /**
+     * 解析 books.sync 条目对应的书库相对路径：
+     * - 兼容旧版直接在 filename 写入 `分类/书名.epub`
+     * - 兼容静读天下规范：filename 为纯 basename，完整路径在 downloadUrl
+     */
+    private function resolveEntryPath(BookManager $bookManager, array $entry): string
+    {
+        $rawFn = (string)($entry['filename'] ?? '');
+        if ($rawFn !== '' && (str_contains($rawFn, '/') || str_contains($rawFn, '\\'))) {
+            return $bookManager->normalizeBookPath($rawFn);
+        }
+        $fromUrl = $bookManager->relPathFromDownloadUrl((string)($entry['downloadUrl'] ?? ''));
+        if ($fromUrl !== '') {
+            return $fromUrl;
+        }
+        return $bookManager->normalizeBookPath($rawFn);
     }
 
     /**
@@ -327,8 +355,8 @@ class SyncTask extends TaskerAbstract
     /**
      * 进度增量同步（双向）。
      *
-     * 版本权威是文件 mtime，而非进度串里的 ts —— 实测移动端写 .po 时不更新串内 ts，
-     * 只刷新文件 mtime；用 ts 仲裁会永久平局漏下载。统一规则：
+     * 版本权威是文件 mtime。串内第一个数字是设备号，静读天下阅读时不改它，
+     * 拿它当版本会和本机保存时间永久比错。统一规则：
      *   - 本地 timestamp 字段 = 该进度的「版本时刻(毫秒)」（本地阅读=阅读时刻；远端下载=mtime*1000）。
      *   - 下载：远端 mtime*1000 > 本地 timestamp 即拉取，raw 存远端原串（保留真实位置）。
      *   - 上传：本地 timestamp > 远端 mtime*1000 即上传 raw（保留各端契约串）。
@@ -618,10 +646,19 @@ class SyncTask extends TaskerAbstract
      * update_at 为本地同步仲裁字段，id 为本地自增主键，hidden 为本地可见性标记，都不属于共享契约，不写入。
      * coverUrl 仍然写出，作为本地库损坏时的兜底副本。
      */
-    private function toRemoteEntry(BookModel $book): array
+    private function toRemoteEntry(BookModel $book, BookManager $bookManager, int $lastMs): array
     {
         $book->pushSeries2Category();
         $entry = $book->toArray(false);
+        // 静读天下 CloudBook.filename 必须是纯 basename（导入时拿 pureFilename 精确判重），
+        // 完整子目录路径只放在 downloadUrl。
+        $entry['filename'] = $bookManager->sidecarKey($book->filename);
+        if (($entry['downloadUrl'] ?? '') === '' || str_starts_with((string)$entry['downloadUrl'], '[WebDav]')) {
+            $entry['downloadUrl'] = $bookManager->downloadUrlFor($book->filename);
+        }
+        if ($book->update_at > $lastMs || ($entry['deviceId'] ?? '') === '') {
+            $entry['deviceId'] = $bookManager->deviceId;
+        }
         unset($entry['update_at'], $entry['id'], $entry['hidden']);
         return $entry;
     }

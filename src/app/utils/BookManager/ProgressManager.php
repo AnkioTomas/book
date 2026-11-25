@@ -37,6 +37,27 @@ class ProgressManager extends BaseManager
         return '';
     }
 
+    /**
+     * 远端 .po 的修改时间（秒）。静读天下不改串内设备号，版本只看这个时间。
+     */
+    public function getProgressMtime(string $filename): ?int
+    {
+        $key = $this->sidecarKey($filename);
+        if ($key === '') {
+            return null;
+        }
+        try {
+            $info = $this->client->getResourceInfo($this->moon . '/Cache/' . $key . '.po');
+        } catch (\Throwable) {
+            return null;
+        }
+        if ($info === null) {
+            return null;
+        }
+        $mtime = (int)($info['mtime'] ?? 0);
+        return $mtime > 0 ? $mtime : null;
+    }
+
     public function uploadProgressText(string $filename, string $content): bool
     {
         $key = $this->sidecarKey($filename);

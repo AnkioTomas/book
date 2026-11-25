@@ -19,7 +19,11 @@ class BookManager extends BaseManager
         $sync = $this->runtime . "books.sync";
         $data = zlib_encode(Json::encode($books), ZLIB_ENCODING_DEFLATE);
         File::write($sync, $data);
-        return $this->client->upload($sync, $path);
+        $ok = $this->client->upload($sync, $path);
+        if ($ok && !$this->touchDeviceMarker('books.id')) {
+            Logger::warning('[BookManager] 更新 .Moon+/books.id 失败');
+        }
+        return $ok;
     }
 
     public function deleteBook(string $filename): bool

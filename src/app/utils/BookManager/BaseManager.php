@@ -37,6 +37,8 @@ class BaseManager extends Instance
             $this->deviceId = (string)(time() * 1000);
             config('webdav.deviceId', $this->deviceId);
         }
+        $this->path = self::libraryPath((string)(config('webdav.path') ?? ''));
+        $this->moon = $this->path . '/.Moon+';
 
         $this->client = new SimpleWebDAVClient($url, $username, $password);
     }
@@ -44,6 +46,25 @@ class BaseManager extends Instance
     public function __destruct()
     {
 
+    }
+
+    /**
+     * 书库根目录。WebDAV 没配路径、或路径含 .. 时用静读天下默认 /Apps/Books。
+     */
+    private static function libraryPath(string $raw): string
+    {
+        $parts = [];
+        foreach (explode('/', str_replace('\\', '/', trim($raw))) as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                return '/Apps/Books';
+            }
+            $parts[] = $part;
+        }
+
+        return $parts === [] ? '/Apps/Books' : '/' . implode('/', $parts);
     }
 
     /**
@@ -151,6 +172,32 @@ class BaseManager extends Instance
     {
         $rel = $this->normalizeBookPath($filename);
         return $rel === '' ? '' : '[WebDav]' . $this->path . '/' . $rel;
+    }
+
+    /**
+     * 从 Moon+ downloadUrl（如 `[WebDav]/Apps/Books/分类/书名.epub`）还原相对书库路径。
+     */
+    public function relPathFromDownloadUrl(string $downloadUrl): string
+    {
+        $prefix = '[WebDav]' . $this->path . '/';
+        if (!str_starts_with($downloadUrl, $prefix)) {
+            return '';
+        }
+        return $this->normalizeBookPath(rawurldecode(substr($downloadUrl, strlen($prefix))));
+    }
+
+    /**
+     * 更新 Moon+ 同步设备标记文件（books.id / covers.id）。
+     * 静读天下自动同步会先比对该文件与自身 deviceRandomID，一致则直接跳过拉取。
+     */
+    public function touchDeviceMarker(string $name): bool
+    {
+        if (!$this->ensureRemoteDir($this->moon)) {
+            return false;
+        }
+        $local = $this->runtime . $name;
+        File::write($local, $this->deviceId);
+        return $this->client->upload($local, $this->moon . '/' . $name);
     }
 
     public function getClient(): SimpleWebDAVClient
