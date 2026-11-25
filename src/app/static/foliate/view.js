@@ -1,4 +1,28 @@
 import * as CFI from './epubcfi.js'
+
+function rangeAtTextOffset(root, offset) {
+    const doc = root.ownerDocument
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+    let remain = Math.max(0, offset | 0)
+    let last = null
+    let node
+    while ((node = walker.nextNode())) {
+        last = node
+        const len = node.textContent.length
+        if (remain <= len) {
+            const range = doc.createRange()
+            range.setStart(node, remain)
+            range.collapse(true)
+            return range
+        }
+        remain -= len
+    }
+    if (!last) return null
+    const range = doc.createRange()
+    range.setStart(last, last.textContent.length)
+    range.collapse(true)
+    return range
+}
 import { TOCProgress, SectionProgress } from './progress.js'
 import { Overlayer } from './overlayer.js'
 import { textWalker } from './text-walker.js'
@@ -225,6 +249,9 @@ export class View extends HTMLElement {
     history = new History()
     constructor() {
         super()
+        const style = document.createElement('style')
+        style.textContent = ':host{display:block;width:100%;height:100%}'
+        this.#root.append(style)
         this.history.addEventListener('popstate', ({ detail }) => {
             const resolved = this.resolveNavigation(detail.state)
             this.renderer.goTo(resolved)
@@ -472,6 +499,17 @@ export class View extends HTMLElement {
         const [index, anchor] = this.#sectionProgress.getSection(frac)
         await this.renderer.goTo({ index, anchor })
         this.history.pushState({ fraction: frac })
+    }
+    /** 静读天下章节内字符偏移：分片为 0 时，偏移是这一章正文开头数起的字符。 */
+    async goToCharOffset(index, offset) {
+        const section = this.book?.sections?.[index]
+        if (!section?.createDocument) return false
+        const doc = await section.createDocument()
+        const root = doc.body || doc.documentElement
+        if (!root) return false
+        const range = rangeAtTextOffset(root, offset)
+        if (!range) return false
+        return !!(await this.goTo(this.getCFI(index, range)))
     }
     async select(target) {
         try {

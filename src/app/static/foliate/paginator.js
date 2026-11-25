@@ -498,10 +498,20 @@ export class Paginator extends HTMLElement {
                     --_max-column-count-spread: var(--_max-column-count);
                 }
             }
+            @container (max-width: 720px), (max-height: 520px) {
+                & {
+                    /* 跟阅读栏一样高，正文停在栏外。栏显隐不改栏高，避免翻页跳动。 */
+                    --_margin: var(--reader-bar-h, 48px);
+                    --_gap: 4%;
+                    grid-template-rows: var(--_margin) minmax(0, 1fr) var(--_margin);
+                    padding-top: env(safe-area-inset-top, 0px);
+                    padding-bottom: env(safe-area-inset-bottom, 0px);
+                }
+            }
         }
         #background {
-            grid-column: 1 / -1;
-            grid-row: 1 / -1;
+            position: absolute;
+            inset: 0;
         }
         #container {
             grid-column: 2 / 5;
@@ -714,10 +724,14 @@ export class Paginator extends HTMLElement {
         const gap = -g / (g - 1) * size
 
         const flow = this.getAttribute('flow')
+        const short = matchMedia('(max-width: 720px), (max-height: 520px)').matches
         if (flow === 'scrolled') {
             // FIXME: vertical-rl only, not -lr
             this.setAttribute('dir', vertical ? 'rtl' : 'ltr')
-            this.#top.style.padding = '0'
+            // 滚动模式容器盖住边距行，内边距才能把正文让出顶栏和底栏
+            this.#top.style.padding = short
+                ? 'calc(var(--reader-bar-h, 48px) + env(safe-area-inset-top, 0px)) 0 calc(var(--reader-bar-h, 48px) + env(safe-area-inset-bottom, 0px))'
+                : '0'
             const columnWidth = maxInlineSize
 
             this.heads = null
@@ -728,6 +742,7 @@ export class Paginator extends HTMLElement {
             return { flow, margin, gap, columnWidth }
         }
 
+        this.#top.style.padding = ''
         const divisor = Math.min(maxColumnCount, Math.ceil(size / maxInlineSize))
         const columnWidth = (size / divisor) - gap
         this.setAttribute('dir', rtl ? 'rtl' : 'ltr')
@@ -820,19 +835,28 @@ export class Paginator extends HTMLElement {
             })
         })
     }
+    get lastTouchMoved() {
+        return !!this.#touchState?.moved
+    }
     #onTouchStart(e) {
         const touch = e.changedTouches[0]
         this.#touchState = {
             x: touch?.screenX, y: touch?.screenY,
+            sx: touch?.screenX, sy: touch?.screenY,
             t: e.timeStamp,
-            vx: 0, xy: 0,
+            vx: 0, vy: 0,
+            moved: false,
         }
     }
     #onTouchMove(e) {
         const state = this.#touchState
+        if (!state) return
+        const startTouch = e.changedTouches[0]
+        if (startTouch && Math.hypot(startTouch.screenX - state.sx, startTouch.screenY - state.sy) > 12)
+            state.moved = true
         if (state.pinched) return
         state.pinched = globalThis.visualViewport.scale > 1
-        if (this.scrolled || state.pinched) return
+        if (this.scrolled || state.pinched || !state.moved) return
         if (e.touches.length > 1) {
             if (this.#touchScrolled) e.preventDefault()
             return
@@ -852,7 +876,7 @@ export class Paginator extends HTMLElement {
     }
     #onTouchEnd() {
         this.#touchScrolled = false
-        if (this.scrolled) return
+        if (this.scrolled || !this.#touchState?.moved) return
 
         // XXX: Firefox seems to report scale as 1... sometimes...?
         // at this point I'm basically throwing `requestAnimationFrame` at

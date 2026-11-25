@@ -30,9 +30,16 @@
 
 html,
 body {
+    position: fixed;
+    inset: 0;
+    width: 100%;
     margin: 0;
     height: 100%;
+    height: 100dvh;
     overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
     background: var(--reader-surface);
     color: var(--reader-fg);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -40,11 +47,13 @@ body {
 }
 
 #reader-root {
-    position: absolute;
+    position: fixed;
     inset: 0;
+    height: 100dvh;
 }
 
 #reader-root foliate-view {
+    display: block;
     width: 100%;
     height: 100%;
 }
@@ -92,7 +101,7 @@ body {
 
 /* —— 页角进度（folio） —— */
 #folio {
-    position: absolute;
+    position: fixed;
     z-index: 10;
     right: max(12px, env(safe-area-inset-right));
     bottom: max(12px, env(safe-area-inset-bottom));
@@ -114,7 +123,7 @@ body.chrome-shown #folio {
 
 /* —— 顶/底栏 —— */
 .chrome-bar {
-    position: absolute;
+    position: fixed;
     inset-inline: 0;
     z-index: 20;
     display: flex;
@@ -132,6 +141,7 @@ body.chrome-shown #folio {
 
 #chrome-top {
     top: 0;
+    bottom: auto;
 }
 
 #chrome-bottom {
@@ -196,7 +206,7 @@ body:not(.chrome-shown) #chrome-bottom {
 
 /* —— 侧栏 / 面板 —— */
 .scrim {
-    position: absolute;
+    position: fixed;
     inset: 0;
     z-index: 25;
     background: var(--reader-scrim);
@@ -212,7 +222,7 @@ body:not(.chrome-shown) #chrome-bottom {
 }
 
 .side-panel {
-    position: absolute;
+    position: fixed;
     z-index: 30;
     top: 0;
     bottom: 0;
@@ -739,6 +749,79 @@ html.mdui-theme-dark .weread-font-list .font-preview {
     }
 }
 
+@media (max-width: 720px) {
+    :root {
+        --reader-bar-h: 48px;
+    }
+
+    #chrome-top {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        padding-inline: 2px;
+    }
+
+    #chrome-top .chrome-title {
+        min-width: 0;
+        max-width: none;
+        text-align: center;
+    }
+
+    .chrome-bar mdui-button-icon {
+        --mdui-comp-button-icon-size: 44px;
+    }
+
+    #btn-first,
+    #btn-last {
+        display: none;
+    }
+
+    #progress-slider {
+        margin-inline: 2px;
+    }
+
+    #folio {
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(16px, env(safe-area-inset-bottom));
+        font-size: 11px;
+    }
+
+    .side-panel,
+    .side-panel[data-side="end"] {
+        max-height: min(88dvh, 100%);
+        padding-bottom: env(safe-area-inset-bottom);
+        border-radius: 16px 16px 0 0;
+    }
+
+    .panel-head {
+        min-height: 48px;
+        padding-inline: 16px 4px;
+    }
+
+    #toc-view a,
+    #toc-view span {
+        padding: 12px 10px;
+    }
+
+    .seg button {
+        padding: 10px 14px;
+    }
+
+    .settings-row {
+        min-height: 44px;
+    }
+
+    .sel-bar {
+        max-width: calc(100vw - 16px);
+        gap: 4px;
+        padding: 6px 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .weread-font-list {
+        max-height: none;
+    }
+}
+
 /* 顶栏三列：标题居中 */
 #chrome-top {
     display: grid;
@@ -757,4 +840,18 @@ html.mdui-theme-dark .weread-font-list .font-preview {
 
 #chrome-bottom {
     gap: 2px;
+}
+
+@media (max-width: 720px) {
+    /* 写在基础三列规则之后，否则 1fr auto 1fr 会把窄屏标题撑到按钮上 */
+    #chrome-top {
+        grid-template-columns: max-content minmax(0, 1fr) max-content;
+    }
+}
+
+@media (max-width: 720px), (max-height: 520px) {
+    /* 底栏本身就是进度，百分比留在正文上会压住末行 */
+    body.chrome-shown #folio {
+        opacity: 0;
+    }
 }

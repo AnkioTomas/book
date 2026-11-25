@@ -373,8 +373,8 @@ class Reader {
     applyAppearance() {
         if (!this.view) return
         const theme = pageTheme()
-        this.view.renderer.setStyles?.(buildPageCss(this.settings, theme))
-        this.view.renderer.setAttribute('flow', this.settings.flow)
+        this.view.renderer?.setStyles?.(buildPageCss(this.settings, theme))
+        this.view.renderer?.setAttribute('flow', this.settings.flow)
         document.body.style.background = theme.background
     }
 
@@ -572,6 +572,12 @@ class Reader {
 
         this.view = document.createElement('foliate-view')
         $('#reader-root').replaceChildren(this.view)
+        // 顶栏底栏那一条不在正文 iframe 里，点击要同样能翻页 / 唤出工具栏
+        this.view.addEventListener('click', event => {
+            if (event.target !== this.view) return
+            if (window.innerWidth > 720 && window.innerHeight > 520) return
+            this.#onPageClick(event, document)
+        })
 
         try {
             await this.view.open(file)
@@ -723,6 +729,7 @@ class Reader {
         if (sel && !sel.isCollapsed) return
         this.#annotator?.hideBar()
 
+        if (this.view?.renderer?.lastTouchMoved) return
         const frame = doc.defaultView?.frameElement
         let x = event.clientX
         if (frame instanceof HTMLElement) {
@@ -730,9 +737,15 @@ class Reader {
             const scale = frame.offsetWidth ? rect.width / frame.offsetWidth : 1
             x = rect.left + event.clientX * scale
         }
+        if (this.settings.flow === 'scrolled') {
+            this.toggleChrome()
+            return
+        }
+        const narrow = window.innerWidth <= 720
+        const edge = narrow ? 0.2 : 1 / 3
         const ratio = x / window.innerWidth
-        if (ratio < 1 / 3) this.view.goLeft()
-        else if (ratio > 2 / 3) this.view.goRight()
+        if (ratio < edge) this.view.goLeft()
+        else if (ratio > 1 - edge) this.view.goRight()
         else this.toggleChrome()
     }
 
@@ -877,12 +890,57 @@ if (title) {
     if (chrome && !chrome.textContent) chrome.textContent = hint
 }
 
+const textOffsetOf = range => {
+    try {
+        const node = range?.startContainer
+        const doc = node?.ownerDocument
+        const root = doc?.body || doc?.documentElement
+        if (!root) return 0
+        const pre = doc.createRange()
+        pre.selectNodeContents(root)
+        pre.setEnd(node, range.startOffset)
+        return pre.toString().length
+    } catch {
+        return 0
+    }
+}
+
 if (url) {
     let progressTimer = null
     let progressSnap = null
+    let savedKey = ''
+    let hold = true
+    const isPdf = title.toLowerCase().endsWith('.pdf')
+    const measure = item => {
+        const spine = item.section?.current ?? 0
+        const fraction = Number(item.fraction) || 0
+        if (isPdf) {
+            return {
+                frac: fraction,
+                spine: 0,
+                page: spine,
+                offset: 0,
+                percent: (fraction * 100).toFixed(2),
+                layout: 'short',
+            }
+        }
+        return {
+            frac: fraction,
+            spine,
+            page: 0,
+            offset: textOffsetOf(item.range),
+            percent: (fraction * 100).toFixed(2),
+            layout: 'full',
+        }
+    }
+    const snapKey = snap => snap ? `${snap.layout}|${snap.spine}|${snap.page}|${snap.offset}|${snap.percent}` : ''
     const saveProgress = () => {
+        progressTimer = null
         if (!title || !progressSnap) return
-        const {frac: f, spine, page, percent} = progressSnap
+        const key = snapKey(progressSnap)
+        if (key === savedKey) return
+        savedKey = key
+        const {frac: f, spine, page, offset, percent, layout} = progressSnap
         return fetch('/index/book/progressUpdate', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
@@ -891,14 +949,32 @@ if (url) {
                 frac: String(Math.round(f * 100) / 100),
                 spine: String(spine),
                 page: String(page),
+                offset: String(offset),
                 percent: String(percent),
+                layout,
             }),
             keepalive: true,
         }).catch(() => {})
     }
     const scheduleProgressSave = () => {
         clearTimeout(progressTimer)
-        progressTimer = setTimeout(saveProgress, 20000)
+        progressTimer = setTimeout(saveProgress, 400)
+    }
+    const restoreProgress = async (view, data) => {
+        const percent = Number(data.percent) || 0
+        const fraction = Math.min(1, Math.max(0, percent > 1 ? percent / 100 : percent))
+        if (data.shape === 'short') {
+            const page = Number(data.page) || 0
+            if (await view.goTo(page)) return
+            await view.goToFraction(fraction)
+            return
+        }
+        const split = Number(data.page) || 0
+        const offset = Number(data.offset) || 0
+        const spine = Number(data.spine) || 0
+        if (split === 0 && offset > 0 && await view.goToCharOffset(spine, offset)) return
+        if (split === 0 && spine > 0 && await view.goTo(spine)) return
+        await view.goToFraction(fraction)
     }
 
     window.addEventListener('visibilitychange', () => {
@@ -917,28 +993,31 @@ if (url) {
     open(url, {
         title,
         onRelocate(item) {
-            progressSnap = {
-                frac: item.fraction,
-                spine: item.section?.current ?? 0,
-                page: item.location?.current ?? 0,
-                percent: item.percent,
-            }
+            if (hold) return
+            const next = measure(item)
+            if (snapKey(next) === snapKey(progressSnap)) return
+            progressSnap = next
             scheduleProgressSave()
         },
         async onLoad(view) {
-            const initial = Number.isFinite(frac) ? Math.min(1, Math.max(0, frac)) : 0
-            await view.goToFraction(initial)
-
-            if (!title) return
-            const res = await fetch('/index/book/progress?filename=' + encodeURIComponent(title))
-            const j = await res.json().catch(() => ({}))
-            if (j.code !== 200 || typeof j.data !== 'number' || Number.isNaN(j.data)) return
-            let f = j.data
-            if (f > 1) f /= 100
-            f = Math.min(1, Math.max(0, f))
-            if (Math.abs(f - initial) < 0.01) return
-            if (globalThis.confirm('检测到上次阅读进度，是否跳转？')) {
-                await view.goToFraction(f)
+            hold = true
+            try {
+                if (title) {
+                    const res = await fetch('/index/book/progress?filename=' + encodeURIComponent(title))
+                    const j = await res.json().catch(() => ({}))
+                    if (j.code === 200 && j.data && typeof j.data === 'object') {
+                        await restoreProgress(view, j.data)
+                        if (view.lastLocation) {
+                            progressSnap = measure(view.lastLocation)
+                            savedKey = snapKey(progressSnap)
+                        }
+                        return
+                    }
+                }
+                const initial = Number.isFinite(frac) ? Math.min(1, Math.max(0, frac)) : 0
+                if (initial > 0) await view.goToFraction(initial)
+            } finally {
+                hold = false
             }
         },
     }).catch(e => {
