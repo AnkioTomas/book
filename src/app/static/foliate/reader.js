@@ -965,15 +965,15 @@ if (url) {
         const fraction = Math.min(1, Math.max(0, percent > 1 ? percent / 100 : percent))
         if (data.shape === 'short') {
             const page = Number(data.page) || 0
-            if (await view.goTo(page)) return
+            if (page > 0 && await view.goTo(page)) return
             await view.goToFraction(fraction)
             return
         }
-        const split = Number(data.page) || 0
+        // 静读天下的位置是章号 + # 后的字符数。@ 分片不是改走百分比的理由。
         const offset = Number(data.offset) || 0
         const spine = Number(data.spine) || 0
-        if (split === 0 && offset > 0 && await view.goToCharOffset(spine, offset)) return
-        if (split === 0 && spine > 0 && await view.goTo(spine)) return
+        if (offset > 0 && await view.goToCharOffset(spine, offset)) return
+        if (spine > 0 && await view.goTo(spine)) return
         await view.goToFraction(fraction)
     }
 
